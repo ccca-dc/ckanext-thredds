@@ -1,0 +1,45 @@
+{% extends "dataviewer/base.html" %}
+
+{% block page %}
+    <div class="container">
+        <div id="map" class="map"></div>
+        <div id="chart" class="chart-wrapper"></div>
+    </div>
+    {% resource 'thredds/Control.FullScreen.min.css' %}
+    {% resource 'thredds/Control.FullScreen.min.js' %}
+    {% resource 'thredds/default.min.css' %}
+    {% resource 'thredds/highlight.min.js' %}
+    {% resource 'thredds/highstock.js' %}
+    {% resource 'thredds/iso8601.min.js' %}
+    {% resource 'thredds/leaflet.css' %}
+    {% resource 'thredds/leaflet.js' %}
+    {% resource 'thredds/leaflet.timedimension.control.css' %}
+    {% resource 'thredds/leaflet.timedimension.control.js' %}
+    {% resource 'thredds/leaflet.timedimension.js' %}
+    {% resource 'thredds/leaflet.timedimension.layer.geojson.js' %}
+    {% resource 'thredds/leaflet.timedimension.layer.js' %}
+    {% resource 'thredds/leaflet.timedimension.layer.wms.js' %}
+    {% resource 'thredds/leaflet.timedimension.player.js' %}
+    {% resource 'thredds/leaflet.timedimension.util.js' %}
+    {% resource 'thredds/NonTiledLayer.js' %}
+    {% resource 'thredds/NonTiledLayer.WMS.js' %}
+    {% resource 'thredds/wms_view.js' %}
+    {% resource 'thredds/leaflet.timedimension.circlelabelmarker.js' %}
+    {% resource 'thredds/leaflet.timedimension.layer.wms.timeseries.js' %}
+    {% resource 'thredds/baselayers.js' %}
+    {% resource 'thredds/highlight.min.js' %}
+
+        <script type="text/javascript">
+            $(document).ready(function() {
+                $.ajax('js/example13.js', {dataType: 'script'})
+                    .always(function(response) {                        
+                        $("#code").text(response.responseText);
+                        $('pre code').each(function(i, block) {
+                            hljs.highlightBlock(block);
+                        });
+                    });
+            });
+        </script>        
+{% endblock %}
+
+</html>
