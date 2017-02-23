@@ -18,7 +18,7 @@ class ThreddsPlugin(plugins.SingletonPlugin):
     def info(self):
         return {'name': 'thredds_wms_view',
                 'title': plugins.toolkit._('Thredds WMS'),
-                'icon': 'pencil',
+                'icon': 'map',
                 'iframed': False,
                 'requires_datastore': False,
                 'default_title': plugins.toolkit._('Thredds WMS')
