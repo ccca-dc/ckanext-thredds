@@ -1,6 +1,6 @@
-ckan.module('wms_view', function ($) {
-  return {
-    initialize: function () {
+//ckan.module('wms_view', function ($) {
+//  return {
+//    initialize: function () {
 
         var startDate = new Date();
         startDate.setUTCHours(0, 0, 0, 0);
@@ -90,6 +90,6 @@ ckan.module('wms_view', function ($) {
 
         sapoHeightTimeLayer.addTo(map);
 
-    }
-  };
-});
+//    }
+//  };
+//});
