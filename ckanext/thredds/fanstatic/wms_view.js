@@ -2,9 +2,6 @@ ckan.module('wms_view', function ($) {
   return {
     initialize: function () {
 
-        var startDate = new Date();
-        startDate.setUTCHours(0, 0, 0, 0);
-
         var map = L.map('map', {
             zoom: 7,
             fullscreenControl: true,
@@ -16,7 +13,7 @@ ckan.module('wms_view', function ($) {
                 }
             },
             timeDimension: true,
-            center: [47.2, 13.2]
+            center: [47.3, 13.9]
         });
 
         //var sapoWMS = "http://thredds.socib.es/thredds/wms/operational_models/oceanographical/wave/model_run_aggregation/sapo_ib/sapo_ib_best.ncd";
@@ -46,7 +43,7 @@ ckan.module('wms_view', function ($) {
             position: [47.259659, 11.400375]
         }];
 
-        var proxy = 'server/proxy.php';
+        var proxy = '/wms_proxy';
         var sapoHeightTimeLayer = L.timeDimension.layer.wms.timeseries(sapoHeightLayer, {
             proxy: proxy,
             updateTimeDimension: true,

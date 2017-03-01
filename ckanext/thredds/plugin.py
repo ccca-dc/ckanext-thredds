@@ -5,6 +5,7 @@ import ckan.plugins.toolkit as toolkit
 class ThreddsPlugin(plugins.SingletonPlugin):
     plugins.implements(plugins.IConfigurer)
     plugins.implements(plugins.IResourceView, inherit=True)
+    plugins.implements(plugins.IRoutes, inherit=True)
 
     # IConfigurer
 
@@ -37,3 +38,10 @@ class ThreddsPlugin(plugins.SingletonPlugin):
     #     """Setup variables available to templates"""
     #     pass
 
+    # IRoutes
+    def before_map(self, map):
+        # image upload
+        map.connect('wms_proxy', '/wms_proxy',
+                    controller='ckanext.thredds.controllers.proxy:WMSProxyController',
+                    action='wms_proxy')
+        return map

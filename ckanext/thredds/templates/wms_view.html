@@ -2,9 +2,12 @@
 
 {% block page %}
     {% resource 'thredds-public/wms' %}
+    {% resource 'thredds/wms_view.js' %}
 
     <div class="container">
-        <div id="map" class="map"</div>
+        <div id="map" class="map" data-module="wms_view"</div>
+    </div>
+    <div class="container">
         <div id="chart" class="chart-wrapper"></div>
     </div>
 {% endblock %}
