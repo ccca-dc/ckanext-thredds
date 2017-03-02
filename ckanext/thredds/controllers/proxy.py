@@ -1,6 +1,7 @@
 import ckan.lib.helpers as h
 import ckan.lib.base as base
 import requests
+from urlparse import urlparse, parse_qs
 from pylons import config
 import ckan.plugins.toolkit as toolkit
 
@@ -22,8 +23,15 @@ log = logging.getLogger(__name__)
 
 class WMSProxyController(base.BaseController):
     def wms_proxy(self):
-        url = request.params.get('url')
-        r = requests.get(url)
+        context = {'model': model, 'session': model.Session,
+                   'user': c.user}
+        #toolkit.check_access('resource_update',
+        thredds_server = "10.1.186.222:8080"
+        p_url = urlparse(request.params.get('url'))
+        p_url = p_url._replace(netloc=thredds_server)
+        r = requests.get(p_url.geturl())
+        log.debug(p_url.geturl())
+        #r = requests.get(url)
 #        if url.find("GetCapabilities") != -1:
 #            log.debug(url)
 #            log.debug(r.headers)

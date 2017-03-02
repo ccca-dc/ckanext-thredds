@@ -1,6 +1,8 @@
 ckan.module('wms_view', function ($) {
   return {
     initialize: function () {
+        var startDate = new Date();
+        startDate.setUTCHours(0, 0, 0, 0);
 
         var map = L.map('map', {
             zoom: 7,
@@ -17,9 +19,15 @@ ckan.module('wms_view', function ($) {
         });
 
         //var sapoWMS = "http://thredds.socib.es/thredds/wms/operational_models/oceanographical/wave/model_run_aggregation/sapo_ib/sapo_ib_best.ncd";
-        var sapoWMS = "http://localhost:8080/thredds/wms/testAll/tx_QuantileMapped_MPI-M-MPI-ESM-LR_rcp85_r1i1p1_SMHI-RCA4_v1_day_19700101-19701231.nc";
+        //var sapoWMS = "http://localhost:8080/thredds/wms/testAll/tx_QuantileMapped_MPI-M-MPI-ESM-LR_rcp85_r1i1p1_SMHI-RCA4_v1_day_19700101-19701231.nc";
+        var sapoWMS = "http://localhost:8080/thredds/wms/ckanAll/resources/dec/aac/bb-3979-4b14-9b7a-abaee64bc983"
+        //var sapoWMS = "http://localhost:8080/thredds/wms/ckanAll/resources/ed6/e87/6f-1fb4-4952-86b1-0872b23d6029"
+        //var sapoWMS = "http://localhost:8080/thredds/wms/testAll/tx_QuantileMapped_MPI-M-MPI-ESM-LR_rcp85_r1i1p1_SMHI-RCA4_v1_day_19700101-19701231.nc"
+        //var sapoWMS = "http://localhost:8080/thredds/wms/ckanAll/resources/382/306/62-6f7a-4519-b70a-8d125923070a"
+        //var sapoWMS = "http://localhost:8080/thredds/wms/ckanAll/resources/66c/8cd/07-737a-4cdb-9a6d-05f4dc779ca4"
+        //var sapoWMS = "http://localhost:8080/thredds/wms/ckanAll/resources/0cb/7c3/96-b232-469a-85c4-138bd2868506?service=WMS&version=1.3.0&request=GetCapabilities"
         var sapoHeightLayer = L.tileLayer.wms(sapoWMS, {
-            layers: 'tx',
+            layers: 'tas',
             format: 'image/png',
             transparent: true,
             colorscalerange: '-20,20',
@@ -58,7 +66,7 @@ ckan.module('wms_view', function ($) {
             position: 'bottomright'
         });
         sapoLegend.onAdd = function(map) {
-            var src = sapoWMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&LAYER=tx&colorscalerange=-20,20&PALETTE=rainbow&numcolorbands=100&transparent=FALSE";
+            var src = sapoWMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&LAYER=tas&colorscalerange=-20,20&PALETTE=rainbow&numcolorbands=100&transparent=FALSE";
             var div = L.DomUtil.create('div', 'info legend');
             div.innerHTML +=
                 '<img src="' + src + '" alt="legend">';
