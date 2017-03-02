@@ -22,7 +22,7 @@ log = logging.getLogger(__name__)
 
 
 class WMSProxyController(base.BaseController):
-    def wms_proxy(self, resource_id):
+    def wms_proxy(self):
         """
         Provides a direct download by either redirecting the user to the url
         stored or downloading an uploaded file directly.
@@ -30,16 +30,15 @@ class WMSProxyController(base.BaseController):
         context = {'model': model, 'session': model.Session,
                    'user': c.user, 'auth_user_obj': c.userobj}
 
-        try:
-            rsc = get_action('resource_show')(context, {'id': resource_id})
-        except (NotFound, NotAuthorized):
-            abort(404, _('Resource not found'))
+        #try:
+        #    rsc = get_action('resource_show')(context, {'id': resource_id})
+        #except (NotFound, NotAuthorized):
+        #    abort(404, _('Resource not found'))
 
         if authz.auth_is_anon_user(context):
             abort(401, _('Unauthorized to read resource %s') % resource_id)
         else:
-            if rsc.get('url_type') == 'upload':
-                p_url = urlparse(request.params.get('url'))
-                response.headers['X-Accel-Redirect'] = "{0}".format(p_url.path)
-                return response
-            abort(404, _('No wms available'))
+            p_url = urlparse(request.params.get('url'))
+            response.headers['X-Accel-Redirect'] = "{0}".format(p_url.path)
+            return response
+        #abort(404, _('No wms available'))
