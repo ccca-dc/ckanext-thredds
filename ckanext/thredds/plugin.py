@@ -20,7 +20,7 @@ class ThreddsPlugin(plugins.SingletonPlugin):
     def info(self):
         return {'name': 'thredds_wms_view',
                 'title': plugins.toolkit._('Thredds WMS'),
-                'icon': 'map',
+                'icon': 'globe',
                 'iframed': False,
                 'requires_datastore': False,
                 'default_title': plugins.toolkit._('Thredds WMS')
@@ -41,7 +41,7 @@ class ThreddsPlugin(plugins.SingletonPlugin):
     # IRoutes
     def before_map(self, map):
         # image upload
-        map.connect('wms_proxy', '/wms_proxy',
+        map.connect('wms_proxy', '/wms_proxy/{res_id}',
                     controller='ckanext.thredds.controllers.proxy:WMSProxyController',
                     action='wms_proxy')
         return map

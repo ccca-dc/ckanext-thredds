@@ -10,6 +10,10 @@ import ckan.model as model
 import ckan.logic as logic
 import ckan.lib.uploader as uploader
 import ckan.lib.navl.dictization_functions as dict_fns
+from ckan.common import request, c, g, response
+
+import ckan.authz as authz 
+import os
 
 get_action = logic.get_action
 parse_params = logic.parse_params
@@ -22,11 +26,12 @@ log = logging.getLogger(__name__)
 
 
 class WMSProxyController(base.BaseController):
-    def wms_proxy(self):
+    def wms_proxy(self, res_id):
         """
         Provides a direct download by either redirecting the user to the url
         stored or downloading an uploaded file directly.
         """
+
         context = {'model': model, 'session': model.Session,
                    'user': c.user, 'auth_user_obj': c.userobj}
 
@@ -36,9 +41,15 @@ class WMSProxyController(base.BaseController):
         #    abort(404, _('Resource not found'))
 
         if authz.auth_is_anon_user(context):
-            abort(401, _('Unauthorized to read resource %s') % resource_id)
+            abort(401, _('Unauthorized to read resource %s') % res_id)
         else:
-            p_url = urlparse(request.params.get('url'))
-            response.headers['X-Accel-Redirect'] = "{0}".format(p_url.path)
+            p_query = request.query_string
+            p_path = os.path.join('/thredds/wms/ckanAll/resources',res_id[0:3], res_id[3:6], res_id[6:])
+
+            #p_url = urlparse(request.params.get('url'))
+            #log.debug(p_url.path)
+            #response.headers['X-Accel-Redirect'] = "{0}?{1}".format(p_url.path,p_url.query)
+            response.headers['X-Accel-Redirect'] = "{0}?{1}".format(p_path,p_query)
             return response
         #abort(404, _('No wms available'))
+

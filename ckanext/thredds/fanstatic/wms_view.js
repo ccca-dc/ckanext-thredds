@@ -20,7 +20,9 @@ ckan.module('wms_view', function ($) {
 
         //var sapoWMS = "http://thredds.socib.es/thredds/wms/operational_models/oceanographical/wave/model_run_aggregation/sapo_ib/sapo_ib_best.ncd";
         //var sapoWMS = "http://localhost:8080/thredds/wms/testAll/tx_QuantileMapped_MPI-M-MPI-ESM-LR_rcp85_r1i1p1_SMHI-RCA4_v1_day_19700101-19701231.nc";
-        var sapoWMS = "http://localhost:8080/thredds/wms/ckanAll/resources/dec/aac/bb-3979-4b14-9b7a-abaee64bc983"
+        //var sapoWMS = "https://sandboxdc.ccca.ac.at/thredds/wms/ckanAll/resources/dec/aac/bb-3979-4b14-9b7a-abaee64bc983"
+        var sapoWMS = "https://sandboxdc.ccca.ac.at/wms_proxy/decaacbb-3979-4b14-9b7a-abaee64bc983"
+        //var sapoWMS = "http://localhost:8080/thredds/wms/ckanAll/resources/dec/aac/bb-3979-4b14-9b7a-abaee64bc983"
         //var sapoWMS = "http://localhost:8080/thredds/wms/ckanAll/resources/ed6/e87/6f-1fb4-4952-86b1-0872b23d6029"
         //var sapoWMS = "http://localhost:8080/thredds/wms/testAll/tx_QuantileMapped_MPI-M-MPI-ESM-LR_rcp85_r1i1p1_SMHI-RCA4_v1_day_19700101-19701231.nc"
         //var sapoWMS = "http://localhost:8080/thredds/wms/ckanAll/resources/382/306/62-6f7a-4519-b70a-8d125923070a"
@@ -51,9 +53,9 @@ ckan.module('wms_view', function ($) {
             position: [47.259659, 11.400375]
         }];
 
-        var proxy = '/wms_proxy';
+        //var proxy = '/wms_proxy';
         var sapoHeightTimeLayer = L.timeDimension.layer.wms.timeseries(sapoHeightLayer, {
-            proxy: proxy,
+            //proxy: proxy,
             updateTimeDimension: true,
             markers: markers,
             name: "Surface Air Temperature",
