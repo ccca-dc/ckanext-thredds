@@ -1,5 +1,6 @@
 import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
+import ckanext.iapi.logic.action as action
 
 
 class ThreddsPlugin(plugins.SingletonPlugin):
