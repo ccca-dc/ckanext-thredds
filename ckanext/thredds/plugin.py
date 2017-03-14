@@ -6,6 +6,7 @@ class ThreddsPlugin(plugins.SingletonPlugin):
     plugins.implements(plugins.IConfigurer)
     plugins.implements(plugins.IResourceView, inherit=True)
     plugins.implements(plugins.IRoutes, inherit=True)
+    plugins.implements(plugins.IActions)
 
     # IConfigurer
 
@@ -34,9 +35,6 @@ class ThreddsPlugin(plugins.SingletonPlugin):
     def view_template(self, context, data_dict):
         return 'wms_view.html'
 
-    # def setup_template_variables(self, context, data_dict):
-    #     """Setup variables available to templates"""
-    #     pass
 
     # IRoutes
     def before_map(self, map):
@@ -45,3 +43,8 @@ class ThreddsPlugin(plugins.SingletonPlugin):
                     controller='ckanext.thredds.controllers.proxy:WMSProxyController',
                     action='wms_proxy')
         return map
+
+    # IActions
+    def get_actions(self):
+        actions = {'thredds_get_layers': action.thredds_get_layers}
+        return actions

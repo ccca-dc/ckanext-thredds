@@ -59,36 +59,26 @@ def thredds_get_dimensions(context, data_dict):
 
 
 def thredds_get_time(context, data_dict):
-    '''Return the metadata of a dataset (package) and its resources.
+    '''Return the temporal extent of the resources layer
 
-    :param id: the id or name of the dataset
+    :param id: the id or name of the resource
     :type id: string
-    :param use_default_schema: use default package schema instead of
-        a custom schema defined with an IDatasetForm plugin (default: False)
-    :type use_default_schema: bool
-    :param include_tracking: add tracking information to dataset and
-        resources (default: False)
-    :type include_tracking: bool
-    :rtype: dictionary
-
+    :param layer: the layer name for the requested resources
+    :type layer: string
+    :rtype: list
     '''
     # wms['layer'].dimensions
     pass
 
 
 def thredds_get_spatial(context, data_dict):
-    '''Return the metadata of a dataset (package) and its resources.
+    '''Return the spatial extent of the resources layer
 
-    :param id: the id or name of the dataset
+    :param id: the id or name of the resource
     :type id: string
-    :param use_default_schema: use default package schema instead of
-        a custom schema defined with an IDatasetForm plugin (default: False)
-    :type use_default_schema: bool
-    :param include_tracking: add tracking information to dataset and
-        resources (default: False)
-    :type include_tracking: bool
-    :rtype: dictionary
-
+    :param layer: the layer name for the requested resources
+    :type layer: string
+    :rtype: list
     '''
     # wms['layer'].dimensions
     pass
