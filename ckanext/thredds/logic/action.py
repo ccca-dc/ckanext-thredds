@@ -1,9 +1,7 @@
 # encoding: utf-8
 
 import ckan.plugins.toolkit as tk
-
 from owslib.wms import WebMapService
-
 import os
 
 
@@ -19,16 +17,17 @@ def thredds_get_layers(context, data_dict):
     model = context['model']
     user = context['user']
 
-    resource_id = tk.get_action('get_or_bust')(data_dict,'id')
+    resource_id = tk.get_or_bust(data_dict,'id')
+
+    # Get Request for this controller
+    req = tk.request
 
     # Get URL for WMS Proxy
-    wms_url = tk.url_for('wms_proxy', id=resource_id)
+    wms_url = 'https://sandboxdc.ccca.ac.at/wms_proxy/' + resource_id
 
-    req = tk.request()
-
-    # WMS Object
+    # WMS Object from url and extracted apikey from request header
     wms = WebMapService(wms_url, version='1.3.0',
-                        headers=req.headers)
+                        headers={'Authorization': req.headers['Authorization']})
 
     # Get Contents
     l_cont = list(wms.contents)
@@ -37,7 +36,15 @@ def thredds_get_layers(context, data_dict):
     l_cont_filter = [l for l in l_cont if l not in
                      ['lat','lon','latitude','longitude','x','y']]
 
-    return l_cont_filter
+
+    d_layers = {}
+    for l in l_cont_filter:
+        d_layers[l] = {}
+        d_layers[l]['name'] = wms.contens[l].name
+        d_layers[l]['title'] = wms.contens[l].title
+        d_layers[l]['abstract'] = wms.contens[l].abstract
+
+    return d_layers
 
 
 def thredds_get_dimensions(context, data_dict):

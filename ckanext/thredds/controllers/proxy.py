@@ -3,16 +3,16 @@ import ckan.lib.base as base
 import requests
 from urlparse import urlparse, parse_qs
 from pylons import config
-import ckan.plugins.toolkit as toolkit
+import ckan.plugins.toolkit as tk
 
 import logging
 import ckan.model as model
 import ckan.logic as logic
 import ckan.lib.uploader as uploader
 import ckan.lib.navl.dictization_functions as dict_fns
-from ckan.common import request, c, g, response
+from ckan.common import _, request, c, g, response
 
-import ckan.authz as authz 
+import ckan.authz as authz
 import os
 
 get_action = logic.get_action
@@ -28,28 +28,25 @@ log = logging.getLogger(__name__)
 class WMSProxyController(base.BaseController):
     def wms_proxy(self, res_id):
         """
-        Provides a direct download by either redirecting the user to the url
-        stored or downloading an uploaded file directly.
+        Provides a wms Service for netcdf files by redirecting the user to the
+        thredds server
+
         """
 
         context = {'model': model, 'session': model.Session,
                    'user': c.user, 'auth_user_obj': c.userobj}
 
-        #try:
-        #    rsc = get_action('resource_show')(context, {'id': resource_id})
-        #except (NotFound, NotAuthorized):
-        #    abort(404, _('Resource not found'))
+        try:
+           rsc = tk.get_action('resource_show')(context, {'id': resource_id})
+        except (NotFound, NotAuthorized):
+           abort(404, _('Resource not found'))
 
         if authz.auth_is_anon_user(context):
-            abort(401, _('Unauthorized to read resource %s') % res_id)
+            tk.abort(401, _('Unauthorized to read resource %s') % res_id)
         else:
             p_query = request.query_string
             p_path = os.path.join('/thredds/wms/ckanAll/resources',res_id[0:3], res_id[3:6], res_id[6:])
 
-            #p_url = urlparse(request.params.get('url'))
-            #log.debug(p_url.path)
-            #response.headers['X-Accel-Redirect'] = "{0}?{1}".format(p_url.path,p_url.query)
             response.headers['X-Accel-Redirect'] = "{0}?{1}".format(p_path,p_query)
             return response
-        #abort(404, _('No wms available'))
 
