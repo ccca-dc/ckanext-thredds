@@ -1,17 +1,10 @@
 # encoding: utf-8
 
-from owslib.wms import WebMapService
-
-import ckan.logic
 import ckan.plugins.toolkit as tk
 
-import os
+from owslib.wms import WebMapService
 
-ValidationError = ckan.logic.ValidationError
-NotFound = ckan.logic.NotFound
-_check_access = ckan.logic.check_access
-_get_or_bust = ckan.logic.get_or_bust
-_get_action = ckan.logic.get_action
+import os
 
 
 def thredds_get_layers(context, data_dict):
@@ -31,9 +24,11 @@ def thredds_get_layers(context, data_dict):
     # Get URL for WMS Proxy
     wms_url = tk.url_for('wms_proxy', id=resource_id)
 
+    req = tk.request()
+
     # WMS Object
     wms = WebMapService(wms_url, version='1.3.0',
-                        headers={'Authorization':user.apikey})
+                        headers=req.headers)
 
     # Get Contents
     l_cont = list(wms.contents)
