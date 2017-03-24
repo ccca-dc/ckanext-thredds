@@ -18,18 +18,23 @@ ckan.module('wms_view', function ($) {
             center: [47.3, 13.9]
         });
 
-        //var sapoWMS = "http://thredds.socib.es/thredds/wms/operational_models/oceanographical/wave/model_run_aggregation/sapo_ib/sapo_ib_best.ncd";
-        //var sapoWMS = "http://localhost:8080/thredds/wms/testAll/tx_QuantileMapped_MPI-M-MPI-ESM-LR_rcp85_r1i1p1_SMHI-RCA4_v1_day_19700101-19701231.nc";
-        //var sapoWMS = "https://sandboxdc.ccca.ac.at/thredds/wms/ckanAll/resources/dec/aac/bb-3979-4b14-9b7a-abaee64bc983"
+        this.sandbox = ckan.sandbox();
+        ckan.sandbox('GET','thredds_get_layers','?id=decaacbb-3979-4b14-9b7a-abaee64bc983', function(json) {console.log(json)},function(json) {console.log(json)});
+
         var sapoWMS = "https://sandboxdc.ccca.ac.at/wms_proxy/decaacbb-3979-4b14-9b7a-abaee64bc983"
-        //var sapoWMS = "http://localhost:8080/thredds/wms/ckanAll/resources/dec/aac/bb-3979-4b14-9b7a-abaee64bc983"
-        //var sapoWMS = "http://localhost:8080/thredds/wms/ckanAll/resources/ed6/e87/6f-1fb4-4952-86b1-0872b23d6029"
-        //var sapoWMS = "http://localhost:8080/thredds/wms/testAll/tx_QuantileMapped_MPI-M-MPI-ESM-LR_rcp85_r1i1p1_SMHI-RCA4_v1_day_19700101-19701231.nc"
-        //var sapoWMS = "http://localhost:8080/thredds/wms/ckanAll/resources/382/306/62-6f7a-4519-b70a-8d125923070a"
-        //var sapoWMS = "http://localhost:8080/thredds/wms/ckanAll/resources/66c/8cd/07-737a-4cdb-9a6d-05f4dc779ca4"
-        //var sapoWMS = "http://localhost:8080/thredds/wms/ckanAll/resources/0cb/7c3/96-b232-469a-85c4-138bd2868506?service=WMS&version=1.3.0&request=GetCapabilities"
+
         var sapoHeightLayer = L.tileLayer.wms(sapoWMS, {
-            layers: 'tas',
+            layers:
+            this.sandbox.client.call('GET','thredds_get_layers',
+                                     '?id=decaacbb-3979-4b14-9b7a-abaee64bc983',
+                                     function(json) {
+                                         $.map(json.result, function( value, key ) {
+                                             return key.toString(); }
+                                              );
+                                     },
+                                     function(json) {console.log(json)
+                                                    }
+                                    ),
             format: 'image/png',
             transparent: true,
             colorscalerange: '-20,20',
@@ -97,6 +102,15 @@ ckan.module('wms_view', function ($) {
 
         sapoHeightTimeLayer.addTo(map);
 
+    },
+
+    _onHandleData: function(json) {
+        if (json.success) {
+
+            var layer_name = json;
+
+        }
     }
+
   };
 });

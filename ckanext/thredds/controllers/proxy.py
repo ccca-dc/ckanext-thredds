@@ -37,8 +37,8 @@ class WMSProxyController(base.BaseController):
                    'user': c.user, 'auth_user_obj': c.userobj}
 
         try:
-           rsc = tk.get_action('resource_show')(context, {'id': resource_id})
-        except (NotFound, NotAuthorized):
+           rsc = tk.get_action('resource_show')(context, {'id': res_id})
+        except (tk.ObjectNotFound, tk.NotAuthorized):
            abort(404, _('Resource not found'))
 
         if authz.auth_is_anon_user(context):
