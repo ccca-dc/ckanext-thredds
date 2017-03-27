@@ -5,7 +5,9 @@
     {% resource 'thredds/wms_view.js' %}
 
     <div class="container">
-        <div id="map" class="map" data-module="wms_view"</div>
+        <div id="map" class="map" data-module="wms_view"
+             data-module-resource_id="{{ resource_id }}"
+        </div>
     </div>
     <div class="container">
         <div id="chart" class="chart-wrapper"></div>

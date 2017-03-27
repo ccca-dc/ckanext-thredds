@@ -50,8 +50,8 @@ def thredds_get_layers(context, data_dict):
     return d_layers
 
 
-def thredds_get_dimensions(context, data_dict):
-    '''Return the dimensions of a Thredds WMS resource layer.
+def thredds_get_capabilities(context, data_dict):
+    '''Return the capabilities of a Thredds WMS resource
 
     :param id: the id of the resource
     :type id: string

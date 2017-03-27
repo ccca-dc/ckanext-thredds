@@ -36,6 +36,15 @@ class ThreddsPlugin(plugins.SingletonPlugin):
     def view_template(self, context, data_dict):
         return 'wms_view.html'
 
+    def setup_template_variables(self, context, data_dict):
+        """Setup variables available to templates"""
+        resource_id = data_dict['resource']['id']
+
+        tpl_variables = {
+            'resource_id': resource_id
+        }
+
+        return tpl_variables
 
     # IRoutes
     def before_map(self, map):

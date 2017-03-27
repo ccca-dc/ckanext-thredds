@@ -1,6 +1,11 @@
 ckan.module('wms_view', function ($) {
   return {
-    initialize: function () {
+      /* options object can be extended using data-module-* attributes */
+      options: {
+          resource_id:''
+      },
+
+      initialize: function () {
         var startDate = new Date();
         startDate.setUTCHours(0, 0, 0, 0);
 
@@ -19,7 +24,7 @@ ckan.module('wms_view', function ($) {
         });
 
         this.sandbox = ckan.sandbox();
-        ckan.sandbox('GET','thredds_get_layers','?id=decaacbb-3979-4b14-9b7a-abaee64bc983', function(json) {console.log(json)},function(json) {console.log(json)});
+        // ckan.sandbox('GET','thredds_get_layers','?id=decaacbb-3979-4b14-9b7a-abaee64bc983', function(json) {console.log(json)},function(json) {console.log(json)});
 
         var sapoWMS = "https://sandboxdc.ccca.ac.at/wms_proxy/decaacbb-3979-4b14-9b7a-abaee64bc983"
 
