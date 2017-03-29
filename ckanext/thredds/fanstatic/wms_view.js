@@ -6,6 +6,9 @@ ckan.module('wms_view', function ($) {
       },
 
       initialize: function () {
+        $.proxyAll(this, /_on/);
+        var options = this.options;
+
         var startDate = new Date();
         startDate.setUTCHours(0, 0, 0, 0);
 
@@ -25,21 +28,16 @@ ckan.module('wms_view', function ($) {
 
         this.sandbox = ckan.sandbox();
         // ckan.sandbox('GET','thredds_get_layers','?id=decaacbb-3979-4b14-9b7a-abaee64bc983', function(json) {console.log(json)},function(json) {console.log(json)});
+        this.sandbox.client.call('GET','thredds_get_layers',
+                                 '?id='+ this.options.resource_id,
+                                 this._onHandleData,
+                                 function(json) {console.log(json);}
+                                ),
 
-        var sapoWMS = "https://sandboxdc.ccca.ac.at/wms_proxy/decaacbb-3979-4b14-9b7a-abaee64bc983"
+        var cccaWMS = "https://sandboxdc.ccca.ac.at/wms_proxy/" + this.options.resource_id;
 
-        var sapoHeightLayer = L.tileLayer.wms(sapoWMS, {
-            layers:
-            this.sandbox.client.call('GET','thredds_get_layers',
-                                     '?id=decaacbb-3979-4b14-9b7a-abaee64bc983',
-                                     function(json) {
-                                         $.map(json.result, function( value, key ) {
-                                             return key.toString(); }
-                                              );
-                                     },
-                                     function(json) {console.log(json)
-                                                    }
-                                    ),
+        var cccaHeightLayer = L.tileLayer.wms(cccaWMS, {
+            layers: window.wmslayer,
             format: 'image/png',
             transparent: true,
             colorscalerange: '-20,20',
@@ -64,7 +62,7 @@ ckan.module('wms_view', function ($) {
         }];
 
         //var proxy = '/wms_proxy';
-        var sapoHeightTimeLayer = L.timeDimension.layer.wms.timeseries(sapoHeightLayer, {
+        var cccaHeightTimeLayer = L.timeDimension.layer.wms.timeseries(cccaHeightLayer, {
             //proxy: proxy,
             updateTimeDimension: true,
             markers: markers,
@@ -74,11 +72,11 @@ ckan.module('wms_view', function ($) {
         });
 
 
-        var sapoLegend = L.control({
+        var cccaLegend = L.control({
             position: 'bottomright'
         });
-        sapoLegend.onAdd = function(map) {
-            var src = sapoWMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&LAYER=tas&colorscalerange=-20,20&PALETTE=rainbow&numcolorbands=100&transparent=FALSE";
+        cccaLegend.onAdd = function(map) {
+            var src = cccaWMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&LAYER=tas&colorscalerange=-20,20&PALETTE=rainbow&numcolorbands=100&transparent=FALSE";
             var div = L.DomUtil.create('div', 'info legend');
             div.innerHTML +=
                 '<img src="' + src + '" alt="legend">';
@@ -87,32 +85,33 @@ ckan.module('wms_view', function ($) {
 
 
         var overlayMaps = {
-            "Surface Air Temperature": sapoHeightTimeLayer
+            "Surface Air Temperature": cccaHeightTimeLayer
         };
 
         map.on('overlayadd', function(eventLayer) {
             if (eventLayer.name == 'Surface Air Temperature') {
-                sapoLegend.addTo(this);
+                cccaLegend.addTo(this);
             }
         });
 
         map.on('overlayremove', function(eventLayer) {
             if (eventLayer.name == 'Surface Air Temperature') {
-                map.removeControl(sapoLegend);
+                map.removeControl(cccaLegend);
             }
         });
 
         var baseLayers = getCommonBaseLayers(map); // see baselayers.js
         L.control.layers(baseLayers, overlayMaps).addTo(map);
 
-        sapoHeightTimeLayer.addTo(map);
+        cccaHeightTimeLayer.addTo(map);
 
     },
 
     _onHandleData: function(json) {
         if (json.success) {
-
-            var layer_name = json;
+            $.map(json.result, function( value, key ) {
+                window.wmslayer = key.toString(); }
+                 );
 
         }
     }
