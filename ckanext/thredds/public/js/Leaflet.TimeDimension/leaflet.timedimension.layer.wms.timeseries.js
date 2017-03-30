@@ -478,9 +478,7 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
     _createSerie: function(time, variableData, position, url, color) {
         return {
             name: this._name + ' at ' + position,
-            // GAS 2017-02-28
-            //type: 'line',
-            type: 'scatter',
+            type: 'line',
             id: Math.random().toString(36).substring(7),
             color: color,
             data: (function() {

@@ -47,7 +47,7 @@ ckan.module('wms_view', function ($) {
         var cccaWMS = self.options.site_url + "/wms_proxy/" + self.options.resource_id;
 
         var cccaHeightLayer = L.tileLayer.wms(cccaWMS, {
-            layers: wmslayers.join(','),
+            layers: wmslayers[0],
             format: 'image/png',
             transparent: true,
             colorscalerange: '-20,20',
@@ -89,7 +89,7 @@ ckan.module('wms_view', function ($) {
         var cccaHeightTimeLayer = L.timeDimension.layer.wms.timeseries(cccaHeightLayer, {
             updateTimeDimension: true,
             markers: markers,
-            name: "Surface Air Temperature",
+            name: wmsabstracts[0],
             units: "Celsius",
             enableNewMarkers: true
         });
@@ -99,7 +99,7 @@ ckan.module('wms_view', function ($) {
             position: 'bottomright'
         });
         cccaLegend.onAdd = function(map) {
-            var src = cccaWMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&LAYER=tas&colorscalerange=-20,20&PALETTE=rainbow&numcolorbands=100&transparent=FALSE";
+            var src = cccaWMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&LAYER=" + wmslayers[0] + "&colorscalerange=-20,20&PALETTE=rainbow&numcolorbands=100&transparent=FALSE";
             var div = L.DomUtil.create('div', 'info legend');
             div.innerHTML +=
                 '<img src="' + src + '" alt="legend">';
@@ -108,17 +108,17 @@ ckan.module('wms_view', function ($) {
 
 
         var overlayMaps = {
-            "Surface Air Temperature": cccaHeightTimeLayer
+            [wmsabstracts[0]]: cccaHeightTimeLayer
         };
 
         map.on('overlayadd', function(eventLayer) {
-            if (eventLayer.name == 'Surface Air Temperature') {
+            if (eventLayer.name == wmsabstracts[0]) {
                 cccaLegend.addTo(this);
             }
         });
 
         map.on('overlayremove', function(eventLayer) {
-            if (eventLayer.name == 'Surface Air Temperature') {
+            if (eventLayer.name == wmsabstracts[0]) {
                 map.removeControl(cccaLegend);
             }
         });
