@@ -2,19 +2,22 @@ ckan.module('wms_view', function ($) {
   return {
       /* options object can be extended using data-module-* attributes */
       options: {
-          resource_id:''
+          resource_id:'',
+          site_url:''
       },
 
       initialize: function () {
         $.proxyAll(this, /_on/);
+        var self = this;
+
         var options = this.options;
 
         this.sandbox = ckan.sandbox();
 
         this.sandbox.client.call('GET','thredds_get_layers',
-                                '?id='+ this.options.resource_id,
-                                this._onHandleData,
-                                this._onHandleData
+                                '?id='+ options.resource_id,
+                                 this._onHandleData,
+                                 this._onHandleError
                                 );
 
         var startDate = new Date();
@@ -22,9 +25,9 @@ ckan.module('wms_view', function ($) {
 
       },
 
-      showPreview: function (wmtsInfo) {
-
-        var layers = $.map(wmtsInfo, function( value, key ) { return key.toString(); } );
+      showPreview: function (wmsInfo) {
+        var self = this;
+        var wmslayers = $.map(wmsInfo, function( value, key ) { return key.toString(); } );
 
         var map = L.map('map', {
             zoom: 7,
@@ -41,10 +44,10 @@ ckan.module('wms_view', function ($) {
         });
 
 
-        var cccaWMS = "https://sandboxdc.ccca.ac.at/wms_proxy/" + this.options.resource_id;
+        var cccaWMS = self.options.site_url + "/wms_proxy/" + self.options.resource_id;
 
         var cccaHeightLayer = L.tileLayer.wms(cccaWMS, {
-            layers: layers,
+            layers: wmslayers.join(','),
             format: 'image/png',
             transparent: true,
             colorscalerange: '-20,20',
@@ -55,22 +58,35 @@ ckan.module('wms_view', function ($) {
         });
 
         var markers = [{
-            name: 'Vienna',
-            position: [48.210033, 16.363449]
+            name: 'Eisenstadt',
+            position: [47.8452778, 16.5247223]
         }, {
-            name: 'Graz',
-            position: [47.076668, 15.421371]
+            name: 'Klagenfurt',
+            position: [46.63, 14.31]
+        }, {
+            name: 'Sankt Pölten',
+            position: [48.1749279, 15.5860448]
+        }, {
+            name: 'Linz',
+            position: [48.3058789, 14.2865628]
         }, {
             name: 'Salzburg',
-            position: [47.811195, 13.033229]
+            position: [47.7666667, 13.05]
+        }, {
+            name: 'Graz',
+            position: [47.0796751, 15.4203249]
+        }, {
+            name: 'Bregenz',
+            position: [47.502947, 9.7451841]
         }, {
             name: 'Innsbruck',
-            position: [47.259659, 11.400375]
+            position: [47.2654296, 11.3927685]
+        }, {
+            name: 'Vienna',
+            position: [48.209, 16.37]
         }];
 
-        //var proxy = '/wms_proxy';
         var cccaHeightTimeLayer = L.timeDimension.layer.wms.timeseries(cccaHeightLayer, {
-            //proxy: proxy,
             updateTimeDimension: true,
             markers: markers,
             name: "Surface Air Temperature",
@@ -116,7 +132,7 @@ ckan.module('wms_view', function ($) {
 
     _onHandleData: function(json) {
         if (json.success) {
-            self.showPreview(json.result)
+            this.showPreview(json.result);
         }
     },
 

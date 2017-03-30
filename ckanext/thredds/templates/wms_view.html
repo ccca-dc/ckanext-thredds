@@ -7,6 +7,7 @@
     <div class="container">
         <div id="map" class="map" data-module="wms_view"
              data-module-resource_id="{{ resource_id }}"
+             data-module-site_url="{{ h.dump_json(h.url('/', locale='default', qualified=true)) }}"
         </div>
     </div>
     <div class="container">
