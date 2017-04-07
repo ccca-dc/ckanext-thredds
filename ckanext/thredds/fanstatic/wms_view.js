@@ -45,7 +45,7 @@ ckan.module('wms_view', function ($) {
         });
 
 
-        var cccaWMS = self.options.site_url + "/thredds_proxy/wms/" + self.options.resource_id;
+        var cccaWMS = self.options.site_url + "/tds_proxy/wms/" + self.options.resource_id;
 
         var cccaHeightLayer = L.tileLayer.wms(cccaWMS, {
             layers: wmslayers[0],

@@ -26,7 +26,7 @@ log = logging.getLogger(__name__)
 
 
 class ThreddsProxyController(base.BaseController):
-    def thredds_proxy(self, res_id, service):
+    def tds_proxy(self, service, res_id):
         """
         Provides a wms Service for netcdf files by redirecting the user to the
         thredds server
@@ -39,13 +39,13 @@ class ThreddsProxyController(base.BaseController):
         try:
            rsc = tk.get_action('resource_show')(context, {'id': res_id})
         except (tk.ObjectNotFound, tk.NotAuthorized):
-           abort(404, _('Resource not found'))
+           tk.abort(404, _('Resource not found'))
 
         if authz.auth_is_anon_user(context):
             tk.abort(401, _('Unauthorized to read resource %s') % res_id)
         else:
             p_query = request.query_string
-            p_path = os.path.join('/thredds',service,'/ckanAll/resources',res_id[0:3], res_id[3:6], res_id[6:])
+            p_path = os.path.join('/thredds',service,'ckanAll/resources',res_id[0:3], res_id[3:6], res_id[6:])
 
             response.headers['X-Accel-Redirect'] = "{0}?{1}".format(p_path,p_query)
             return response

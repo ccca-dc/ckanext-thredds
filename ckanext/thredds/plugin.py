@@ -33,6 +33,7 @@ class ThreddsPlugin(plugins.SingletonPlugin):
         # It will appear in every resource view dropdown.
         return True
 
+
     def view_template(self, context, data_dict):
         return 'wms_view.html'
 
@@ -49,9 +50,9 @@ class ThreddsPlugin(plugins.SingletonPlugin):
     # IRoutes
     def before_map(self, map):
         # image upload
-        map.connect('thredds_proxy', '/thredds_proxy/{service}/{res_id}',
+        map.connect('tds_proxy', '/tds_proxy/{service}/{res_id}',
                     controller='ckanext.thredds.controllers.proxy:ThreddsProxyController',
-                    action='thredds_proxy')
+                    action='tds_proxy')
         return map
 
     # IActions
