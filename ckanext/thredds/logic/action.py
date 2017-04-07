@@ -25,7 +25,7 @@ def thredds_get_layers(context, data_dict):
     req = tk.request
 
     # Get URL for WMS Proxy
-    wms_url = 'https://sandboxdc.ccca.ac.at/wms_proxy/' + resource_id
+    wms_url = 'https://sandboxdc.ccca.ac.at/thredds_proxy/wms/' + resource_id
 
     # WMS Object from url and extracted apikey from request header
     wms = WebMapService(wms_url, version='1.3.0',

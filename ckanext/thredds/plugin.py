@@ -49,9 +49,9 @@ class ThreddsPlugin(plugins.SingletonPlugin):
     # IRoutes
     def before_map(self, map):
         # image upload
-        map.connect('wms_proxy', '/wms_proxy/{res_id}',
-                    controller='ckanext.thredds.controllers.proxy:WMSProxyController',
-                    action='wms_proxy')
+        map.connect('thredds_proxy', '/thredds_proxy/{service}/{res_id}',
+                    controller='ckanext.thredds.controllers.proxy:ThreddsProxyController',
+                    action='thredds_proxy')
         return map
 
     # IActions

@@ -25,8 +25,8 @@ request = base.request
 log = logging.getLogger(__name__)
 
 
-class WMSProxyController(base.BaseController):
-    def wms_proxy(self, res_id):
+class ThreddsProxyController(base.BaseController):
+    def thredds_proxy(self, res_id, service):
         """
         Provides a wms Service for netcdf files by redirecting the user to the
         thredds server
@@ -45,7 +45,7 @@ class WMSProxyController(base.BaseController):
             tk.abort(401, _('Unauthorized to read resource %s') % res_id)
         else:
             p_query = request.query_string
-            p_path = os.path.join('/thredds/wms/ckanAll/resources',res_id[0:3], res_id[3:6], res_id[6:])
+            p_path = os.path.join('/thredds',service,'/ckanAll/resources',res_id[0:3], res_id[3:6], res_id[6:])
 
             response.headers['X-Accel-Redirect'] = "{0}?{1}".format(p_path,p_query)
             return response

@@ -28,6 +28,7 @@ ckan.module('wms_view', function ($) {
       showPreview: function (wmsInfo) {
         var self = this;
         var wmslayers = $.map(wmsInfo, function( value, key ) { return key.toString(); } );
+        var wmsabstracts = $.map(wmsInfo, function( value, key ) { return value.abstract; } );
 
         var map = L.map('map', {
             zoom: 7,
@@ -44,7 +45,7 @@ ckan.module('wms_view', function ($) {
         });
 
 
-        var cccaWMS = self.options.site_url + "/wms_proxy/" + self.options.resource_id;
+        var cccaWMS = self.options.site_url + "/thredds_proxy/wms/" + self.options.resource_id;
 
         var cccaHeightLayer = L.tileLayer.wms(cccaWMS, {
             layers: wmslayers[0],
