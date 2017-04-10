@@ -1,8 +1,14 @@
 {% extends "dataviewer/base.html" %}
 
 {% block page %}
-    {% resource 'thredds-public/wms' %}
+    {% resource 'thredds/wms' %}
     {% resource 'thredds/wms_view.js' %}
+
+  <link rel="stylesheet" href="/css/leaflet.css" />
+  <link rel="stylesheet" href="/css/Control.FullScreen.css" />
+  <link rel="stylesheet" href="/css/leaflet.timedimension.control.css" />
+  <link rel="stylesheet" href="/css/Control.Opacity.css" />
+  <link rel="stylesheet" href="/css/style.css" />
 
     <div class="container">
         <div id="map" class="map" data-module="wms_view"

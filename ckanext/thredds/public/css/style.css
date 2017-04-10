@@ -37,24 +37,6 @@ html *{
     line-height: 32px;    
 }
 
-#footer a.github {
-    padding-right: 40px;
-    display: block;
-    float: right;
-    min-height: 32px;
-    line-height: 32px;
-    background-image: url(../img/GitHub-Mark-32px.png);
-    background-position: top right;
-    background-repeat: no-repeat; 
-}
-
-a.github span{
-    display: none;
-}
-
-a.github:hover span{
-    display: inline;
-}
 
 .leaflet-container .legend{
     background-color:#D8D8D8;

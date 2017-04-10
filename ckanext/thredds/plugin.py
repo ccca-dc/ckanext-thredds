@@ -15,7 +15,7 @@ class ThreddsPlugin(plugins.SingletonPlugin):
         toolkit.add_template_directory(config_, 'templates')
         toolkit.add_public_directory(config_, 'public')
         toolkit.add_resource('fanstatic', 'thredds')
-        toolkit.add_resource('public', 'thredds-public')
+        #toolkit.add_resource('public', 'thredds-public')
 
 
     ## IResourceView
