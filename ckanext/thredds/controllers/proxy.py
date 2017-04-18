@@ -45,7 +45,7 @@ class ThreddsProxyController(base.BaseController):
             tk.abort(401, _('Unauthorized to read resource %s') % res_id)
         else:
             p_query = request.query_string
-            p_path = os.path.join('/thredds',service,'ckanAll/resources',res_id[0:3], res_id[3:6], res_id[6:])
+            p_path = os.path.join('/thredds',service,'ckan',res_id[0:3], res_id[3:6], res_id[6:])
 
             response.headers['X-Accel-Redirect'] = "{0}?{1}".format(p_path,p_query)
             return response

@@ -57,5 +57,6 @@ class ThreddsPlugin(plugins.SingletonPlugin):
 
     # IActions
     def get_actions(self):
-        actions = {'thredds_get_layers': action.thredds_get_layers}
+        actions = {'thredds_get_layers': action.thredds_get_layers,
+                   'thredds_get_layerdetails': action.thredds_get_layerdetails}
         return actions

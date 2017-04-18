@@ -8,6 +8,8 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
         this._markers = options.markers || [];
         this._markerColors = options.markerColors || ["#2f7ed8", "#0d233a", "#8bbc21", "#910000", "#1aadce", "#492970", "#f28f43", "#77a1e5", "#c42525", "#a6c96a"];
         this._name = options.name || "";
+        // GAS 2017-04-12
+        this._legendname = options.legendname || "";
         this._defaultRangeSelector = options.defaultRangeSelector || 1;
         this._enableNewMarkers = options.enableNewMarkers || false;
         this._chartOptions = options.chartOptions || {};
@@ -477,7 +479,8 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
 
     _createSerie: function(time, variableData, position, url, color) {
         return {
-            name: this._name + ' at ' + position,
+            // GAS 2017-04-12
+            name: this._legendname + ' at ' + position,
             type: 'line',
             id: Math.random().toString(36).substring(7),
             color: color,

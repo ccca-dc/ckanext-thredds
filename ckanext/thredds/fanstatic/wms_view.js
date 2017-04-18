@@ -25,10 +25,12 @@ ckan.module('wms_view', function ($) {
 
       },
 
-      showPreview: function (wmsInfo) {
+      initializePreview: function () {
         var self = this;
-        var wmslayers = $.map(wmsInfo, function( value, key ) { return key.toString(); } );
-        var wmsabstracts = $.map(wmsInfo, function( value, key ) { return value.abstract; } );
+        var wmslayers = $.map(self.options.layers, function( value, key ) { return value.children});
+        var wmsabstracts = $.map(self.options.layers, function( value, key ) { return value.label } );
+        var palette_selection = self.options.layers_details.defaultPalette;
+        var style_selection = self.options.layers_details.supportedStyles[1];
 
         var map = L.map('map', {
             zoom: 7,
@@ -38,24 +40,48 @@ ckan.module('wms_view', function ($) {
                 position: 'bottomleft',
                 playerOptions: {
                     transitionTime: 1000,
-                }
+                },
+                minSpeed: 0.1,
+                maxSpeed: 2.0
             },
             timeDimension: true,
             center: [47.3, 13.9]
         });
 
+        // Create control elements for first layer
+        $( "#menu" ).append( 
+          this._getDropDownList(
+            'palettes','select-palettes',self.options.layers_details.palettes) 
+        );
+
+        $( "#menu" ).append( 
+          this._getDropDownList(
+            'styles','select-styles',self.options.layers_details.supportedStyles) 
+        );
+        
+        $('#select-palettes').on('change', function() {
+          var self = this;
+          palette_selection = this.value;
+          // TODO Update Preview
+        })
+
+        $('#select-styles').on('change', function() {
+          var self = this;
+          palette_selection = this.value;
+          // TODO Update Preview
+        })
 
         var cccaWMS = self.options.site_url + "/tds_proxy/wms/" + self.options.resource_id;
 
         var cccaHeightLayer = L.tileLayer.wms(cccaWMS, {
-            layers: wmslayers[0],
+            layers: wmslayers[0].id,
             format: 'image/png',
             transparent: true,
             colorscalerange: '-20,20',
             abovemaxcolor: "extend",
             belowmincolor: "extend",
             numcolorbands: 100,
-            styles: 'boxfill/rainbow'
+            styles: 'boxfill/' + palette_selection
         });
 
         var markers = [{
@@ -91,7 +117,8 @@ ckan.module('wms_view', function ($) {
             updateTimeDimension: true,
             markers: markers,
             name: wmsabstracts[0],
-            units: "Celsius",
+            legendname: wmslayers[0].label,
+            units: self.options.layers_details.units,
             enableNewMarkers: true
         });
 
@@ -100,7 +127,7 @@ ckan.module('wms_view', function ($) {
             position: 'bottomright'
         });
         cccaLegend.onAdd = function(map) {
-            var src = cccaWMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&LAYER=" + wmslayers[0] + "&colorscalerange=-20,20&PALETTE=rainbow&numcolorbands=100&transparent=FALSE";
+            var src = cccaWMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&LAYER=" + wmslayers[0].id + "&colorscalerange=-20,20&PALETTE="+ palette_selection +"&numcolorbands=100&transparent=TRUE";
             var div = L.DomUtil.create('div', 'info legend');
             div.innerHTML +=
                 '<img src="' + src + '" alt="legend">';
@@ -128,18 +155,43 @@ ckan.module('wms_view', function ($) {
         L.control.layers(baseLayers, overlayMaps).addTo(map);
 
         cccaHeightTimeLayer.addTo(map);
-
       },
 
-    _onHandleData: function(json) {
+
+      _onHandleDataDetails: function(json) {
         if (json.success) {
-            this.showPreview(json.result);
+          self.options.layers_details = json.result;
+          this.initializePreview();
         }
-    },
+      },
 
-		_onHandleError: function(error) {
-        console.log(error);
-		}
+      _onHandleData: function(json) {
+        if (json.success) {
+          self = this;
+          self.options.layers = json.result;
 
+          var wmslayers = $.map(json.result, function( value, key ) { return value.children});
+          self.sandbox.client.call('GET','thredds_get_layerdetails',
+                                  '?id='+ self.options.resource_id + '&layer=' + wmslayers[0].id,
+                                   this._onHandleDataDetails,
+                                   this._onHandleError
+                                  );
+        }
+      },
+
+      _onHandleError: function(error) {
+        alert("Please login to use this view");
+        throw new Error("Something went badly wrong!");
+      },
+
+      _getDropDownList: function(name, id, optionList) {
+          var combo = $("<select></select>").attr("id", id).attr("name", name);
+      
+          $.each(optionList, function (i, el) {
+              combo.append("<option>" + el + "</option>");
+          });
+      
+          return combo;
+      }
   };
 });
