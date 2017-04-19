@@ -20,17 +20,21 @@ ckan.module('wms_view', function ($) {
                                  this._onHandleError
                                 );
 
-        var startDate = new Date();
-        startDate.setUTCHours(0, 0, 0, 0);
-
       },
 
       initializePreview: function () {
+        var startDate = new Date();
+        startDate.setUTCHours(0, 0, 0, 0);
+
         var self = this;
         var wmslayers = $.map(self.options.layers, function( value, key ) { return value.children});
         var wmsabstracts = $.map(self.options.layers, function( value, key ) { return value.label } );
+
         var palette_selection = self.options.layers_details.defaultPalette;
-        var style_selection = self.options.layers_details.supportedStyles[1];
+        var style_selection = self.options.layers_details.supportedStyles[0];
+
+        var min_value = self.options.layers_details.scaleRange[0];
+        var max_value = self.options.layers_details.scaleRange[1];
 
         var map = L.map('map', {
             zoom: 7,
@@ -48,40 +52,81 @@ ckan.module('wms_view', function ($) {
             center: [47.3, 13.9]
         });
 
+        // ------------------------------------------------
         // Create control elements for first layer
+        $( "#menu" ).append( 
+          this._getDropDownList(
+            'styles','select-styles',self.options.layers_details.supportedStyles) 
+        );
+
         $( "#menu" ).append( 
           this._getDropDownList(
             'palettes','select-palettes',self.options.layers_details.palettes) 
         );
 
+        // Minimum Value
         $( "#menu" ).append( 
-          this._getDropDownList(
-            'styles','select-styles',self.options.layers_details.supportedStyles) 
+          $("<input id='min-value' type='text' class='numbersOnly' value=" + self.options.layers_details.scaleRange[0].toString() + " />")
         );
+
+        // Maximum Value
+        $( "#menu" ).append( 
+          $("<input id='max-value' type='text' class='numbersOnly' value=" + self.options.layers_details.scaleRange[1].toString() + " />")
+        );
+
+        // ------------------------------------------------
+        // Define functions for control elements
+        $('.numbersOnly').keyup(function () { 
+            this.value = this.value.replace(/[^0-9\.\-\+]/g,'');
+        });
+
+        $('#min-value').on('focusout', function() {
+          min_value = this.value;
+          // Update Preview
+          cccaHeightLayer.setParams({colorscalerange: min_value + ',' + max_value}); 
+          cccaHeightTimeLayer.setParams({colorscalerange: min_value + ',' + max_value}); 
+          cccaLegend.removeFrom(map);
+          cccaLegend.addTo(map);
+        })
+
+        $('#max-value').on('focusout', function() {
+          max_value = this.value;
+          // Update Preview
+          cccaHeightLayer.setParams({colorscalerange: min_value + ',' + max_value}); 
+          cccaHeightTimeLayer.setParams({colorscalerange: min_value + ',' + max_value}); 
+          cccaLegend.removeFrom(map);
+          cccaLegend.addTo(map);
+        })
         
         $('#select-palettes').on('change', function() {
-          var self = this;
           palette_selection = this.value;
-          // TODO Update Preview
+          // Update Preview
+          cccaHeightLayer.setParams({styles:style_selection + '/' + palette_selection});
+          cccaHeightTimeLayer.setParams({styles:style_selection + '/' + palette_selection});
+          cccaLegend.removeFrom(map);
+          cccaLegend.addTo(map);
         })
 
         $('#select-styles').on('change', function() {
-          var self = this;
-          palette_selection = this.value;
-          // TODO Update Preview
+          style_selection = this.value;
+          // Update Preview
+          cccaHeightLayer.setParams({styles:style_selection + '/' + palette_selection});
+          cccaHeightTimeLayer.setParams({styles:style_selection + '/' + palette_selection});
+          cccaLegend.removeFrom(map);
+          cccaLegend.addTo(map);
         })
 
-        var cccaWMS = self.options.site_url + "/tds_proxy/wms/" + self.options.resource_id;
+        var cccaWMS = self.options.site_url + "tds_proxy/wms/" + self.options.resource_id;
 
         var cccaHeightLayer = L.tileLayer.wms(cccaWMS, {
             layers: wmslayers[0].id,
             format: 'image/png',
             transparent: true,
-            colorscalerange: '-20,20',
+            colorscalerange: min_value + ',' + max_value,
             abovemaxcolor: "extend",
             belowmincolor: "extend",
             numcolorbands: 100,
-            styles: 'boxfill/' + palette_selection
+            styles: style_selection + '/' + palette_selection
         });
 
         var markers = [{
@@ -127,7 +172,7 @@ ckan.module('wms_view', function ($) {
             position: 'bottomright'
         });
         cccaLegend.onAdd = function(map) {
-            var src = cccaWMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&LAYER=" + wmslayers[0].id + "&colorscalerange=-20,20&PALETTE="+ palette_selection +"&numcolorbands=100&transparent=TRUE";
+            var src = cccaWMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&LAYER=" + wmslayers[0].id + "&colorscalerange="+ min_value + ',' + max_value + "&PALETTE="+ palette_selection +"&numcolorbands=100&transparent=TRUE";
             var div = L.DomUtil.create('div', 'info legend');
             div.innerHTML +=
                 '<img src="' + src + '" alt="legend">';
@@ -193,5 +238,6 @@ ckan.module('wms_view', function ($) {
       
           return combo;
       }
+      
   };
 });
