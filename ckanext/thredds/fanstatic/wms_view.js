@@ -95,7 +95,7 @@ ckan.module('wms_view', function ($) {
           cccaHeightTimeLayer.setParams({colorscalerange: min_value + ',' + max_value}); 
           cccaLegend.removeFrom(map);
           cccaLegend.addTo(map);
-        })
+        });
 
         $('#max-value').on('focusout', function() {
           max_value = this.value;
@@ -104,7 +104,7 @@ ckan.module('wms_view', function ($) {
           cccaHeightTimeLayer.setParams({colorscalerange: min_value + ',' + max_value}); 
           cccaLegend.removeFrom(map);
           cccaLegend.addTo(map);
-        })
+        });
         
         $('#select-palettes').on('change', function() {
           palette_selection = this.value;
@@ -113,7 +113,7 @@ ckan.module('wms_view', function ($) {
           cccaHeightTimeLayer.setParams({styles:style_selection + '/' + palette_selection});
           cccaLegend.removeFrom(map);
           cccaLegend.addTo(map);
-        })
+        });
 
         $('#select-styles').on('change', function() {
           style_selection = this.value;
@@ -122,14 +122,14 @@ ckan.module('wms_view', function ($) {
           cccaHeightTimeLayer.setParams({styles:style_selection + '/' + palette_selection});
           cccaLegend.removeFrom(map);
           cccaLegend.addTo(map);
-        })
+        });
 
         $('#opacity-value').on('change', function() {
           opacity = this.value;
           // Update Preview
           cccaHeightTimeLayer.setOpacity(opacity);
  
-        })
+        });
 
         var cccaWMS = self.options.site_url + "tds_proxy/wms/" + self.options.resource_id;
 
@@ -178,10 +178,10 @@ ckan.module('wms_view', function ($) {
             markers: markers,
             name: wmsabstracts[0],
             legendname: wmslayers[0].label,
+            maxValues: 8000,
             units: self.options.layers_details.units,
             enableNewMarkers: true
         });
-
 
         var cccaLegend = L.control({
             position: 'bottomright'

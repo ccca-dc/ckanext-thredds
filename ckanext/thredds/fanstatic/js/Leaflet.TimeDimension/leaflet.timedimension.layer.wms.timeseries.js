@@ -10,7 +10,9 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
         this._name = options.name || "";
         // GAS 2017-04-12
         this._legendname = options.legendname || "";
-        this._defaultRangeSelector = options.defaultRangeSelector || 1;
+        this._maxValues = options.maxValues || 1000;
+        // GAS 2017-04-24
+        this._defaultRangeSelector = options.defaultRangeSelector || 0;
         this._enableNewMarkers = options.enableNewMarkers || false;
         this._chartOptions = options.chartOptions || {};
 
@@ -172,8 +174,18 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
     },
 
     _checkLoadNewData: function(min, max) {
+        // GAS 2017-04-24
+        // Alert User if we have too many values to load
+        var times = this._timeDimension.getAvailableTimes();
+        if (((max-min)/Math.abs(times[1]-times[0])) > this._maxValues ) {
+            alert("Your time interval is too big");
+            return;
+        }
+        // ------------------------
+
         min = new Date(min);
         max = new Date(max);
+
 
         var afterLoadData = (function(serie, data) {
             if (data !== undefined)
@@ -226,18 +238,21 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
         }
         var min = new Date(Date.UTC(max.getUTCFullYear(), max.getUTCMonth(), max.getUTCDate()));
 
+        // GAS 2017-04-24
         if (this._defaultRangeSelector === 0) {
-            min.setUTCDate(min.getUTCDate() - 3);
-        } else if (this._defaultRangeSelector === 1) {
             min.setUTCDate(min.getUTCDate() - 7);
-        } else if (this._defaultRangeSelector === 2) {
+        } else if (this._defaultRangeSelector === 1) {
             min.setUTCMonth(min.getUTCMonth() - 1);
-        } else if (this._defaultRangeSelector === 3) {
+        } else if (this._defaultRangeSelector === 2) {
             min.setUTCMonth(min.getUTCMonth() - 3);
-        } else if (this._defaultRangeSelector === 4) {
+        } else if (this._defaultRangeSelector === 3) {
             min.setUTCMonth(min.getUTCMonth() - 6);
-        } else {
+        } else if (this._defaultRangeSelector === 4) {
             min.setUTCFullYear(min.getUTCFullYear() - 1);
+        } else if (this._defaultRangeSelector === 5) {
+            min.setUTCFullYear(min.getUTCFullYear() - 10);
+        } else {
+            min.setUTCFullYear(min.getUTCFullYear() - 20);
         }
 
         if (min < this._dateRange.min) {
@@ -277,16 +292,24 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
                 enabled: true
             },
 
+            // GAS 2017-04-24
+            navigator: {
+                enabled: true
+            },
+
+            // GAS 2017-04-24
+            scrollbar: {
+                enabled: true,
+                liveRedraw: false
+            },
+
             chart: {
                 zoomType: 'x'
             },
+            // GAS 2017-04-24
             rangeSelector: {
                 selected: this._defaultRangeSelector,
                 buttons: [{
-                    type: 'day',
-                    count: 3,
-                    text: '3d'
-                }, {
                     type: 'day',
                     count: 7,
                     text: '7d'
@@ -307,8 +330,13 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
                     count: 1,
                     text: '1y'
                 }, {
-                    type: 'all',
-                    text: 'All'
+                    type: 'year',
+                    count: 10,
+                    text: '10y'
+                },{
+                    type: 'year',
+                    count: 20,
+                    text: '20y'
                 }]
             },
             xAxis: {

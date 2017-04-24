@@ -25,7 +25,8 @@ class ThreddsPlugin(plugins.SingletonPlugin):
                 'icon': 'globe',
                 'iframed': False,
                 'requires_datastore': False,
-                'default_title': plugins.toolkit._('Thredds WMS')
+                'default_title': plugins.toolkit._('Thredds WMS'),
+                'preview_enabled':True
                 }
 
     def can_view(self, data_dict):
