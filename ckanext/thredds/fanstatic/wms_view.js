@@ -36,6 +36,8 @@ ckan.module('wms_view', function ($) {
         var min_value = self.options.layers_details.scaleRange[0];
         var max_value = self.options.layers_details.scaleRange[1];
 
+        var opacity = 1;
+
         var map = L.map('map', {
             zoom: 7,
             fullscreenControl: true,
@@ -54,24 +56,30 @@ ckan.module('wms_view', function ($) {
 
         // ------------------------------------------------
         // Create control elements for first layer
-        $( "#menu" ).append( 
+        // Style
+        $( "#style" ).append( 
           this._getDropDownList(
             'styles','select-styles',self.options.layers_details.supportedStyles) 
         );
 
-        $( "#menu" ).append( 
+        // Palette
+        $( "#palette" ).append( 
           this._getDropDownList(
             'palettes','select-palettes',self.options.layers_details.palettes) 
         );
 
-        // Minimum Value
-        $( "#menu" ).append( 
-          $("<input id='min-value' type='text' class='numbersOnly' value=" + self.options.layers_details.scaleRange[0].toString() + " />")
+        // Minimum/Maximum
+        $( "#min-field" ).append( 
+          $("<input id='min-value' type='text' class='numbersOnly' value=" + self.options.layers_details.scaleRange[0].toString() + ">")
         );
 
-        // Maximum Value
-        $( "#menu" ).append( 
-          $("<input id='max-value' type='text' class='numbersOnly' value=" + self.options.layers_details.scaleRange[1].toString() + " />")
+        $( "#max-field" ).append( 
+          $("<input id='max-value' type='text' class='numbersOnly' value=" + self.options.layers_details.scaleRange[1].toString() + ">")
+        );
+
+        // Opacity
+        $( "#opacity" ).append( 
+          $("<input id='opacity-value' type='range' min='0' max='1' step='0.1' value=" + opacity.toString() + " />")
         );
 
         // ------------------------------------------------
@@ -83,7 +91,7 @@ ckan.module('wms_view', function ($) {
         $('#min-value').on('focusout', function() {
           min_value = this.value;
           // Update Preview
-          cccaHeightLayer.setParams({colorscalerange: min_value + ',' + max_value}); 
+          // cccaHeightLayer.setParams({colorscalerange: min_value + ',' + max_value}); 
           cccaHeightTimeLayer.setParams({colorscalerange: min_value + ',' + max_value}); 
           cccaLegend.removeFrom(map);
           cccaLegend.addTo(map);
@@ -92,7 +100,7 @@ ckan.module('wms_view', function ($) {
         $('#max-value').on('focusout', function() {
           max_value = this.value;
           // Update Preview
-          cccaHeightLayer.setParams({colorscalerange: min_value + ',' + max_value}); 
+          // cccaHeightLayer.setParams({colorscalerange: min_value + ',' + max_value}); 
           cccaHeightTimeLayer.setParams({colorscalerange: min_value + ',' + max_value}); 
           cccaLegend.removeFrom(map);
           cccaLegend.addTo(map);
@@ -101,7 +109,7 @@ ckan.module('wms_view', function ($) {
         $('#select-palettes').on('change', function() {
           palette_selection = this.value;
           // Update Preview
-          cccaHeightLayer.setParams({styles:style_selection + '/' + palette_selection});
+          // cccaHeightLayer.setParams({styles:style_selection + '/' + palette_selection});
           cccaHeightTimeLayer.setParams({styles:style_selection + '/' + palette_selection});
           cccaLegend.removeFrom(map);
           cccaLegend.addTo(map);
@@ -110,10 +118,17 @@ ckan.module('wms_view', function ($) {
         $('#select-styles').on('change', function() {
           style_selection = this.value;
           // Update Preview
-          cccaHeightLayer.setParams({styles:style_selection + '/' + palette_selection});
+          // cccaHeightLayer.setParams({styles:style_selection + '/' + palette_selection});
           cccaHeightTimeLayer.setParams({styles:style_selection + '/' + palette_selection});
           cccaLegend.removeFrom(map);
           cccaLegend.addTo(map);
+        })
+
+        $('#opacity-value').on('change', function() {
+          opacity = this.value;
+          // Update Preview
+          cccaHeightTimeLayer.setOpacity(opacity);
+ 
         })
 
         var cccaWMS = self.options.site_url + "tds_proxy/wms/" + self.options.resource_id;
@@ -180,9 +195,8 @@ ckan.module('wms_view', function ($) {
         };
 
 
-        var overlayMaps = {
-            [wmsabstracts[0]]: cccaHeightTimeLayer
-        };
+        var overlayMaps = {};
+        overlayMaps[wmsabstracts[0].toString()] = cccaHeightTimeLayer;
 
         map.on('overlayadd', function(eventLayer) {
             if (eventLayer.name == wmsabstracts[0]) {
