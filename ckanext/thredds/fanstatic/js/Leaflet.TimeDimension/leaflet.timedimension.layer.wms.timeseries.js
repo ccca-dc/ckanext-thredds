@@ -12,7 +12,7 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
         this._legendname = options.legendname || "";
         this._maxValues = options.maxValues || 1000;
         // GAS 2017-04-24
-        this._defaultRangeSelector = options.defaultRangeSelector || 0;
+        this._defaultRangeSelector = options.defaultRangeSelector || 1;
         this._enableNewMarkers = options.enableNewMarkers || false;
         this._chartOptions = options.chartOptions || {};
 
@@ -173,14 +173,24 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
         }).bind(this));
     },
 
-    _checkLoadNewData: function(min, max) {
+    _checkLoadNewData: function(min, max, rangeSelectorButton) {
         // GAS 2017-04-24
         // Alert User if we have too many values to load
         var times = this._timeDimension.getAvailableTimes();
-        if (((max-min)/Math.abs(times[1]-times[0])) > this._maxValues ) {
-            alert("Your time interval is too big");
-            return;
-        }
+
+//        if (((max-min)/Math.abs(times[1]-times[0])) > this._maxValues ) {
+//          if (min < this._currentDateRange.min.getTime()) {
+//            max = min + this._maxValues*Math.abs(times[1]-times[0]);
+//          } else if (max > this._currentDateRange.max.getTime()) {
+//            min = max - this._maxValues*Math.abs(times[1]-times[0]);
+//          } else {
+//            alert("Check your time range, we can only allow " + this._maxValues + " values in this chart");
+//            return;
+//          }
+//          window.setTimeout(function() {
+//            xaxis.setExtremes(min, max);
+//          }, 1);
+//        }
         // ------------------------
 
         min = new Date(min);
@@ -197,7 +207,11 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
         min = new Date(this._getNearestTime(min.getTime()));
         max = new Date(this._getNearestTime(max.getTime()));
 
-        if (min < this._currentDateRange.min) {
+        var max_time_deltat = this._maxValues*Math.abs(times[1]-times[0]);
+        var timerange_deltat = max.getTime()-min.getTime();
+        var timerange_length = (max.getTime()-min.getTime())/Math.abs(times[1]-times[0]);
+
+        if ( (min < this._currentDateRange.min) && ((this._currentDateRange.min.getTime() - min.getTime()) < max_time_deltat) ) {
             var old_min = this._currentDateRange.min;
             this._currentDateRange.min = min;
             this._chart.showLoading();
@@ -207,7 +221,7 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
                     this._loadMoreData(serie.options.custom.url, min, old_min, afterLoadData.bind(this, serie));
             }
         }
-        if (max > this._currentDateRange.max) {
+        else if ((max > this._currentDateRange.max) && ((max.getTime() - this._currentDateRange.max.getTime()) < max_time_deltat) ) {
             var old_max = this._currentDateRange.max;
             this._currentDateRange.max = max;
             this._chart.showLoading();
@@ -216,6 +230,29 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
                 if (serie.name != "Navigator")
                     this._loadMoreData(serie.options.custom.url, old_max, max, afterLoadData.bind(this, serie));
             }
+        }
+        else if ( (timerange_length > this._maxValues) || 
+                  (Math.abs(max.getTime() - this._currentDateRange.max.getTime()) > max_time_deltat) || 
+                  (Math.abs(min.getTime() - this._currentDateRange.min.getTime()) > max_time_deltat) ) {
+          if ( (min.getTime() < this._currentDateRange.min) && ((max.getTime()-min.getTime()) > max_time_deltat) ) {
+            max = new Date(min.getTime() + this._maxValues*Math.abs(times[1]-times[0]));
+          } else if ( (max > this._currentDateRange.max) && ((max.getTime()-min.getTime()) > max_time_deltat) ) {
+            min = new Date(max.getTime() - this._maxValues*Math.abs(times[1]-times[0]));
+          } else {
+            alert("Check your time range, we can only allow " + this._maxValues + " values in this chart");
+            //return;
+          }
+            this._currentDateRange.max = max;
+            this._currentDateRange.min = min;
+            this._chart.showLoading();
+            for (i = 0, l = this._chart.series.length; i < l; i++) {
+                serie = this._chart.series[i];
+                if (serie.name != "Navigator")
+                    this._loadMoreData(serie.options.custom.url, min, max, afterLoadData.bind(this, serie));
+            }
+            //window.setTimeout(function() {
+            //  this.setExtremes(min, max);
+            //}, 1);
         }
     },
 
@@ -249,11 +286,9 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
             min.setUTCMonth(min.getUTCMonth() - 6);
         } else if (this._defaultRangeSelector === 4) {
             min.setUTCFullYear(min.getUTCFullYear() - 1);
-        } else if (this._defaultRangeSelector === 5) {
-            min.setUTCFullYear(min.getUTCFullYear() - 10);
         } else {
-            min.setUTCFullYear(min.getUTCFullYear() - 20);
-        }
+            min.setUTCFullYear(min.getUTCFullYear() - 10);
+        } 
 
         if (min < this._dateRange.min) {
             min = this._dateRange.min;
@@ -294,7 +329,7 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
 
             // GAS 2017-04-24
             navigator: {
-                enabled: true
+                enabled: false
             },
 
             // GAS 2017-04-24
@@ -333,16 +368,12 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
                     type: 'year',
                     count: 10,
                     text: '10y'
-                },{
-                    type: 'year',
-                    count: 20,
-                    text: '20y'
                 }]
             },
             xAxis: {
                 events: {
                     afterSetExtremes: (function(e) {
-                        this._checkLoadNewData(e.min, e.max);
+                        this._checkLoadNewData(e.min, e.max, e.rangeSelectorButton);
                     }).bind(this)
                 },
                 plotLines: [{
