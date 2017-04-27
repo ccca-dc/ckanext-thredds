@@ -137,10 +137,11 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
                 values: []
             };
             // Add min and max values to be able to get more data later
-            if (this._currentDateRange.min > this._dateRange.min) {
-                result.time.push(this._dateRange.min);
-                result.values.push(null);
-            }
+            // GAS 2017-04-27
+            //if (this._currentDateRange.min > this._dateRange.min) {
+            //    result.time.push(this._dateRange.min);
+            //    result.values.push(null);
+            //}
             $(data).find('FeatureInfo').each(function() {
                 var this_time = $(this).find('time').text();
                 var this_data = $(this).find('value').text();
@@ -173,29 +174,12 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
         }).bind(this));
     },
 
-    _checkLoadNewData: function(min, max, rangeSelectorButton) {
+    _checkLoadNewData: function(min, max) {
         // GAS 2017-04-24
-        // Alert User if we have too many values to load
         var times = this._timeDimension.getAvailableTimes();
-
-//        if (((max-min)/Math.abs(times[1]-times[0])) > this._maxValues ) {
-//          if (min < this._currentDateRange.min.getTime()) {
-//            max = min + this._maxValues*Math.abs(times[1]-times[0]);
-//          } else if (max > this._currentDateRange.max.getTime()) {
-//            min = max - this._maxValues*Math.abs(times[1]-times[0]);
-//          } else {
-//            alert("Check your time range, we can only allow " + this._maxValues + " values in this chart");
-//            return;
-//          }
-//          window.setTimeout(function() {
-//            xaxis.setExtremes(min, max);
-//          }, 1);
-//        }
-        // ------------------------
 
         min = new Date(min);
         max = new Date(max);
-
 
         var afterLoadData = (function(serie, data) {
             if (data !== undefined)
@@ -211,7 +195,31 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
         var timerange_deltat = max.getTime()-min.getTime();
         var timerange_length = (max.getTime()-min.getTime())/Math.abs(times[1]-times[0]);
 
-        if ( (min < this._currentDateRange.min) && ((this._currentDateRange.min.getTime() - min.getTime()) < max_time_deltat) ) {
+        if (timerange_length > this._maxValues) {
+            var max_time_year = new Date(max_time_deltat).getUTCFullYear() - 1970;
+            alert("The maximum time interval is " + max_time_year + " years. \n Please adapt your time range.");
+            return;
+        }
+
+        if ( (Math.abs(max.getTime() - this._currentDateRange.max.getTime()) > max_time_deltat) || 
+             (Math.abs(min.getTime() - this._currentDateRange.min.getTime()) > max_time_deltat) ) {
+          if ( (min.getTime() < this._currentDateRange.min) && ((max.getTime()-min.getTime()) > max_time_deltat) ) {
+            max = new Date(min.getTime() + max_time_deltat);
+          } else if ( (max > this._currentDateRange.max) && ((max.getTime()-min.getTime()) > max_time_deltat) ) {
+            min = new Date(max.getTime() - max_time_deltat);
+          } 
+            this._currentDateRange.max = max;
+            this._currentDateRange.min = min;
+            this._chart.showLoading();
+            for (i = 0, l = this._chart.series.length; i < l; i++) {
+                serie = this._chart.series[i];
+                if (serie.name != "Navigator")
+                    // GAS 2017-04-26
+                    serie.setData([]);
+                    this._loadMoreData(serie.options.custom.url, min, max, afterLoadData.bind(this, serie));
+            }
+        }
+        else if (min < this._currentDateRange.min) {
             var old_min = this._currentDateRange.min;
             this._currentDateRange.min = min;
             this._chart.showLoading();
@@ -221,7 +229,7 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
                     this._loadMoreData(serie.options.custom.url, min, old_min, afterLoadData.bind(this, serie));
             }
         }
-        else if ((max > this._currentDateRange.max) && ((max.getTime() - this._currentDateRange.max.getTime()) < max_time_deltat) ) {
+        else if (max > this._currentDateRange.max) {
             var old_max = this._currentDateRange.max;
             this._currentDateRange.max = max;
             this._chart.showLoading();
@@ -231,28 +239,8 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
                     this._loadMoreData(serie.options.custom.url, old_max, max, afterLoadData.bind(this, serie));
             }
         }
-        else if ( (timerange_length > this._maxValues) || 
-                  (Math.abs(max.getTime() - this._currentDateRange.max.getTime()) > max_time_deltat) || 
-                  (Math.abs(min.getTime() - this._currentDateRange.min.getTime()) > max_time_deltat) ) {
-          if ( (min.getTime() < this._currentDateRange.min) && ((max.getTime()-min.getTime()) > max_time_deltat) ) {
-            max = new Date(min.getTime() + this._maxValues*Math.abs(times[1]-times[0]));
-          } else if ( (max > this._currentDateRange.max) && ((max.getTime()-min.getTime()) > max_time_deltat) ) {
-            min = new Date(max.getTime() - this._maxValues*Math.abs(times[1]-times[0]));
-          } else {
-            alert("Check your time range, we can only allow " + this._maxValues + " values in this chart");
-            //return;
-          }
-            this._currentDateRange.max = max;
-            this._currentDateRange.min = min;
-            this._chart.showLoading();
-            for (i = 0, l = this._chart.series.length; i < l; i++) {
-                serie = this._chart.series[i];
-                if (serie.name != "Navigator")
-                    this._loadMoreData(serie.options.custom.url, min, max, afterLoadData.bind(this, serie));
-            }
-            //window.setTimeout(function() {
-            //  this.setExtremes(min, max);
-            //}, 1);
+        else {
+
         }
     },
 
@@ -268,6 +256,8 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
             min: new Date(times[0]),
             max: new Date(times[times.length - 1])
         };
+        // GAS 2017-04-26
+        //var max = new Date(this._timeDimension.getCurrentTime());
         var max = this._dateRange.max;
         // check if max is a valid date
         if (!max.getTime || isNaN(max.getTime())) {
@@ -371,9 +361,19 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
                 }]
             },
             xAxis: {
+                dateTimeLabelFormats: {
+                    millisecond: '%H:%M:%S.%L',
+                    second: '%H:%M:%S',
+                    minute: '%H:%M',
+                    hour: '%H:%M',
+                    day: '%e. %b',
+                    week: '%e. %b',
+                    month: '%b \'%Y',
+                    year: '%Y'
+                },
                 events: {
                     afterSetExtremes: (function(e) {
-                        this._checkLoadNewData(e.min, e.max, e.rangeSelectorButton);
+                        this._checkLoadNewData(e.min, e.max);
                     }).bind(this)
                 },
                 plotLines: [{
@@ -584,7 +584,12 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
             new_data[i] = [this_time, this_data];
         }
         var old_data = serie.options.data;
-        serie.options.data = old_data.concat(new_data).sort();
+        // GAS 2017-04-27
+        if (old_data.length == 0) {
+          serie.options.data = new_data.sort();
+        } else {
+          serie.options.data = old_data.concat(new_data).sort();
+        }
         serie.setData(serie.options.data);
     },
 

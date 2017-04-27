@@ -178,7 +178,7 @@ ckan.module('wms_view', function ($) {
             markers: markers,
             name: wmsabstracts[0],
             legendname: wmslayers[0].label,
-            //maxValues: 4000,
+            maxValues: 4000,
             units: self.options.layers_details.units,
             enableNewMarkers: true
         });
