@@ -1,0 +1,18 @@
+{% import 'macros/form.html' as form %}
+
+{% extends "page.html" %}
+
+{% block primary %}
+{% block form %}
+  <div class="module-content">
+      <h1>{{ title }}</h1>
+      <form action="" method="get" enctype="multipart/form-data">
+          <label>Layers</label>
+          {{ form.checkbox('Layer 1', checked=true) }}
+          {{ form.checkbox('Layer 2', checked=false) }}
+          {{ form.input('title', label=_('Title'), value="title") }}
+          <input type="submit" value="Submit">
+      </form>
+  </div>
+{% endblock %}
+{% endblock %}

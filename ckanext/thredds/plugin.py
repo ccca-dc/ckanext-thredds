@@ -44,4 +44,7 @@ class ThreddsPlugin(plugins.SingletonPlugin):
         map.connect('wms_proxy', '/wms_proxy',
                     controller='ckanext.thredds.controllers.proxy:WMSProxyController',
                     action='wms_proxy')
+        map.connect('create_subset', '/create_subset',
+                    controller='ckanext.thredds.controllers.subset:SubsetController',
+                    action='create_subset')
         return map
