@@ -203,11 +203,11 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
 
         if ( (Math.abs(max.getTime() - this._currentDateRange.max.getTime()) > max_time_deltat) || 
              (Math.abs(min.getTime() - this._currentDateRange.min.getTime()) > max_time_deltat) ) {
-          if ( (min.getTime() < this._currentDateRange.min) && ((max.getTime()-min.getTime()) > max_time_deltat) ) {
-            max = new Date(min.getTime() + max_time_deltat);
-          } else if ( (max > this._currentDateRange.max) && ((max.getTime()-min.getTime()) > max_time_deltat) ) {
-            min = new Date(max.getTime() - max_time_deltat);
-          } 
+          //if ( (min.getTime() < this._currentDateRange.min) && ((max.getTime()-min.getTime()) > max_time_deltat) ) {
+          //  max = new Date(min.getTime() + max_time_deltat);
+          //} else if ( (max > this._currentDateRange.max) && ((max.getTime()-min.getTime()) > max_time_deltat) ) {
+          //  min = new Date(max.getTime() - max_time_deltat);
+          //} 
             this._currentDateRange.max = max;
             this._currentDateRange.min = min;
             this._chart.showLoading();
@@ -277,7 +277,7 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
         } else if (this._defaultRangeSelector === 4) {
             min.setUTCFullYear(min.getUTCFullYear() - 1);
         } else {
-            min.setUTCFullYear(min.getUTCFullYear() - 10);
+            min.setUTCFullYear(min.getUTCFullYear() - 5);
         } 
 
         if (min < this._dateRange.min) {
@@ -333,6 +333,7 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
             },
             // GAS 2017-04-24
             rangeSelector: {
+                allButtonsEnabled: true,
                 selected: this._defaultRangeSelector,
                 buttons: [{
                     type: 'day',
@@ -356,8 +357,8 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
                     text: '1y'
                 }, {
                     type: 'year',
-                    count: 10,
-                    text: '10y'
+                    count: 5,
+                    text: '5y'
                 }]
             },
             xAxis: {
