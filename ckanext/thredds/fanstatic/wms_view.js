@@ -216,14 +216,17 @@ ckan.module('wms_view', function ($) {
                 if (tileMethod[i] == "left") {
                     myTiles[i].style.left = (tilesLeft[i]) + "px";
                     myTiles[i].style.top = (tilesTop[i]) + "px";
+                    myTiles[i].style.opacity = "";
                 } else if (tileMethod[i] == "transform") {
                     myTiles[i].style.left = "";
                     myTiles[i].style.top = "";
                     myTiles[i].style.transform = "translate(" + tilesLeft[i] + "px, " + tilesTop[i] + "px)";
+                    myTiles[i].style.opacity = "";
                 } else {
                     myTiles[i].style.left = "0px";
                     myTiles[i].style.top = "0px";
                     myTiles[i].style.transform = "translate(0px, 0px)";
+                    myTiles[i].style.opacity = "";
                 }
             }
             for (var i = 0; i < myDivicons.length; i++) {
