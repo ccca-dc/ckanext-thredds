@@ -5,7 +5,7 @@
       <li>{% link_for _('Manage'), controller='package', action='resource_edit', id=pkg.name, resource_id=res.id, class_='btn', icon='wrench' %}</li>
     {% endif %}
     <li>
-        {% link_for _('Create Subset'), controller='ckanext.thredds.controllers.subset:SubsetController', action='create_subset', class_='btn', icon='plus-sign-alt' %}
+        {% link_for _('Create Subset'), controller='ckanext.thredds.controllers.subset:SubsetController', action='create_subset', resource_id=res.id, class_='btn', icon='plus-sign-alt' %}
     </li>
     {% if res.url and h.is_url(res.url) %}
       <li>

@@ -7,14 +7,18 @@
 
 {% extends "page.html" %}
 
+{% block subtitle %}{{ _('Create Subset') }}{% endblock %}
+
 {% block primary %}
     {% block form %}
       <div class="module-content">
           <h1>{{ title }}</h1>
-          <form action="" method="get" enctype="multipart/form-data">
+          <form action="{% url_for controller='ckanext.thredds.controllers.subset:SubsetController', action='submit_subset' %}" method="post" enctype="multipart/form-data">
               <h3>Layers</h3>
-              {{ form.checkbox('Layer 1', checked=true) }}
-              {{ form.checkbox('Layer 2', checked=false) }}
+              {% for layer in layers %}
+                <input type="checkbox" name="layers" value="{{ layer }}"> {{ layer }} <br><br>
+              {% endfor %}
+              {% set default_extent = '[[' + bbox[3] + ', ' + bbox[2] + '], [' + bbox[1] + ', ' + bbox[0] + ']]' %}
 
               <h3>Coordinates</h3>
 
@@ -23,13 +27,13 @@
                     data-module="subset-map"
                     data-input_id="coordinates"
                     data-module-site_url="{{ h.dump_json(h.url('/', locale='default', qualified=true)) }}"
-                    data-module-map_config="{{ h.dump_json(map_config) }}">
+                    data-module-map_config="{{ h.dump_json(map_config) }}"
+                    data-module-default_extent="{{ default_extent }}">
                   <div id="dataset-map-container"></div>
                 </div>
-                {{ form.info(text="Draw the dataset extent on the map", inline=false) }}
+                {{ form.info(text="Draw the subset extent on the map", inline=false) }}
 
-                <textarea id="coordinates" rows=5 style="width:100%;">
-                </textarea>
+                <textarea id="coordinates" name="coordinates" rows=5 style="width:100%;"></textarea>
 
              <h3>Date</h3>
              <div class="control-group control-medium">
@@ -43,10 +47,17 @@
              <br>
 
              <h3>Format</h3>
-              <input type="radio" name="format" id="radio_netcdf" value="netCDF4" checked> netCDF4 &emsp;
-              <input type="radio" name="format" id="radio_csv" value="csv"> CSV &emsp;
-              <input type="radio" name="format" id="radio_xml" value="xml"> XML
+              <input type="radio" name="accept" id="radio_netcdf" value="netCDF4" checked> netCDF4 &emsp;
+              <input type="radio" name="accept" id="radio_csv" value="CSV"> CSV &emsp;
+              <input type="radio" name="accept" id="radio_xml" value="XML"> XML
             <br><br>
+
+            {% if is_anon == False %}
+                <h3>Would you like to create a new resource?</h3>
+                <input type="radio" name="res_create" value="True" checked> Yes &emsp;
+                <input type="radio" name="res_create" value="False"> No
+                <br><br>
+            {% endif %}
 
               <input type="submit" value="Create Subset">
           </form>
