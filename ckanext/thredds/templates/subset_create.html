@@ -3,51 +3,56 @@
 {% resource 'thredds/jquery.datetimepicker.full.js' %}
 {% resource 'thredds/subset_datepicker.js' %}
 
-<link rel="stylesheet" type="text/css" href="/css/subset_jquery.datetimepicker.css"/>
-
 {% import 'macros/form.html' as form %}
 
 {% extends "page.html" %}
 
 {% block primary %}
-{% block form %}
-  <div class="module-content">
-      <h1>{{ title }}</h1>
-      <form action="" method="get" enctype="multipart/form-data">
-          <h3>Layers</h3>
-          {{ form.checkbox('Layer 1', checked=true) }}
-          {{ form.checkbox('Layer 2', checked=false) }}
+    {% block form %}
+      <div class="module-content">
+          <h1>{{ title }}</h1>
+          <form action="" method="get" enctype="multipart/form-data">
+              <h3>Layers</h3>
+              {{ form.checkbox('Layer 1', checked=true) }}
+              {{ form.checkbox('Layer 2', checked=false) }}
 
-          <h3>Coordinates</h3>
+              <h3>Coordinates</h3>
 
-          {% set map_config = h.get_common_map_config() %}
-            <div class="dataset-map"
-                data-module="subset-map"
-                data-input_id="coordinates"
-                data-module-site_url="{{ h.dump_json(h.url('/', locale='default', qualified=true)) }}"
-                data-module-map_config="{{ h.dump_json(map_config) }}">
-              <div id="dataset-map-container"></div>
+              {% set map_config = h.get_common_map_config() %}
+                <div class="dataset-map"
+                    data-module="subset-map"
+                    data-input_id="coordinates"
+                    data-module-site_url="{{ h.dump_json(h.url('/', locale='default', qualified=true)) }}"
+                    data-module-map_config="{{ h.dump_json(map_config) }}">
+                  <div id="dataset-map-container"></div>
+                </div>
+                {{ form.info(text="Draw the dataset extent on the map", inline=false) }}
+
+                <textarea id="coordinates" rows=5 style="width:100%;">
+                </textarea>
+
+             <h3>Date</h3>
+             <div class="control-group control-medium">
+                 <label class="control-label" for="date_from">From</label>
+                 <div class="controls">
+                     <input id="date_from" name="date_from" data-module="subset_datepicker" type="text">
+                </div>
             </div>
-            {{ form.info(text="Draw the dataset extent on the map", inline=false) }}
+             <label>To</label>
+             <input id="date_to" name="date_to" data-module="subset_datepicker" type="text">
+             <br>
 
-            <textarea id="coordinates" rows=5 style="width:100%;">
-            </textarea>
+             <h3>Format</h3>
+              <input type="radio" name="format" id="radio_netcdf" value="netCDF4" checked> netCDF4 &emsp;
+              <input type="radio" name="format" id="radio_csv" value="csv"> CSV &emsp;
+              <input type="radio" name="format" id="radio_xml" value="xml"> XML
+            <br><br>
 
-         <h3>Date</h3>
-         <label>From</label>
-         <input id="date_from" name="date_from" data-module="subset_datepicker" type="text">
-         <label>To</label>
-         <input id="date_to" name="date_to" data-module="subset_datepicker" type="text">
-         <br>
+              <input type="submit" value="Create Subset">
+          </form>
+      </div>
 
-         <h3>Format</h3>
-          <input type="radio" name="format" id="radio_netcdf" value="netCDF4" checked> netCDF4 &emsp;
-          <input type="radio" name="format" id="radio_csv" value="csv"> CSV &emsp;
-          <input type="radio" name="format" id="radio_xml" value="xml"> XML
-        <br><br>
-
-          <input type="submit" value="Create Subset">
-      </form>
-  </div>
-{% endblock %}
+      <link rel="stylesheet" href="/css/subset.css"/>
+      <link rel="stylesheet" type="text/css" href="/css/subset_jquery.datetimepicker.css"/>
+    {% endblock %}
 {% endblock %}
