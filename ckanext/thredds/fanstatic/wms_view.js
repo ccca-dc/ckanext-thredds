@@ -137,9 +137,11 @@ ckan.module('wms_view', function ($) {
 
         $('#export-png').on('click', function() {
             var mapPane = $(".leaflet-map-pane")[0];
-            var mapTransform = mapPane.style.transform.split(",");
-            var mapX = parseFloat(mapTransform[0].split("(")[1].replace("px", ""));
-            var mapY = parseFloat(mapTransform[1].replace("px", ""));
+            //var mapTransform = mapPane.style.transform.split(",");
+            //var mapX = parseFloat(mapTransform[0].split("(")[1].replace("px", ""));
+            //var mapY = parseFloat(mapTransform[1].replace("px", ""));
+            var mapX = 0;
+            var mapY = 0;
             mapPane.style.transform = "";
             mapPane.style.left = mapX + "px";
             mapPane.style.top = mapY + "px";
@@ -199,16 +201,25 @@ ckan.module('wms_view', function ($) {
             linesLayer.style.left = "";
             linesLayer.style.top = "";
             $(".leaflet-top").hide();
-            $(".leaflet-bottom.leaflet-left").hide();
+            $(".leaflet-bar").hide();
             $(".leaflet-control-attribution").hide();
+            var currentTime = new Date(cccaHeightTimeLayer._timeDimension.getCurrentTime());
+            $(".leaflet-bottom.leaflet-left").append("<div id='export-info'><p>" + currentTime.toUTCString() + "</p><p>" + wmsabstracts + "</p></div>");
+            //$(".leaflet-bottom.leaflet-left").;
+
         
             html2canvas(document.getElementById("map"), {
                 useCORS: true,
+                letterRendering: false,
                 onrendered: function (canvas) {
+                   // var context = canvas.getContext('2d');
+                   // context.scale(2, 2);
                     window.open(canvas.toDataURL("image/png"));
+                    //window.location = canvas.toDataURL("image/png");
                     $(".leaflet-top").show();
-                    $(".leaflet-bottom.leaflet-left").show();
+                    $(".leaflet-bar").show();
                     $(".leaflet-control-attribution").show();
+                    $("#export-info").remove();
                 }
             });
         

@@ -5,6 +5,18 @@
     padding: 5px;
 }
 
+#export-info{
+    width: 250px;
+    word-wrap: break-word;
+    margin-left: 10px;
+    text-align: left;
+    background-color:#D8D8D8;
+    background-color:rgba(51, 102, 153,0.8);
+    -webkit-border-radius:5px;-moz-border-radius:5px;border-radius:5px;
+    padding: 5px;
+    color: white;
+}
+
 .leaflet-bottom.leaflet-left {
     /*bigger margin to not overlaps with attribution*/
     margin-bottom: 10px; 
