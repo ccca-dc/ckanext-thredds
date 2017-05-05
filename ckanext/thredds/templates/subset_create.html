@@ -16,7 +16,7 @@
           <form action="{% url_for controller='ckanext.thredds.controllers.subset:SubsetController', action='submit_subset' %}" method="post" enctype="multipart/form-data">
               <h3>Layers</h3>
               {% for layer in layers %}
-                <input type="checkbox" name="layers" value="{{ layer }}"> {{ layer }} <br><br>
+                <input type="checkbox" name="layers" value="{{ layer['id'] }}"> {{ layer['label'] }} <br><br>
               {% endfor %}
               {% set default_extent = '[[' + bbox[3] + ', ' + bbox[2] + '], [' + bbox[1] + ', ' + bbox[0] + ']]' %}
 
@@ -36,15 +36,10 @@
                 <textarea id="coordinates" name="coordinates" rows=5 style="width:100%;"></textarea>
 
              <h3>Date</h3>
-             <div class="control-group control-medium">
-                 <label class="control-label" for="date_from">From</label>
-                 <div class="controls">
-                     <input id="date_from" name="date_from" data-module="subset_datepicker" type="text">
-                </div>
-            </div>
+            <label>From</label>
+            <input id="time_start" name="time_start" data-module="subset_datepicker" type="text"><br><br>
              <label>To</label>
-             <input id="date_to" name="date_to" data-module="subset_datepicker" type="text">
-             <br>
+             <input id="time_end" name="time_end" data-module="subset_datepicker" type="text"><br><br>
 
              <h3>Format</h3>
               <input type="radio" name="accept" id="radio_netcdf" value="netCDF4" checked> netCDF4 &emsp;
@@ -54,7 +49,7 @@
 
             {% if is_anon == False %}
                 <h3>Would you like to create a new resource?</h3>
-                <input type="radio" name="res_create" value="True" checked> Yes &emsp;
+                <input type="radio" name="res_create" value="True" checked> Yes &emsp; <b>Package Title:</b> <input type="text" name="title"> <br>
                 <input type="radio" name="res_create" value="False"> No
                 <br><br>
             {% endif %}
