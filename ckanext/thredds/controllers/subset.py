@@ -29,6 +29,7 @@ redirect = base.redirect
 log = logging.getLogger(__name__)
 
 NotAuthorized = logic.NotAuthorized
+NotFound = logic.NotFound
 Invalid = df.Invalid
 
 
@@ -44,8 +45,26 @@ class SubsetController(base.BaseController):
         global resource
         global package
 
-        resource = toolkit.get_action('resource_show')(context, {'id': resource_id})
+        try:
+            resource = toolkit.get_action('resource_show')(context, {'id': resource_id})
+        except NotAuthorized:
+            abort(403, _('Unauthorized to show resource'))
+        except NotFound:
+            abort(404, _('The resource {id} could not be found.'
+                         ).format(id=resource_id))
+
         package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
+
+        # check if user can download resource
+        if authz.auth_is_anon_user(context) and resource.get('anonymous_download', 'false') == 'false':
+            abort(401, _('Unauthorized to create subset of %s') % resource_id)
+
+        # check if user is allowed to create package
+        create_pkg = True
+        try:
+            check_access('package_create', context)
+        except NotAuthorized:
+            create_pkg = False
 
         return_layers = []
 
@@ -59,16 +78,17 @@ class SubsetController(base.BaseController):
         for layer in layers[0]['children']:
             return_layers.append({'id': layer['id'], 'label': layer['label']})
 
-        is_anon = False
-
-        if authz.auth_is_anon_user(context):
-            is_anon = True
-
-        return toolkit.render('subset_create.html', {'title': 'Create Subset', 'layers': return_layers, 'bbox': bbox, 'is_anon': is_anon})
+        return toolkit.render('subset_create.html', {'title': 'Create Subset', 'layers': return_layers, 'bbox': bbox, 'create_pkg': create_pkg})
 
     def submit_subset(self):
         context = {'model': model, 'session': model.Session,
                    'user': c.user}
+
+        global resource
+        global package
+
+        if authz.auth_is_anon_user(context) and resource.get('anonymous_download', 'false') == 'false':
+            abort(401, _('Unauthorized to read resource %s') % id)
 
         title = request.params.get('title', '')
         layers = request.params.getall('layers')
@@ -76,13 +96,10 @@ class SubsetController(base.BaseController):
         string_coordinates = request.params.get('coordinates', '')
         time_start = request.params.get('time_start', '')
         time_end = request.params.get('time_end', '')
-        res_create = request.params.get('res_create', False)
-
-        global resource
-        global package
+        res_create = request.params.get('res_create', 'False')
 
         # start building URL with var (required) and accept (always has a value)
-        url = "https://sandboxdc.ccca.ac.at/tds_proxy/ncss/" + resource['id'] + "?var=" + layers[0] + '&accept=' + accept
+        url = "/tds_proxy/ncss/" + resource['id'] + "?var=" + layers[0] + '&accept=' + accept
 
         # adding time
         if time_start != "" and time_end != "":
@@ -113,7 +130,14 @@ class SubsetController(base.BaseController):
         print(url)
 
         # create resource if requested from user
-        if res_create:
+        if res_create == 'True':
+            try:
+                check_access('package_create', context)
+            except NotAuthorized:
+                abort(403, _('Unauthorized to create a package'))
+
+            ckan_url = config.get('ckan.site_url', '')
+
             new_package = package.copy()
             new_package.pop('id')
             new_package.pop('resources')
@@ -124,6 +148,8 @@ class SubsetController(base.BaseController):
 
             new_package = toolkit.get_action('package_create')(context, new_package)
 
-            new_resource = toolkit.get_action('resource_create')(context, {'name': resource['name'] + '_subset', 'url': url, 'package_id': new_package['id']})
+            new_resource = toolkit.get_action('resource_create')(context, {'name': resource['name'] + '_subset', 'url': ckan_url + url, 'package_id': new_package['id']})
             redirect(h.url_for(controller='package', action='resource_read',
                                id=new_package['id'], resource_id=new_resource['id']))
+        else:
+            h.redirect_to(str(url))

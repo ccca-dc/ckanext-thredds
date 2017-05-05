@@ -103,6 +103,8 @@ this.ckan.module('subset-map', function (jQuery, _) {
             {attributionControl: false}
         );
         map.fitBounds(this.options.default_extent);
+        map.setMaxBounds(this.options.default_extent);
+        map.options.minZoom = map.getZoom();
 
         /* Add an empty layer for newly drawn items */
         var drawnItems = new L.FeatureGroup();

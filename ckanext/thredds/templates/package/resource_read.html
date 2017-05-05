@@ -4,9 +4,11 @@
     {% if h.check_access('package_update', {'id':pkg.id }) %}
       <li>{% link_for _('Manage'), controller='package', action='resource_edit', id=pkg.name, resource_id=res.id, class_='btn', icon='wrench' %}</li>
     {% endif %}
-    <li>
-        {% link_for _('Create Subset'), controller='ckanext.thredds.controllers.subset:SubsetController', action='create_subset', resource_id=res.id, class_='btn', icon='plus-sign-alt' %}
-    </li>
+    {% if res.format == 'NetCDF' or res.format == 'application/x-netcdf'%}
+        <li>
+            {% link_for _('Create Subset'), controller='ckanext.thredds.controllers.subset:SubsetController', action='create_subset', resource_id=res.id, class_='btn', icon='plus-sign-alt' %}
+        </li>
+    {% endif %}
     {% if res.url and h.is_url(res.url) %}
       <li>
         <a class="btn btn-primary resource-url-analytics resource-type-{{ res.resource_type }}" href="{{ res.url }}">

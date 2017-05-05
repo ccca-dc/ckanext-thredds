@@ -47,7 +47,7 @@
               <input type="radio" name="accept" id="radio_xml" value="XML"> XML
             <br><br>
 
-            {% if is_anon == False %}
+            {% if create_pkg == True %}
                 <h3>Would you like to create a new resource?</h3>
                 <input type="radio" name="res_create" value="True" checked> Yes &emsp; <b>Package Title:</b> <input type="text" name="title"> <br>
                 <input type="radio" name="res_create" value="False"> No
