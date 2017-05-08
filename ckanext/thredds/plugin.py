@@ -25,14 +25,18 @@ class ThreddsPlugin(plugins.SingletonPlugin):
                 'icon': 'globe',
                 'iframed': False,
                 'requires_datastore': False,
-                'default_title': plugins.toolkit._('Thredds WMS'),
+                'default_title': plugins.toolkit._('View'),
                 'preview_enabled':True
                 }
 
     def can_view(self, data_dict):
-        # Returning True says a that any resource can use this view type.
-        # It will appear in every resource view dropdown.
-        return True
+        resource = data_dict['resource']
+        format_lower = resource.get('format', '').lower()
+
+        if format_lower in 'netcdf':
+            return True
+        else:
+            return False
 
 
     def view_template(self, context, data_dict):
