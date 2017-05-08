@@ -1,13 +1,53 @@
 {% extends "dataviewer/base.html" %}
 
 {% block page %}
-    {% resource 'thredds-public/wms' %}
-    {% resource 'thredds/wms_view.js' %}
+  {% resource 'thredds/wms' %}
+  {% resource 'thredds/wms_view.js' %}
+
+  <link rel="stylesheet" href="/css/leaflet.css" />
+  <link rel="stylesheet" href="/css/Control.FullScreen.css" />
+  <link rel="stylesheet" href="/css/leaflet.timedimension.control.css" />
+  <link rel="stylesheet" href="/css/style.css" />
+
 
     <div class="container">
-        <div id="map" class="map" data-module="wms_view"</div>
-    </div>
-    <div class="container">
+
+      <div class="well well-lg">
+          <h3>Map Preferences</h3>
+           <ul class="nav nav-pills">
+             <li class="active"><a data-toggle="pill" href="#style">Style</a></li>
+             <li><a data-toggle="pill" href="#palette">Color Palette</a></li>
+             <li><a data-toggle="pill" href="#min-max">Minimum/Maximum</a></li>
+             <li><a data-toggle="pill" href="#opacity">Opacity</a></li>
+             <li><a data-toggle="pill" href="#export">Export</a></li>
+           </ul>
+
+           <div class="tab-content">
+             <div id="style" class="tab-pane active"></div>
+             <div id="palette" class="tab-pane"></div>
+             <div id="min-max" class="tab-pane">
+               <table>
+                 <tr>
+                   <td>Minimum Value:</td>
+                   <td id="min-field"></td>
+                 </tr>
+                 <tr>
+                   <td>Maximum Value:</td>
+                   <td id="max-field"></td>
+                 </tr>
+               </table>
+             </div>
+             <div id="opacity" class="tab-pane"></div>
+             <div id="export" class="tab-pane"></div>
+           </div>
+      </div>
+
+        <div id="map" class="map" data-module="wms_view"
+             data-module-resource_id="{{ resource_id }}"
+             data-module-site_url="{{ h.dump_json(h.url('/', locale='default', qualified=true)) }}">
+        </div>
+
         <div id="chart" class="chart-wrapper"></div>
+
     </div>
 {% endblock %}
