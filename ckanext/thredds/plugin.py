@@ -47,7 +47,4 @@ class ThreddsPlugin(plugins.SingletonPlugin):
         map.connect('create_subset', '/create_subset/{resource_id}',
                     controller='ckanext.thredds.controllers.subset:SubsetController',
                     action='create_subset')
-        map.connect('submit_subset', '/submit_subset',
-                    controller='ckanext.thredds.controllers.subset:SubsetController',
-                    action='submit_subset')
         return map

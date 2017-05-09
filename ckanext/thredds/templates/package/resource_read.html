@@ -4,7 +4,7 @@
     {% if h.check_access('package_update', {'id':pkg.id }) %}
       <li>{% link_for _('Manage'), controller='package', action='resource_edit', id=pkg.name, resource_id=res.id, class_='btn', icon='wrench' %}</li>
     {% endif %}
-    {% if res.format == 'NetCDF' or res.format == 'application/x-netcdf'%}
+    {% if res.format|lower == 'netcdf' or res.format == 'application/x-netcdf'%}
         <li>
             {% link_for _('Create Subset'), controller='ckanext.thredds.controllers.subset:SubsetController', action='create_subset', resource_id=res.id, class_='btn', icon='plus-sign-alt' %}
         </li>

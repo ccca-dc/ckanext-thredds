@@ -12,13 +12,15 @@
 {% block primary %}
     {% block form %}
       <div class="module-content">
-          <h1>{{ title }}</h1>
-          <form action="{% url_for controller='ckanext.thredds.controllers.subset:SubsetController', action='submit_subset' %}" method="post" enctype="multipart/form-data">
+          <h1>Create Subset</h1>
+          <form method="post" enctype="multipart/form-data">
+              {{ form.errors(error_summary) }}
               <h3>Layers</h3>
-              {% for layer in layers %}
+              {% for layer in data.all_layers %}
                 <input type="checkbox" name="layers" value="{{ layer['id'] }}"> {{ layer['label'] }} <br><br>
               {% endfor %}
-              {% set default_extent = '[[' + bbox[3] + ', ' + bbox[2] + '], [' + bbox[1] + ', ' + bbox[0] + ']]' %}
+              {% set default_extent = '[[' + data.bbox[3] + ', ' + data.bbox[2] + '], [' + data.bbox[1] + ', ' + data.bbox[0] + ']]' %}
+              <input name ="bbox" type="hidden" value="{{ data.bbox }}">
 
               <h3>Coordinates</h3>
 
@@ -32,29 +34,41 @@
                   <div id="dataset-map-container"></div>
                 </div>
                 {{ form.info(text="Draw the subset extent on the map", inline=false) }}
-
-                <textarea id="coordinates" name="coordinates" rows=5 style="width:100%;"></textarea>
+                {{ form.textarea('coordinates', id='coordinates', label=_('Coordinates'), value=data.coordinates, error=errors.coordinates) }}
 
              <h3>Date</h3>
-            <label>From</label>
-            <input id="time_start" name="time_start" data-module="subset_datepicker" type="text"><br><br>
-             <label>To</label>
-             <input id="time_end" name="time_end" data-module="subset_datepicker" type="text"><br><br>
+            {{ form.input('time_start', id='time_start', label=_('From'), value=data.time_start, error=errors.time_start, attrs={'data-module': 'subset_datepicker'}) }}
+            {{ form.input('time_end', id='time_end', label=_('To'), value=data.time_end, error=errors.time_end, attrs={'data-module': 'subset_datepicker'}) }}
 
-             <h3>Format</h3>
-              <input type="radio" name="accept" id="radio_netcdf" value="netCDF4" checked> netCDF4 &emsp;
-              <input type="radio" name="accept" id="radio_csv" value="CSV"> CSV &emsp;
-              <input type="radio" name="accept" id="radio_xml" value="XML"> XML
+            <h3>Format</h3>
+            <input type="radio" name="accept" id="radio_netcdf" value="netCDF4" {{ "checked " if data.accept == "netCDF4" or data.accept is not defined }}> netCDF4 &emsp;
+            <input type="radio" name="accept" id="radio_csv" value="CSV" {{ "checked " if data.accept == "CSV" }}> CSV &emsp;
+            <input type="radio" name="accept" id="radio_xml" value="XML" {{ "checked " if data.accept == "XML" }}> XML
             <br><br>
 
-            {% if create_pkg == True %}
-                <h3>Would you like to create a new resource?</h3>
-                <input type="radio" name="res_create" value="True" checked> Yes &emsp; <b>Package Title:</b> <input type="text" name="title"> <br>
-                <input type="radio" name="res_create" value="False"> No
-                <br><br>
+            {% if data.create_pkg == True %}
+              <h3>Would you like to create a new resource?</h3>
+              <input type="radio" name="res_create" value="True" {{ "checked " if data.res_create == "True" or data.res_create is not defined }}> Yes <br><br>
+
+              <div name="package_title">
+              {{ form.input('title', id='field-title', label=_('Title'), value=data.title, error=errors.title, placeholder=_('eg. A descriptive title'), attrs={'data-module': 'slug-preview-target'}) }}
+
+              {% set prefix = h.url_for(controller='package', action='read', id='') %}
+              {% set domain = h.url_for(controller='package', action='read', id='', qualified=true) %}
+              {% set domain = domain|replace("http://", "")|replace("https://", "") %}
+              {% set attrs = {'data-module': 'slug-preview-slug', 'data-module-prefix': domain, 'data-module-placeholder': '<dataset>'} %}
+
+              {{ form.prepend('name', id='field-name', label=_('URL'), value=data.name, error=errors.name, prepend=prefix, placeholder=_('eg. my-dataset'), attrs=attrs, is_required=true) }}
+              </div>
+              <br>
+              <input type="radio" name="res_create" value="False" {{ "checked " if data.res_create == "False" }}> No
+              <br><br>
             {% endif %}
 
-              <input type="submit" value="Create Subset">
+            <div class="form-actions">
+              <button class="btn btn-primary save" type="submit" name="save">{{ _('Submit') }}</button>
+           </div>
+
           </form>
       </div>
 
