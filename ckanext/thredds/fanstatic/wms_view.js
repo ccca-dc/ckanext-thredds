@@ -363,7 +363,7 @@ ckan.module('wms_view', function ($) {
       },
 
       _onHandleError: function(error) {
-        alert("Please login to use this view");
+        document.getElementById("wms-view").innerHTML = "<h2>Please login to use this view</h2>";
         throw new Error("Something went badly wrong!");
       },
 
