@@ -241,12 +241,20 @@ class SubsetController(base.BaseController):
                 new_package['title'] = data['title']
                 new_package['private'] = data['private']
 
-                # need to pop package otherwise it overwrites the current pkg
-                context.pop('package')
+                # add bbox if added
+                if 'north' in params:
+                    new_package['iso_northBL'] = params['north']
+                    new_package['iso_southBL'] = params['south']
+                    new_package['iso_eastBL'] = params['east']
+                    new_package['iso_westBL'] = params['west']
 
+                # add time if added
                 if times_exist is True:
                     new_package['iso_exTempStart'] = data['time_start']
                     new_package['iso_exTempEnd'] = data['time_end']
+
+                # need to pop package otherwise it overwrites the current pkg
+                context.pop('package')
 
                 new_package = toolkit.get_action('package_create')(context, new_package)
 
