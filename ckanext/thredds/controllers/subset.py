@@ -14,6 +14,8 @@ import ckan.authz as authz
 import ckan.lib.navl.dictization_functions as df
 import datetime
 from ckan.common import _
+import json
+import ast
 
 from ckanapi import RemoteCKAN
 
@@ -55,11 +57,11 @@ class SubsetController(base.BaseController):
                    'user': c.user}
 
         # check if user can perform a resource_show
-        try:
+        '''try:
             check_access('resource_show', context)
             check_access('package_show', context)
         except NotAuthorized:
-            abort(403, _('Unauthorized to show resource'))
+            abort(403, _('Unauthorized to show resource'))'''
 
         # check if user can download resource
         if authz.auth_is_anon_user(context) and resource.get('anonymous_download', 'false') == 'false':
@@ -81,7 +83,7 @@ class SubsetController(base.BaseController):
 
             data['all_layers'] = []
 
-            demo = RemoteCKAN('https://sandboxdc.ccca.ac.at', apikey='42e16cce-50a0-4668-9474-8d65759339fe')
+            demo = RemoteCKAN('https://sandboxdc.ccca.ac.at', apikey='84f6bce7-da4b-465b-8303-3a86ab64084b')
 
             layers = demo.call_action('thredds_get_layers', {'id': '88d350e9-5e91-4922-8d8c-8857553d5d2f'})
             layer_details = demo.call_action('thredds_get_layerdetails',{'id':'88d350e9-5e91-4922-8d8c-8857553d5d2f','layer': layers[0]['children'][0]['id']})
@@ -100,19 +102,25 @@ class SubsetController(base.BaseController):
         except NotAuthorized:
             data['create_pkg'] = False
 
-        if data.get('success', False) is False:
-            vars = {'data': data, 'errors': errors, 'error_summary': error_summary}
-            return toolkit.render('subset_create.html', extra_vars=vars)
+        data['pkg'] = package
+
+        vars = {'data': data, 'errors': errors, 'error_summary': error_summary}
+        return toolkit.render('subset_create.html', extra_vars=vars)
 
     @staticmethod
     def _submit(context):
         data = logic.clean_dict(unflatten(logic.tuplize_dict(logic.parse_params(request.params))))
 
         data['bbox'] = [n[2:-1] for n in data['bbox'].replace('[', '').replace(']', '').split(", ")]
+        data['all_layers'] = ast.literal_eval(str(data['all_layers']))
+
+        global resource
+        global package
 
         errors = {}
         error_summary = {}
 
+        # error section
         if 'layers' not in data or data["layers"] == '':
             errors['layers'] = [u'Missing Value']
             error_summary['layers'] = u'Missing value'
@@ -140,10 +148,29 @@ class SubsetController(base.BaseController):
                     errors['name'] = [u'URL is too long.']
                     error_summary['name'] = _('length is more than maximum %s') % (PACKAGE_NAME_MAX_LENGTH)
 
-        if len(errors) == 0:
-            global resource
-            global package
+        if data['time_start'] != "" and data['time_end'] != "":
+            given_start = h.date_str_to_datetime(data['time_start'])
+            given_end = h.date_str_to_datetime(data['time_end'])
+            package_start = h.date_str_to_datetime(package['iso_exTempStart'])
+            package_end = h.date_str_to_datetime(package['iso_exTempEnd'])
+            if given_start > package_end and given_end > package_end:
+                errors['time_start'] = [u'Time is after maximum']
+                errors['time_end'] = [u'Time is after maximum']
+                error_summary['time'] = u'The provided time range must intersect the dataset time range'
+            if given_start < package_start and given_end < package_start:
+                errors['time_start'] = [u'Time is before minimum']
+                errors['time_end'] = [u'Time is before minimum']
+                error_summary['time'] = u'The provided time range must intersect the dataset time range '
 
+        if data['time_start'] != "" and data['time_end'] == "":
+            errors['time_end'] = [u'Missing value']
+            error_summary['time end'] = u'Add end time or delete start time'
+
+        if data['time_start'] == "" and data['time_end'] != "":
+            errors['time_start'] = [u'Missing value']
+            error_summary['time start'] = u'Add start time or delete end time'
+
+        if len(errors) == 0:
             # start building URL with var (required)
             if type(data['layers']) is list:
                 url = "/tds_proxy/ncss/" + resource['id'] + "?var=" + ','.join(data['layers'])
@@ -205,6 +232,5 @@ class SubsetController(base.BaseController):
             else:
                 # redirect to url if user doesn't want to create a package
                 h.redirect_to(str(url))
-                data['success'] = True
 
         return data, errors, error_summary

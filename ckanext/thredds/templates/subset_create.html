@@ -17,10 +17,12 @@
               {{ form.errors(error_summary) }}
               <h3>Layers</h3>
               {% for layer in data.all_layers %}
-                <input type="checkbox" name="layers" value="{{ layer['id'] }}"> {{ layer['label'] }} <br><br>
+                <p><input type="checkbox" name="layers" value="{{ layer['id'] }}" {{ "checked " if layer['id'] in data.layers }}> {{ layer['label'] }}</p>
               {% endfor %}
+
               {% set default_extent = '[[' + data.bbox[3] + ', ' + data.bbox[2] + '], [' + data.bbox[1] + ', ' + data.bbox[0] + ']]' %}
-              <input name ="bbox" type="hidden" value="{{ data.bbox }}">
+              <input name="bbox" type="hidden" value="{{ data.bbox }}">
+              <input name="all_layers" type="hidden" value="{{ data.all_layers }}">
 
               <h3>Coordinates</h3>
 
@@ -36,17 +38,21 @@
                 {{ form.info(text="Draw the subset extent on the map", inline=false) }}
                 {{ form.textarea('coordinates', id='coordinates', label=_('Coordinates'), value=data.coordinates, error=errors.coordinates) }}
 
-             <h3>Date</h3>
+             <h3>Time</h3>
+             <p><u>Minimum:</u> &emsp; {{ h.date_str_to_datetime(data.pkg.iso_exTempStart) }}</p>
+             <p><u>Maximum:</u> &emsp; {{ h.date_str_to_datetime(data.pkg.iso_exTempEnd) }}</p>
             {{ form.input('time_start', id='time_start', label=_('From'), value=data.time_start, error=errors.time_start, attrs={'data-module': 'subset_datepicker'}) }}
             {{ form.input('time_end', id='time_end', label=_('To'), value=data.time_end, error=errors.time_end, attrs={'data-module': 'subset_datepicker'}) }}
 
             <h3>Format</h3>
+            <p>
             <input type="radio" name="accept" id="radio_netcdf" value="netCDF4" {{ "checked " if data.accept == "netCDF4" or data.accept is not defined }}> netCDF4 &emsp;
             <input type="radio" name="accept" id="radio_csv" value="CSV" {{ "checked " if data.accept == "CSV" }}> CSV &emsp;
             <input type="radio" name="accept" id="radio_xml" value="XML" {{ "checked " if data.accept == "XML" }}> XML
-            <br><br>
+            </p>
 
             {% if data.create_pkg == True %}
+              <div class="new-resource">
               <h3>Would you like to create a new resource?</h3>
               <input type="radio" name="res_create" value="True" {{ "checked " if data.res_create == "True" or data.res_create is not defined }}> Yes <br><br>
 
@@ -63,6 +69,7 @@
               <br>
               <input type="radio" name="res_create" value="False" {{ "checked " if data.res_create == "False" }}> No
               <br><br>
+              </div>
             {% endif %}
 
             <div class="form-actions">
