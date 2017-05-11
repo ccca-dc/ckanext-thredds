@@ -89,7 +89,7 @@ class SubsetController(base.BaseController):
 
             data['all_layers'] = []
 
-            demo = RemoteCKAN('https://sandboxdc.ccca.ac.at', apikey='84f6bce7-da4b-465b-8303-3a86ab64084b')
+            demo = RemoteCKAN('https://sandboxdc.ccca.ac.at', apikey='')
 
             layers = demo.call_action('thredds_get_layers', {'id': '88d350e9-5e91-4922-8d8c-8857553d5d2f'})
             layer_details = demo.call_action('thredds_get_layerdetails',{'id':'88d350e9-5e91-4922-8d8c-8857553d5d2f','layer': layers[0]['children'][0]['id']})
@@ -98,8 +98,6 @@ class SubsetController(base.BaseController):
 
             for layer in layers[0]['children']:
                 data['all_layers'].append({'id': layer['id'], 'label': layer['label']})
-
-            data['all_layers'].append({'id': 'test', 'label': 'test'})
 
         if go_to_form is True:
             # check if user is allowed to create package
@@ -232,7 +230,7 @@ class SubsetController(base.BaseController):
                 new_package.pop('resources')
                 new_package['name'] = data['name']
                 new_package['title'] = data['title']
-                new_package['private'] = True
+                new_package['private'] = data['private']
 
                 # need to pop package otherwise it overwrites the current pkg
                 context.pop('package')
