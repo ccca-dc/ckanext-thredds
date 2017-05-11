@@ -12,10 +12,9 @@ import ckan.lib.uploader as uploader
 import ckan.lib.navl.dictization_functions as dict_fns
 import ckan.authz as authz
 import ckan.lib.navl.dictization_functions as df
-import datetime
 from ckan.common import _
-import json
 import ast
+import urllib
 
 from ckanapi import RemoteCKAN
 
@@ -57,11 +56,13 @@ class SubsetController(base.BaseController):
                    'user': c.user}
 
         # check if user can perform a resource_show
-        '''try:
-            check_access('resource_show', context)
-            check_access('package_show', context)
+        try:
+            check_access('resource_show', context, {'id': resource_id})
         except NotAuthorized:
-            abort(403, _('Unauthorized to show resource'))'''
+            abort(403, _('Unauthorized to show resource'))
+        except NotFound:
+            abort(404, _('The resource {id} could not be found.'
+                         ).format(id=resource_id))
 
         # check if user can download resource
         if authz.auth_is_anon_user(context) and resource.get('anonymous_download', 'false') == 'false':
@@ -80,11 +81,7 @@ class SubsetController(base.BaseController):
 
             go_to_form = True
 
-            try:
-                resource = toolkit.get_action('resource_show')(context, {'id': resource_id})
-            except NotFound:
-                abort(404, _('The resource {id} could not be found.'
-                             ).format(id=resource_id))
+            resource = toolkit.get_action('resource_show')(context, {'id': resource_id})
             package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
 
             data['all_layers'] = []
@@ -126,6 +123,13 @@ class SubsetController(base.BaseController):
         error_summary = {}
 
         # error section
+        data['point'] = False
+        try:
+            if len([float(n) for n in data['coordinates'].split(",")]) == 2:
+                data['point'] = True
+        except (TypeError, ValueError):
+            errors['coordinates'] = [u'Coordinates incorrect']
+            error_summary['coordinates'] = u'Coordinates incorrect'
         if 'layers' not in data or data["layers"] == '':
             errors['layers'] = [u'Missing Value']
             error_summary['layers'] = u'Missing value'
@@ -180,13 +184,12 @@ class SubsetController(base.BaseController):
         if len(errors) == 0:
             # start building URL with var (required)
             if type(data['layers']) is list:
-                url = "/tds_proxy/ncss/" + resource['id'] + "?var=" + ','.join(data['layers'])
+                params = {'var': ','.join(data['layers'])}
             else:
-                url = "/tds_proxy/ncss/" + resource['id'] + "?var=" + data['layers']
+                params = {'var': data['layers']}
 
             # adding accept (always has a value)
-            url = url + '&accept=' + data['accept']
-
+            params['accept'] = data['accept']
 
             # adding time
             if times_exist is True:
@@ -196,9 +199,8 @@ class SubsetController(base.BaseController):
                     if time_end < time_start:
                         # swap times if start time before end time
                         data['time_start'], data['time_end'] = data['time_end'], data['time_start']
-                    time_start = h.date_str_to_datetime(data['time_start']).isoformat()
-                    time_end = h.date_str_to_datetime(data['time_end']).isoformat()
-                    url = url + '&time_start=' + time_start + "&time_end=" + time_end
+                    params['time_start'] = time_start
+                    params['time_end'] = time_end
                 except (TypeError, ValueError):
                     raise Invalid(_('Date format incorrect'))
 
@@ -208,12 +210,18 @@ class SubsetController(base.BaseController):
                     coordinates = [float(n) for n in data['coordinates'].split(",")]
 
                     if len(coordinates) == 2:
-                        url = url + "&latitude=" + str(coordinates[0]) + "&longitude=" + str(coordinates[1])
+                        params['latitude'] = str(coordinates[0])
+                        params['longitude'] = str(coordinates[1])
                     elif len(coordinates) == 4 and coordinates[3] > coordinates[1] and coordinates[2] > coordinates[0]:
-                        url = url + "&north=" + str(coordinates[3]) + "&south=" + str(coordinates[1]) + "&east=" + str(coordinates[2]) + "&west=" + str(coordinates[0])
+                        params['north'] = str(coordinates[3])
+                        params['south'] = str(coordinates[1])
+                        params['east'] = str(coordinates[2])
+                        params['west'] = str(coordinates[0])
                 except Exception:
                     # if coordinates are not correct, then they are simply not added
                     pass
+
+            url = ('/tds_proxy/ncss/%s?%s' % (resource['id'], urllib.urlencode(params)))
 
             # create resource if requested from user
             if data['res_create'] == 'True':
@@ -223,6 +231,7 @@ class SubsetController(base.BaseController):
                     abort(403, _('Unauthorized to show package'))
 
                 ckan_url = config.get('ckan.site_url', '')
+                url_for_res = ckan_url + url
 
                 # creating new package from the current one with few changes
                 new_package = dict(package)
@@ -241,7 +250,7 @@ class SubsetController(base.BaseController):
 
                 new_package = toolkit.get_action('package_create')(context, new_package)
 
-                new_resource = toolkit.get_action('resource_create')(context, {'name': resource['name'], 'url': ckan_url + url, 'package_id': new_package['id']})
+                new_resource = toolkit.get_action('resource_create')(context, {'name': resource['name'], 'url': url_for_res, 'package_id': new_package['id']})
                 redirect(h.url_for(controller='package', action='resource_read',
                                    id=new_package['id'], resource_id=new_resource['id']))
             else:

@@ -46,9 +46,9 @@
 
             <h3>Format</h3>
             <p>
-            <input type="radio" name="accept" id="radio_netcdf" value="netCDF4" {{ "checked " if data.accept == "netCDF4" or data.accept is not defined }}> netCDF4 &emsp;
-            <input type="radio" name="accept" id="radio_csv" value="CSV" {{ "checked " if data.accept == "CSV" }}> CSV &emsp;
-            <input type="radio" name="accept" id="radio_xml" value="XML" {{ "checked " if data.accept == "XML" }}> XML
+            <input type="radio" name="accept" id="radio_netcdf" value="netCDF" {{ "checked " if data.accept == "netCDF" or data.accept is not defined }}> netCDF4 &emsp;
+            <input type="radio" name="accept" id="radio_csv" value="CSV" {{ "checked " if data.accept == "CSV" }} {{ "disabled" if data.point == False }}> CSV &emsp;
+            <input type="radio" name="accept" id="radio_xml" value="XML" {{ "checked " if data.accept == "XML" }} {{ "disabled" if data.point == False }}> XML
             </p>
 
             {% if data.create_pkg == True %}
