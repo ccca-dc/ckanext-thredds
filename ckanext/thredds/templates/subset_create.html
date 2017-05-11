@@ -39,8 +39,8 @@
                 {{ form.textarea('coordinates', id='coordinates', label=_('Coordinates'), value=data.coordinates, error=errors.coordinates) }}
 
              <h3>Time</h3>
-             <p><u>Minimum:</u> &emsp; {{ h.date_str_to_datetime(data.pkg.iso_exTempStart) }}</p>
-             <p><u>Maximum:</u> &emsp; {{ h.date_str_to_datetime(data.pkg.iso_exTempEnd) }}</p>
+             <p><u>Minimum:</u> &emsp; {{ h.date_str_to_datetime(data.pkg.iso_exTempStart) }} &emsp;
+             <u>Maximum:</u> &emsp; {{ h.date_str_to_datetime(data.pkg.iso_exTempEnd) }}</p>
             {{ form.input('time_start', id='time_start', label=_('From'), value=data.time_start, error=errors.time_start, attrs={'data-module': 'subset_datepicker'}) }}
             {{ form.input('time_end', id='time_end', label=_('To'), value=data.time_end, error=errors.time_end, attrs={'data-module': 'subset_datepicker'}) }}
 

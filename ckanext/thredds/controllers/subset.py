@@ -67,12 +67,18 @@ class SubsetController(base.BaseController):
         if authz.auth_is_anon_user(context) and resource.get('anonymous_download', 'false') == 'false':
             abort(401, _('Unauthorized to create subset of %s') % resource_id)
 
+        go_to_form = False
         # Submit the data
         if 'save' in request.params:
             data, errors, error_summary = self._submit(context)
+
+            if len(errors) != 0:
+                go_to_form = True
         else:
             global resource
             global package
+
+            go_to_form = True
 
             try:
                 resource = toolkit.get_action('resource_show')(context, {'id': resource_id})
@@ -95,17 +101,18 @@ class SubsetController(base.BaseController):
 
             data['all_layers'].append({'id': 'test', 'label': 'test'})
 
-        # check if user is allowed to create package
-        data['create_pkg'] = True
-        try:
-            check_access('package_create', context)
-        except NotAuthorized:
-            data['create_pkg'] = False
+        if go_to_form is True:
+            # check if user is allowed to create package
+            data['create_pkg'] = True
+            try:
+                check_access('package_create', context)
+            except NotAuthorized:
+                data['create_pkg'] = False
 
-        data['pkg'] = package
+            data['pkg'] = package
 
-        vars = {'data': data, 'errors': errors, 'error_summary': error_summary}
-        return toolkit.render('subset_create.html', extra_vars=vars)
+            vars = {'data': data, 'errors': errors, 'error_summary': error_summary}
+            return toolkit.render('subset_create.html', extra_vars=vars)
 
     @staticmethod
     def _submit(context):
@@ -148,7 +155,9 @@ class SubsetController(base.BaseController):
                     errors['name'] = [u'URL is too long.']
                     error_summary['name'] = _('length is more than maximum %s') % (PACKAGE_NAME_MAX_LENGTH)
 
+        times_exist = False
         if data['time_start'] != "" and data['time_end'] != "":
+            times_exist = True
             given_start = h.date_str_to_datetime(data['time_start'])
             given_end = h.date_str_to_datetime(data['time_end'])
             package_start = h.date_str_to_datetime(package['iso_exTempStart'])
@@ -180,16 +189,18 @@ class SubsetController(base.BaseController):
             # adding accept (always has a value)
             url = url + '&accept=' + data['accept']
 
+
             # adding time
-            if data['time_start'] != "" and data['time_end'] != "":
+            if times_exist is True:
                 try:
                     time_start = h.date_str_to_datetime(data['time_start']).isoformat()
                     time_end = h.date_str_to_datetime(data['time_end']).isoformat()
-                    if time_end > time_start:
-                        url = url + '&time_start=' + time_start + "&time_end=" + time_end
-                    else:
+                    if time_end < time_start:
                         # swap times if start time before end time
-                        url = url + '&time_start=' + time_end + "&time_end=" + time_start
+                        data['time_start'], data['time_end'] = data['time_end'], data['time_start']
+                    time_start = h.date_str_to_datetime(data['time_start']).isoformat()
+                    time_end = h.date_str_to_datetime(data['time_end']).isoformat()
+                    url = url + '&time_start=' + time_start + "&time_end=" + time_end
                 except (TypeError, ValueError):
                     raise Invalid(_('Date format incorrect'))
 
@@ -209,20 +220,26 @@ class SubsetController(base.BaseController):
             # create resource if requested from user
             if data['res_create'] == 'True':
                 try:
-                    check_access('package_show', context)
+                    check_access('package_show', context, {'id': package['id']})
                 except NotAuthorized:
                     abort(403, _('Unauthorized to show package'))
 
                 ckan_url = config.get('ckan.site_url', '')
 
-                new_package = package.copy()
+                # creating new package from the current one with few changes
+                new_package = dict(package)
                 new_package.pop('id')
                 new_package.pop('resources')
-                new_package.pop('name')
                 new_package['name'] = data['name']
                 new_package['title'] = data['title']
                 new_package['private'] = True
-                new_package['state'] = 'active'
+
+                # need to pop package otherwise it overwrites the current pkg
+                context.pop('package')
+
+                if times_exist is True:
+                    new_package['iso_exTempStart'] = data['time_start']
+                    new_package['iso_exTempEnd'] = data['time_end']
 
                 new_package = toolkit.get_action('package_create')(context, new_package)
 
