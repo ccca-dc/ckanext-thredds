@@ -38,8 +38,6 @@ unflatten = df.unflatten
 
 
 class SubsetController(base.BaseController):
-    resource = ""
-    package = ""
 
     def create_subset(self, resource_id):
 
@@ -65,31 +63,31 @@ class SubsetController(base.BaseController):
                          ).format(id=resource_id))
 
         # check if user can download resource
-        if authz.auth_is_anon_user(context) and resource.get('anonymous_download', 'false') == 'false':
+        #if authz.auth_is_anon_user(context) and resource.get('anonymous_download', 'false') == 'false':
+        if authz.auth_is_anon_user(context):
             abort(401, _('Unauthorized to create subset of %s') % resource_id)
 
-        go_to_form = False
+        go_to_form = True
+
+        resource = toolkit.get_action('resource_show')(context, {'id': resource_id})
+        package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
+
         # Submit the data
         if 'save' in request.params:
-            data, errors, error_summary = self._submit(context)
+            data, errors, error_summary = self._submit(context, resource, package)
 
-            if len(errors) != 0:
-                go_to_form = True
+            if len(errors) == 0:
+                go_to_form = False
         else:
-            global resource
-            global package
-
-            go_to_form = True
-
-            resource = toolkit.get_action('resource_show')(context, {'id': resource_id})
-            package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
-
             data['all_layers'] = []
 
-            demo = RemoteCKAN('https://sandboxdc.ccca.ac.at', apikey='')
-
-            layers = demo.call_action('thredds_get_layers', {'id': '88d350e9-5e91-4922-8d8c-8857553d5d2f'})
-            layer_details = demo.call_action('thredds_get_layerdetails',{'id':'88d350e9-5e91-4922-8d8c-8857553d5d2f','layer': layers[0]['children'][0]['id']})
+            try:
+                layers = toolkit.get_action('thredds_get_layers')(context, {'id': resource['id']})
+                layer_details = toolkit.get_action('thredds_get_layerdetails')(context, {'id': resource['id'], 'layer': layers[0]['children'][0]['id']})
+            except Exception:
+                h.flash_error("This resource cannot create a subset")
+                redirect(h.url_for(controller='package', action='resource_read',
+                                   id=package['id'], resource_id=resource['id']))
 
             data['bbox'] = layer_details['bbox']
 
@@ -110,14 +108,11 @@ class SubsetController(base.BaseController):
             return toolkit.render('subset_create.html', extra_vars=vars)
 
     @staticmethod
-    def _submit(context):
+    def _submit(context, resource, package):
         data = logic.clean_dict(unflatten(logic.tuplize_dict(logic.parse_params(request.params))))
 
         data['bbox'] = [n[2:-1] for n in data['bbox'].replace('[', '').replace(']', '').split(", ")]
         data['all_layers'] = ast.literal_eval(str(data['all_layers']))
-
-        global resource
-        global package
 
         errors = {}
         error_summary = {}
@@ -268,8 +263,9 @@ class SubsetController(base.BaseController):
             errors['time_start'] = [u'Missing value']
             error_summary['time start'] = u'Add start time or delete end time'
 
+        # end of error section
         if len(errors) == 0:
-            # start building URL with var (required)
+            # start building URL params with var (required)
             if type(data['layers']) is list:
                 params = {'var': ','.join(data['layers'])}
             else:
@@ -338,8 +334,10 @@ class SubsetController(base.BaseController):
                 context.pop('package')
 
                 new_package = toolkit.get_action('package_create')(context, new_package)
+                new_resource = toolkit.get_action('resource_create')(context, {'name': resource['name'], 'url': url_for_res, 'package_id': new_package['id'], 'format': data['accept']})
 
-                new_resource = toolkit.get_action('resource_create')(context, {'name': resource['name'], 'url': url_for_res, 'package_id': new_package['id']})
+                toolkit.get_action('package_relationship_create')(context, {'subject': new_package['id'], 'object': package['id'], 'type': 'child_of'})
+
                 redirect(h.url_for(controller='package', action='resource_read',
                                    id=new_package['id'], resource_id=new_resource['id']))
             else:

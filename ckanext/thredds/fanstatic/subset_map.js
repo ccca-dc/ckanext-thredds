@@ -205,7 +205,10 @@ this.ckan.module('subset-map', function (jQuery, _) {
 
         map.on('draw:deletestop', function(e){
             drawnItems.clearLayers();
-            $('#coordinates').val("");
+            $('#north').val("");
+            $('#east').val("");
+            $('#south').val("");
+            $('#west').val("");
         });
 
     }
