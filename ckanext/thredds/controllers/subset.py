@@ -16,8 +16,6 @@ from ckan.common import _
 import ast
 import urllib
 
-from ckanapi import RemoteCKAN
-
 get_action = logic.get_action
 parse_params = logic.parse_params
 tuplize_dict = logic.tuplize_dict
