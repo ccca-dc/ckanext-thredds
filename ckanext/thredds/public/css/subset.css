@@ -1,0 +1,14 @@
+input[type=radio],
+input[type=checkbox] {
+  position: relative;
+  top: 0;
+  padding: 0;
+  margin: 0;
+}
+input[type=text] {
+  margin-bottom: 0;
+}
+.new-resource {
+  margin-top: 20px;
+  border-top: 1px solid #e5e5e5;
+}

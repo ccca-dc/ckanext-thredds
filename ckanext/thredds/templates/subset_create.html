@@ -1,0 +1,111 @@
+{% resource 'ckanext-spatial/spatial_form' %}
+{% resource 'thredds/subset_map.js' %}
+{% resource 'thredds/jquery.datetimepicker.full.js' %}
+{% resource 'thredds/subset_datepicker.js' %}
+
+{% import 'macros/form.html' as form %}
+
+{% extends "page.html" %}
+
+{% block subtitle %}{{ _('Create Subset') }}{% endblock %}
+
+{% block primary %}
+    {% block form %}
+      <div class="module-content">
+          <h1>Create Subset</h1>
+          <form method="post" enctype="multipart/form-data">
+              {{ form.errors(error_summary) }}
+              <h3>Layers</h3>
+              {% for layer in data.all_layers %}
+                <p><input type="checkbox" name="layers" value="{{ layer['id'] }}" {{ "checked " if layer['id'] in data.layers }}> {{ layer['label'] }}</p>
+              {% endfor %}
+
+              {% set default_extent = '[[' + data.bbox[3] + ', ' + data.bbox[2] + '], [' + data.bbox[1] + ', ' + data.bbox[0] + ']]' %}
+              <input name="bbox" type="hidden" value="{{ data.bbox }}">
+              <input name="all_layers" type="hidden" value="{{ data.all_layers }}">
+
+              <h3>Coordinates</h3>
+
+              {% set map_config = h.get_common_map_config() %}
+              <div class="dataset-map"
+                data-module="subset-map"
+                data-module-site_url="{{ h.dump_json(h.url('/', locale='default', qualified=true)) }}"
+                data-module-map_config="{{ h.dump_json(map_config) }}"
+                data-module-default_extent="{{ default_extent }}">
+                <div id="dataset-map-container"></div>
+              </div>
+            {{ form.info(text="Draw the subset extent on the map", inline=false) }}
+            <br>
+            {% if data.point == False or data.point is not defined %}
+                {% call form.input('north', id='north', label=_('North'), value=data.north, error=errors.north) %}
+                    &emsp; <u>min:</u> &emsp; {{ data.bbox[1][0:5] }} &emsp; <u>max:</u> &emsp; {{ data.bbox[3][0:5] }}
+                {% endcall %}
+                {% call form.input('east', id='east', label=_('East'), value=data.east, error=errors.east) %}
+                    &emsp; <u>min:</u> &emsp; {{ data.bbox[0][0:5] }} &emsp; <u>max:</u> &emsp; {{ data.bbox[2][0:5] }}
+                {% endcall %}
+                <div id="southWest">
+                {{ form.input('south', id='south', label=_('South'), value=data.south, error=errors.south) }}
+                {{ form.input('west', id='west', label=_('West'), value=data.west, error=errors.west) }}
+                </div>
+            {% else %}
+                {% call form.input('north', id='north', label=_('Latitude'), value=data.north, error=errors.north) %}
+                    &emsp; <u>min:</u> &emsp; {{ data.bbox[1][0:5] }} &emsp; <u>max:</u> &emsp; {{ data.bbox[3][0:5] }}
+                {% endcall %}
+                {% call form.input('east', id='east', label=_('Longitude'), value=data.east, error=errors.east) %}
+                    &emsp; <u>min:</u> &emsp; {{ data.bbox[0][0:5] }} &emsp; <u>max:</u> &emsp; {{ data.bbox[2][0:5] }}
+                {% endcall %}
+                <div id="southWest" style="display: none;">
+                {{ form.input('south', id='south', label=_('South'), value=data.south, error=errors.south) }}
+                {{ form.input('west', id='west', label=_('West'), value=data.west, error=errors.west) }}
+                </div>
+            {% endif %}
+
+             <h3>Time</h3>
+            {% call form.input('time_start', id='time_start', label=_('From'), value=data.time_start, error=errors.time_start, attrs={'data-module': 'subset_datepicker'}) %}
+                &emsp; <u>min:</u> &emsp; {{ h.date_str_to_datetime(data.pkg.iso_exTempStart) }}
+            {% endcall %}
+            {% call form.input('time_end', id='time_end', label=_('To'), value=data.time_end, error=errors.time_end, attrs={'data-module': 'subset_datepicker'}) %}
+                &emsp; <u>max:</u> &emsp; {{ h.date_str_to_datetime(data.pkg.iso_exTempEnd) }}
+            {% endcall %}
+
+            <h3>Format</h3>
+            <p>
+            <input type="radio" name="accept" id="radio_netcdf" value="netCDF" {{ "checked " if data.accept == "netCDF" or data.accept is not defined }}> netCDF4 &emsp;
+            <input type="radio" name="accept" id="radio_csv" value="CSV" {{ "checked " if data.accept == "CSV" }} {{ "disabled" if data.point == False }}> CSV &emsp;
+            <input type="radio" name="accept" id="radio_xml" value="XML" {{ "checked " if data.accept == "XML" }} {{ "disabled" if data.point == False }}> XML
+            </p>
+
+            {% if data.create_pkg == True %}
+              <div class="new-resource">
+                  <h3>Would you like to create a new resource in a new package?</h3>
+                  <input type="radio" name="res_create" value="False" {{ "checked " if data.res_create == "False" or data.res_create is not defined  }}> No, just download the subset <br><br>
+                  <input type="radio" name="res_create" value="True" {{ "checked " if data.res_create == "True" }}> Yes <br><br>
+
+                  <div class="well">
+                      {{ form.input('title', id='field-title', label=_('Package Title'), value=data.title, error=errors.title, placeholder=_('eg. A descriptive title'), attrs={'data-module': 'slug-preview-target'}) }}
+
+                      {% set prefix = h.url_for(controller='package', action='read', id='') %}
+                      {% set domain = h.url_for(controller='package', action='read', id='', qualified=true) %}
+                      {% set domain = domain|replace("http://", "")|replace("https://", "") %}
+                      {% set attrs = {'data-module': 'slug-preview-slug', 'data-module-prefix': domain, 'data-module-placeholder': '<dataset>'} %}
+
+                      {{ form.prepend('name', id='field-name', label=_('URL'), value=data.name, error=errors.name, prepend=prefix, placeholder=_('eg. my-dataset'), attrs=attrs, is_required=true) }}
+
+                      <h4> Should the resource be quotable? (dataset becomes public and cannot be set private again) </h4>
+                      <input type="radio" name="private" value="False" {{ "checked " if data.private == "False" }}> Yes &emsp;
+                      <input type="radio" name="private" value="True" {{ "checked " if data.private == "True" or data.private is not defined }}> No, maybe at a later point
+                  </div>
+              </div>
+            {% endif %}
+
+            <div class="form-actions">
+              <button class="btn btn-primary save" type="submit" name="save">{{ _('Submit') }}</button>
+           </div>
+
+          </form>
+      </div>
+
+      <link rel="stylesheet" href="/css/subset.css"/>
+      <link rel="stylesheet" type="text/css" href="/css/subset_jquery.datetimepicker.css"/>
+    {% endblock %}
+{% endblock %}
