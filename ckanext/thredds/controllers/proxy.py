@@ -3,13 +3,17 @@ import ckan.lib.base as base
 import requests
 from urlparse import urlparse, parse_qs
 from pylons import config
-import ckan.plugins.toolkit as toolkit
+import ckan.plugins.toolkit as tk
 
 import logging
 import ckan.model as model
 import ckan.logic as logic
 import ckan.lib.uploader as uploader
 import ckan.lib.navl.dictization_functions as dict_fns
+from ckan.common import _, request, c, g, response
+
+import ckan.authz as authz
+import os
 
 get_action = logic.get_action
 parse_params = logic.parse_params
@@ -21,37 +25,28 @@ request = base.request
 log = logging.getLogger(__name__)
 
 
-class WMSProxyController(base.BaseController):
-    def wms_proxy(self):
-        context = {'model': model, 'session': model.Session,
-                   'user': c.user}
-        #toolkit.check_access('resource_update',
-        thredds_server = "10.1.186.222:8080"
-        p_url = urlparse(request.params.get('url'))
-        p_url = p_url._replace(netloc=thredds_server)
-        r = requests.get(p_url.geturl())
-        log.debug(p_url.geturl())
-        #r = requests.get(url)
-#        if url.find("GetCapabilities") != -1:
-#            log.debug(url)
-#            log.debug(r.headers)
-        return r.content
+class ThreddsProxyController(base.BaseController):
+    def tds_proxy(self, service, res_id):
+        """
+        Provides a wms Service for netcdf files by redirecting the user to the
+        thredds server
 
-#$url = $_GET['url'];
-#$result = "";
-#if (strpos($url, "GetCapabilities") >= 0){
-#    $result = file_get_contents($url);
-#    $nlines = count($http_response_header);
-#    for ($i = $nlines-1; $i >= 0; $i--) {
-#        $line = $http_response_header[$i];
-#        if (substr_compare($line, 'Content-Type', 0, 12, true) == 0) {
-#            $content_type = $line;
-#            break;
-#        }
-#    }
-#    header($content_type);
-#    echo $result;
-#} else{
-#    header('HTTP/1.0 400 Bad Request');
-#    echo 'Request not valid';
-#}
+        """
+
+        context = {'model': model, 'session': model.Session,
+                   'user': c.user, 'auth_user_obj': c.userobj}
+
+        try:
+           rsc = tk.get_action('resource_show')(context, {'id': res_id})
+        except (tk.ObjectNotFound, tk.NotAuthorized):
+           tk.abort(404, _('Resource not found'))
+
+        if authz.auth_is_anon_user(context):
+            tk.abort(401, _('Unauthorized to read resource %s') % res_id)
+        else:
+            p_query = request.query_string
+            p_path = os.path.join('/thredds',service,'ckan',res_id[0:3], res_id[3:6], res_id[6:])
+
+            response.headers['X-Accel-Redirect'] = "{0}?{1}".format(p_path,p_query)
+            return response
+

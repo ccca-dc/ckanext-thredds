@@ -1,123 +1,25 @@
-html *{
-    box-sizing:border-box;
-}
-#header{
-    background-image: url(../img/logo-leaflettimedimension.png);
-    background-position: top right;
-    background-repeat: no-repeat;
-    padding-bottom: 20px;
-    min-height: 80px;
-}
-
-#header a{
-    text-decoration: none;
-    color: #80bf43;
-}
-
-#footer {
-    clear: both;
-    border-top: #D8D8D8 1px solid;
-    padding: 10px 0;
-}
-
-#footer a{
-    color: #999;;
-    font-family: Georgia, serif;
-    text-decoration: none;
-}
-
-#footer a.leaflet-timedimension{
-    background-image: url(../img/logo-leaflettimedimension-32.png);
-    background-position: top left;
-    background-repeat: no-repeat; 
-    display: block;
-    float: left;
-    padding-left: 55px;
-    min-height: 32px;
-    line-height: 32px;    
-}
-
-#footer a.github {
-    padding-right: 40px;
-    display: block;
-    float: right;
-    min-height: 32px;
-    line-height: 32px;
-    background-image: url(../img/GitHub-Mark-32px.png);
-    background-position: top right;
-    background-repeat: no-repeat; 
-}
-
-a.github span{
-    display: none;
-}
-
-a.github:hover span{
-    display: inline;
-}
-
 .leaflet-container .legend{
     background-color:#D8D8D8;
-    background-color:rgba(255,255,255,.8);
+    background-color:rgba(51, 102, 153,0.8);
     -webkit-border-radius:5px;-moz-border-radius:5px;border-radius:5px;
     padding: 5px;
 }
+
+#export-info{
+    width: 250px;
+    word-wrap: break-word;
+    margin-left: 10px;
+    text-align: left;
+    background-color:#D8D8D8;
+    background-color:rgba(51, 102, 153,0.8);
+    -webkit-border-radius:5px;-moz-border-radius:5px;border-radius:5px;
+    padding: 5px;
+    color: white;
+}
+
 .leaflet-bottom.leaflet-left {
     /*bigger margin to not overlaps with attribution*/
     margin-bottom: 10px; 
-}
-
-h1, h2{
-    color: #999;
-    font-family: Georgia, serif;
-    font-weight: normal;    
-    margin: 5px 0px;
-}
-
-h1{
-    font-style: italic;
-}
-
-h1 small{
-    font-size: 12px;
-    display: block;
-}
-
-h1 small a{
-    text-decoration: none;
-    color: #777;
-}
-
-ul.examples{
-    list-style: none;
-    padding: 0;
-}
-
-ul.examples li {
-    float: left;
-    margin-right: 5px;
-    margin-bottom: 15px;
-}
-
-ul.examples li a{
-    display: block;
-    color: #444;
-    background-color: #80bf43;
-    width: 300px;
-    min-height: 205px;
-    text-align: center;
-    text-decoration: none;
-    font-size: 1.2em;
-}
-ul.examples li a:hover{
-    text-decoration: none;
-    background-color: #bae568;  
-}
-
-ul.examples li a img{
-    display: block;
-    margin: auto;
-    margin-bottom: 15px;
 }
 
 .map{
@@ -137,15 +39,6 @@ ul.examples li a img{
     text-align: center;
     color: #FFF;
     position: absolute;
-}
-
-.map.radar{
-    height: 700px;   
-}
-
-.map.sirena{
-    width: 816px;
-    height: 597px;   
 }
 
 #map-wrapper{
@@ -204,82 +97,8 @@ ul.examples li a img{
     text-align: center;    
 }
 
-.prev-example a, .next-example a{
-    color: #222;
-    display: block;
-    padding: 20px;
-    width: 45%; 
-    background-color: #80bf43;
-    margin-bottom: 50px;  
-    text-decoration: none;    
-}
-
-.prev-example a{
-    float: left;
-}
-.next-example a{
-    float: right;
-    text-align: right;
-}
-
-.prev-example a:before{
-  font-family: "Glyphicons Halflings";
-  content: "\e069";
-  color: #FFF;
-  margin-right: 10px;
-}
-
-.next-example a:after{
-  font-family: "Glyphicons Halflings";
-  content: "\e077";
-  color: #FFF;
-  margin-left: 10px;
-}
-
-.prev-example a:hover, .next-example a:hover{
-    text-decoration: none;
-    background-color: #bae568;
-    color: #444;
-}
-
 .clearfix{
     clear: both;
-}
-
-.btn {
-    -moz-box-shadow:inset 0px 1px 0px 0px #ffffff;
-    -webkit-box-shadow:inset 0px 1px 0px 0px #ffffff;
-    box-shadow:inset 0px 1px 0px 0px #ffffff;
-    background:-webkit-gradient(linear, left top, left bottom, color-stop(0.05, #ffffff), color-stop(1, #f6f6f6));
-    background:-moz-linear-gradient(top, #ffffff 5%, #f6f6f6 100%);
-    background:-webkit-linear-gradient(top, #ffffff 5%, #f6f6f6 100%);
-    background:-o-linear-gradient(top, #ffffff 5%, #f6f6f6 100%);
-    background:-ms-linear-gradient(top, #ffffff 5%, #f6f6f6 100%);
-    background:linear-gradient(to bottom, #ffffff 5%, #f6f6f6 100%);    
-    background-color:#ffffff;
-    -moz-border-radius:6px;
-    -webkit-border-radius:6px;
-    border-radius:6px;
-    border:1px solid #dcdcdc;
-    display:inline-block;
-    cursor:pointer;
-    color:#666666;
-    font-family:Arial;
-    font-size:15px;    
-    font-weight:bold;
-    padding: 6px 10px;
-    text-decoration:none;
-    text-shadow:0px 1px 0px #ffffff;
-}
-
-.btn:hover {
-    background:-webkit-gradient(linear, left top, left bottom, color-stop(0.05, #f6f6f6), color-stop(1, #ffffff));
-    background:-moz-linear-gradient(top, #f6f6f6 5%, #ffffff 100%);
-    background:-webkit-linear-gradient(top, #f6f6f6 5%, #ffffff 100%);
-    background:-o-linear-gradient(top, #f6f6f6 5%, #ffffff 100%);
-    background:-ms-linear-gradient(top, #f6f6f6 5%, #ffffff 100%);
-    background:linear-gradient(to bottom, #f6f6f6 5%, #ffffff 100%);    
-    background-color:#f6f6f6;
 }
 
 .btn:active {
@@ -336,4 +155,12 @@ ul.examples li a img{
     -webkit-border-radius:5px;-moz-border-radius:5px;border-radius:5px;
     padding: 5px;
     color:black;    
+}
+
+.js .tab-content {
+  display:inline;
+}
+
+.well {
+  width:80%;
 }
