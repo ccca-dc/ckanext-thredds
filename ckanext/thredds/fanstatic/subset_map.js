@@ -149,14 +149,29 @@ this.ckan.module('subset-map', function (jQuery, _) {
          */
         var featureGroupToInput = function(fg, input){
             if(drawnItems.getLayers()[0].toGeoJSON().geometry.type == "Polygon"){
-                $('#coordinates').val(drawnItems.getLayers()[0].getBounds().toBBoxString());
+                var bounds = drawnItems.getLayers()[0].getBounds();
+                $('#north').val(bounds._northEast.lat);
+                $('#east').val(bounds._northEast.lng);
+                $('#south').val(bounds._southWest.lat);
+                $('#west').val(bounds._southWest.lng);
+
+                $('#southWest').show();
+                $('label[for="north"]').text("North");
+                $('label[for="east"]').text("East");
             }
             else{
-                $('#coordinates').val(drawnItems.getLayers()[0]._latlng.lat + "," + drawnItems.getLayers()[0]._latlng.lng);
                 var gj = drawnItems.toGeoJSON().features;
                 var polyarray = [];
                 $.each(gj, function(index, value){ polyarray.push(value.geometry.coordinates); });
                 mp = {"type": "MultiPolygon", "coordinates": polyarray};
+
+                $('#north').val(drawnItems.getLayers()[0]._latlng.lat);
+                $('#east').val(drawnItems.getLayers()[0]._latlng.lng);
+                $('#south').val("");
+                $('#west').val("");
+                $('#southWest').hide();
+                $('label[for="north"]').text("Latitude");
+                $('label[for="east"]').text("Longitude");
             // TODO use input for element id
                 //$('#coordinates').val(JSON.stringify(polyarray));
             }

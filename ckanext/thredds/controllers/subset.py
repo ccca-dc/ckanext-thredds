@@ -123,17 +123,103 @@ class SubsetController(base.BaseController):
         error_summary = {}
 
         # error section
+        # error coordinate section, checking if values are entered and floats
         data['point'] = False
-        try:
-            if len([float(n) for n in data['coordinates'].split(",")]) == 2:
+        northSouthOk = False
+        eastWestOk = False
+        if data['north'] != "" and data['east'] != "":
+            try:
+                float(data['north'])
+                northSouthOk = True
+            except (TypeError, ValueError):
+                errors['north'] = [u'Coordinate incorrect']
+                error_summary['north'] = u'Coordinate incorrect'
+            try:
+                float(data['east'])
+                eastWestOk = True
+            except (TypeError, ValueError):
+                errors['east'] = [u'Coordinate incorrect']
+                error_summary['east'] = u'Coordinate incorrect'
+
+            if data['south'] != "" and data['west'] != "":
+                try:
+                    float(data['south'])
+                except (TypeError, ValueError):
+                    northSouthOk = False
+                    errors['south'] = [u'Coordinate incorrect']
+                    error_summary['south'] = u'Coordinate incorrect'
+                try:
+                    float(data['west'])
+                except (TypeError, ValueError):
+                    eastWestOk = False
+                    errors['west'] = [u'Coordinate incorrect']
+                    error_summary['west'] = u'Coordinate incorrect'
+            elif data['south'] == "" and data['west'] == "":
                 data['point'] = True
-        except (TypeError, ValueError):
-            errors['coordinates'] = [u'Coordinates incorrect']
-            error_summary['coordinates'] = u'Coordinates incorrect'
+            elif data['south'] != "" and data['west'] == "":
+                northSouthOk = False
+                eastWestOk = False
+                errors['west'] = [u'Missing value']
+                error_summary['west'] = u'Missing value'
+            elif data['south'] == "" and data['west'] != "":
+                northSouthOk = False
+                eastWestOk = False
+                errors['south'] = [u'Missing value']
+                error_summary['south'] = u'Missing value'
+        elif data['north'] != "" and data['east'] == "":
+            errors['east'] = [u'Missing value']
+            error_summary['east'] = u'Add east or delete north coordinate'
+        elif data['north'] == "" and data['east'] != "":
+            errors['north'] = [u'Missing value']
+            error_summary['north'] = u'Add north or delete east coordinate'
+
+        # error coordinate section, checking if values are inside bbox
+        if northSouthOk is True:
+            northf = float(data['north'])
+            if data['south'] != "":
+                southf = float(data['south'])
+                if northf > float(data['bbox'][3]) and southf > float(data['bbox'][3]):
+                    error_summary['coordinates'] = u'north and south are further north than bounding box of resource'
+                    errors['north'] = [u'coordinate is further north than bounding box of resource']
+                    errors['south'] = [u'coordinate is further north than bounding box of resource']
+                if northf < float(data['bbox'][1]) and southf < float(data['bbox'][1]):
+                    error_summary['coordinates'] = u'north and south are further south than bounding box of resource'
+                    errors['north'] = [u'coordinate is further south than bounding box of resource']
+                    errors['south'] = [u'coordinate is further south than bounding box of resource']
+            else:
+                if northf > float(data['bbox'][3]):
+                    errors['north'] = [u'latitude is further north than bounding box of resource']
+                    error_summary['latitude'] = u'coordinate is further north than bounding box of resource'
+                if northf < float(data['bbox'][1]):
+                    errors['north'] = [u'latitude is further south than bounding box of resource']
+                    error_summary['latitude'] = u'coordinate is further south than bounding box of resource'
+
+        if eastWestOk is True:
+            eastf = float(data['east'])
+            if data['west'] != "":
+                westf = float(data['west'])
+                if eastf > float(data['bbox'][2]) and westf > float(data['bbox'][2]):
+                    error_summary['coordinates'] = u'east and west coordinates are further east than bounding box of resource'
+                    errors['east'] = [u'coordinate is further east than bounding box of resource']
+                    errors['west'] = [u'coordinate is further east than bounding box of resource']
+                if eastf < float(data['bbox'][0]) and westf < float(data['bbox'][0]):
+                    error_summary['coordinates'] = u'east and west coordinates are further west than bounding box of resource'
+                    errors['east'] = [u'coordinate is further west than bounding box of resource']
+                    errors['west'] = [u'coordinate is further west than bounding box of resource']
+            else:
+                if eastf > float(data['bbox'][2]):
+                    errors['east'] = [u'longitude is further east than bounding box of resource']
+                    error_summary['longitude'] = u'coordinate is further east than bounding box of resource'
+                if eastf < float(data['bbox'][0]):
+                    errors['east'] = [u'longitude is further west than bounding box of resource']
+                    error_summary['longitude'] = u'coordinate is further west than bounding box of resource'
+
+        # error layer section
         if 'layers' not in data or data["layers"] == '':
             errors['layers'] = [u'Missing Value']
             error_summary['layers'] = u'Missing value'
 
+        # error resource creation section
         if data['res_create'] == 'True':
             if data['title'] == '':
                 errors['title'] = [u'Missing Value']
@@ -157,6 +243,7 @@ class SubsetController(base.BaseController):
                     errors['name'] = [u'URL is too long.']
                     error_summary['name'] = _('length is more than maximum %s') % (PACKAGE_NAME_MAX_LENGTH)
 
+        # error time section
         times_exist = False
         if data['time_start'] != "" and data['time_end'] != "":
             times_exist = True
@@ -205,21 +292,15 @@ class SubsetController(base.BaseController):
                     raise Invalid(_('Date format incorrect'))
 
             # adding coordinates
-            if data['coordinates'] != "":
-                try:
-                    coordinates = [float(n) for n in data['coordinates'].split(",")]
-
-                    if len(coordinates) == 2:
-                        params['latitude'] = str(coordinates[0])
-                        params['longitude'] = str(coordinates[1])
-                    elif len(coordinates) == 4 and coordinates[3] > coordinates[1] and coordinates[2] > coordinates[0]:
-                        params['north'] = str(coordinates[3])
-                        params['south'] = str(coordinates[1])
-                        params['east'] = str(coordinates[2])
-                        params['west'] = str(coordinates[0])
-                except Exception:
-                    # if coordinates are not correct, then they are simply not added
-                    pass
+            if data['north'] != "" and data['east'] != "":
+                if data['point'] is True:
+                    params['latitude'] = data['north']
+                    params['longitude'] = data['east']
+                else:
+                    params['north'] = data['north']
+                    params['south'] = data['south']
+                    params['east'] = data['east']
+                    params['west'] = data['west']
 
             url = ('/tds_proxy/ncss/%s?%s' % (resource['id'], urllib.urlencode(params)))
 

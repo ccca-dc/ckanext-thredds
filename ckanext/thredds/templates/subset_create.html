@@ -27,16 +27,31 @@
               <h3>Coordinates</h3>
 
               {% set map_config = h.get_common_map_config() %}
-                <div class="dataset-map"
-                    data-module="subset-map"
-                    data-input_id="coordinates"
-                    data-module-site_url="{{ h.dump_json(h.url('/', locale='default', qualified=true)) }}"
-                    data-module-map_config="{{ h.dump_json(map_config) }}"
-                    data-module-default_extent="{{ default_extent }}">
-                  <div id="dataset-map-container"></div>
+              <div class="dataset-map"
+                data-module="subset-map"
+                data-module-site_url="{{ h.dump_json(h.url('/', locale='default', qualified=true)) }}"
+                data-module-map_config="{{ h.dump_json(map_config) }}"
+                data-module-default_extent="{{ default_extent }}">
+                <div id="dataset-map-container"></div>
+              </div>
+            {{ form.info(text="Draw the subset extent on the map", inline=false) }}
+            <br>
+
+            {% if data.point == False or data.point is not defined %}
+                {{ form.input('north', id='north', label=_('North'), value=data.north, error=errors.north) }}
+                {{ form.input('east', id='east', label=_('East'), value=data.east, error=errors.east) }}
+                <div id="southWest">
+                {{ form.input('south', id='south', label=_('South'), value=data.south, error=errors.south) }}
+                {{ form.input('west', id='west', label=_('West'), value=data.west, error=errors.west) }}
                 </div>
-                {{ form.info(text="Draw the subset extent on the map", inline=false) }}
-                {{ form.textarea('coordinates', id='coordinates', label=_('Coordinates'), value=data.coordinates, error=errors.coordinates) }}
+            {% else %}
+                {{ form.input('north', id='north', label=_('Latitude'), value=data.north, error=errors.north) }}
+                {{ form.input('east', id='east', label=_('Longitude'), value=data.east, error=errors.east) }}
+                <div id="southWest" style="display: none;">
+                {{ form.input('south', id='south', label=_('South'), value=data.south, error=errors.south) }}
+                {{ form.input('west', id='west', label=_('West'), value=data.west, error=errors.west) }}
+                </div>
+            {% endif %}
 
              <h3>Time</h3>
              <p><u>Minimum:</u> &emsp; {{ h.date_str_to_datetime(data.pkg.iso_exTempStart) }} &emsp;
