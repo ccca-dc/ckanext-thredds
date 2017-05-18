@@ -52,7 +52,7 @@
  * - this module loaded, providing the binding between map and form input
  *
  */
-this.ckan.module('subset-map', function (jQuery, _) {
+this.ckan.module('subset-form', function (jQuery, _) {
 
   return {
     options: {
@@ -62,9 +62,9 @@ this.ckan.module('subset-map', function (jQuery, _) {
       },
       styles: {
         point:{
-          iconUrl: '/js/vendor/leaflet/images/marker-icon.png',
-          iconSize: [14, 25],
-          iconAnchor: [7, 25]
+            iconUrl: 'marker-icon.png',
+            iconSize: [14, 25],
+            iconAnchor: [7, 25]
         },
         default_:{
           color: '#B52',
@@ -93,6 +93,7 @@ this.ckan.module('subset-map', function (jQuery, _) {
     _onReady: function(){
 
         var map, backgroundLayer, oldExtent, drawnItems, ckanIcon;
+        L.Icon.Default.imagePath = '/css/images';
         var ckanIcon = L.Icon.extend({options: this.options.styles.point});
 
 

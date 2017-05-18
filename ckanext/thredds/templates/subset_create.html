@@ -1,5 +1,4 @@
-{% resource 'ckanext-spatial/spatial_form' %}
-{% resource 'thredds/subset_map.js' %}
+{% resource 'thredds/spatial_form' %}
 {% resource 'thredds/jquery.datetimepicker.full.js' %}
 {% resource 'thredds/subset_datepicker.js' %}
 
@@ -28,7 +27,7 @@
 
               {% set map_config = h.get_common_map_config() %}
               <div class="dataset-map"
-                data-module="subset-map"
+                data-module="subset-form"
                 data-module-site_url="{{ h.dump_json(h.url('/', locale='default', qualified=true)) }}"
                 data-module-map_config="{{ h.dump_json(map_config) }}"
                 data-module-default_extent="{{ default_extent }}">
