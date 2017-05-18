@@ -15,6 +15,7 @@ import ckan.lib.navl.dictization_functions as df
 from ckan.common import _
 import ast
 import urllib
+from dateutil.relativedelta import relativedelta
 
 get_action = logic.get_action
 parse_params = logic.parse_params
@@ -176,11 +177,11 @@ class SubsetController(base.BaseController):
             if data['south'] != "":
                 southf = float(data['south'])
                 if northf > float(data['bbox'][3]) and southf > float(data['bbox'][3]):
-                    error_summary['coordinates'] = u'north and south are further north than bounding box of resource'
+                    error_summary['latitude coordinates'] = u'north and south are further north than bounding box of resource'
                     errors['north'] = [u'coordinate is further north than bounding box of resource']
                     errors['south'] = [u'coordinate is further north than bounding box of resource']
                 if northf < float(data['bbox'][1]) and southf < float(data['bbox'][1]):
-                    error_summary['coordinates'] = u'north and south are further south than bounding box of resource'
+                    error_summary['latitude coordinates'] = u'north and south are further south than bounding box of resource'
                     errors['north'] = [u'coordinate is further south than bounding box of resource']
                     errors['south'] = [u'coordinate is further south than bounding box of resource']
             else:
@@ -196,11 +197,11 @@ class SubsetController(base.BaseController):
             if data['west'] != "":
                 westf = float(data['west'])
                 if eastf > float(data['bbox'][2]) and westf > float(data['bbox'][2]):
-                    error_summary['coordinates'] = u'east and west coordinates are further east than bounding box of resource'
+                    error_summary['longitude coordinates'] = u'east and west coordinates are further east than bounding box of resource'
                     errors['east'] = [u'coordinate is further east than bounding box of resource']
                     errors['west'] = [u'coordinate is further east than bounding box of resource']
                 if eastf < float(data['bbox'][0]) and westf < float(data['bbox'][0]):
-                    error_summary['coordinates'] = u'east and west coordinates are further west than bounding box of resource'
+                    error_summary['longitude coordinates'] = u'east and west coordinates are further west than bounding box of resource'
                     errors['east'] = [u'coordinate is further west than bounding box of resource']
                     errors['west'] = [u'coordinate is further west than bounding box of resource']
             else:
@@ -252,10 +253,16 @@ class SubsetController(base.BaseController):
                 errors['time_start'] = [u'Time is after maximum']
                 errors['time_end'] = [u'Time is after maximum']
                 error_summary['time'] = u'The provided time range must intersect the dataset time range'
+
             if given_start < package_start and given_end < package_start:
                 errors['time_start'] = [u'Time is before minimum']
                 errors['time_end'] = [u'Time is before minimum']
-                error_summary['time'] = u'The provided time range must intersect the dataset time range '
+                error_summary['time'] = u'The provided time range must intersect the dataset time range'
+
+            if abs(relativedelta(given_end, given_start).years) > 5:
+                errors['time_start'] = [u'Change time range']
+                errors['time_end'] = [u'Change time range']
+                error_summary['time'] = u'Currently we only support time ranges lower than 6 years'
 
         if data['time_start'] != "" and data['time_end'] == "":
             errors['time_end'] = [u'Missing value']
