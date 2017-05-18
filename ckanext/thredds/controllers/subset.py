@@ -102,6 +102,10 @@ class SubsetController(base.BaseController):
 
             data['pkg'] = package
 
+            data['organizations'] = []
+            for org in toolkit.get_action('organization_list_for_user')(context, {'permission': 'create_dataset'}):
+                data['organizations'].append({'value': org['id'], 'text': org['display_name']})
+
             vars = {'data': data, 'errors': errors, 'error_summary': error_summary}
             return toolkit.render('subset_create.html', extra_vars=vars)
 
@@ -312,6 +316,7 @@ class SubsetController(base.BaseController):
                 new_package = dict(package)
                 new_package.pop('id')
                 new_package.pop('resources')
+                new_package['owner_org'] = data['organization']
                 new_package['name'] = data['name']
                 new_package['title'] = data['title']
                 new_package['private'] = data['private']
