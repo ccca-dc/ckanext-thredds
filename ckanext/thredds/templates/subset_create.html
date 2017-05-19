@@ -90,7 +90,7 @@
 
                       {{ form.prepend('name', id='field-name', label=_('URL'), value=data.name, error=errors.name, prepend=prefix, placeholder=_('eg. my-dataset'), attrs=attrs, is_required=true) }}
 
-                      {{ form.select('organization', label=_('Organization'), options=data.organizations) }}
+                      {{ form.select('organization', label=_('Organization'), options=data.organizations, selected=data.organization) }}
 
                       <h4> Should the resource be quotable? (dataset becomes public and cannot be set private again) </h4>
                       <input type="radio" name="private" value="False" {{ "checked " if data.private == "False" }}> Yes &emsp;
