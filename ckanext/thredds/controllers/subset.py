@@ -323,6 +323,9 @@ class SubsetController(base.BaseController):
                 new_package = dict(package)
                 new_package.pop('id')
                 new_package.pop('resources')
+                new_package.pop('groups')
+                new_package.pop('relationships_as_subject')
+                new_package.pop('relationships_as_object')
                 new_package['owner_org'] = data['organization']
                 new_package['name'] = data['name']
                 new_package['title'] = data['title']
