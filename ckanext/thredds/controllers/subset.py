@@ -341,7 +341,9 @@ class SubsetController(base.BaseController):
                     new_package['iso_exTempEnd'] = data['time_end']
 
                 # add subset creator
-                new_package['contact_info'] = ast.literal_eval(package['contact_info'])
+                new_package['contact_info'] = []
+                if 'contact_info' in package:
+                    new_package['contact_info'] = ast.literal_eval(package['contact_info'])
                 new_package['contact_info'].extend([context['auth_user_obj'].fullname, "", context['auth_user_obj'].email, "Subset Creator"])
 
                 # need to pop package otherwise it overwrites the current pkg
