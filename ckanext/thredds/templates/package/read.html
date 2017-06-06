@@ -1,0 +1,26 @@
+{% ckan_extends %}
+
+{% set pkg = c.pkg_dict %}
+
+{% block package_resources %}
+{% set parent = h.get_parent_dataset(pkg.id) %}
+{% set children = h.get_children_datasets(pkg.id) %}
+    {% if parent != None or children != None %}
+        <h3>Subset</h3>
+        {% if parent != None %}
+            {% set url=h.url_for(controller='package', action='read', id=parent.name) %}
+            <p> This dataset is a subset of <a href="{{ url }}">{{ parent.name }}</a></p>
+        {% endif %}
+
+        {% if children != None %}
+            <p>Subsets of this dataset:</p>
+            <ul>
+            {% for child in children %}
+              {% set url=h.url_for(controller='package', action='read', id=child.name) %}
+              <li><a href="{{ url }}">{{ child.name }}</a></li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    {% endif %}
+{{ super() }}
+{% endblock %}

@@ -1,6 +1,7 @@
 import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
 import ckanext.thredds.logic.action as action
+from ckanext.thredds import helpers
 
 
 class ThreddsPlugin(plugins.SingletonPlugin):
@@ -8,6 +9,7 @@ class ThreddsPlugin(plugins.SingletonPlugin):
     plugins.implements(plugins.IResourceView, inherit=True)
     plugins.implements(plugins.IRoutes, inherit=True)
     plugins.implements(plugins.IActions)
+    plugins.implements(plugins.ITemplateHelpers)
 
     # IConfigurer
 
@@ -68,3 +70,10 @@ class ThreddsPlugin(plugins.SingletonPlugin):
         actions = {'thredds_get_layers': action.thredds_get_layers,
                    'thredds_get_layerdetails': action.thredds_get_layerdetails}
         return actions
+
+    # ITemplateHelpers
+    def get_helpers(self):
+        return {
+            'get_parent_dataset': helpers.get_parent_dataset,
+            'get_children_datasets': helpers.get_children_datasets
+            }
