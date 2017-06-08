@@ -33,3 +33,14 @@ def get_children_datasets(package_id):
         return children
     except:
         return None
+
+
+def get_parent_resource(resource):
+    ctx = {'model': model}
+
+    try:
+        parent_resource = tk.get_action('resource_show')(ctx, {'id': resource['subset_of']})
+
+        return parent_resource
+    except:
+        return None

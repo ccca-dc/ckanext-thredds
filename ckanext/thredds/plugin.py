@@ -75,5 +75,6 @@ class ThreddsPlugin(plugins.SingletonPlugin):
     def get_helpers(self):
         return {
             'get_parent_dataset': helpers.get_parent_dataset,
-            'get_children_datasets': helpers.get_children_datasets
+            'get_children_datasets': helpers.get_children_datasets,
+            'get_parent_resource': helpers.get_parent_resource
             }

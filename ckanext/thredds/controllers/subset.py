@@ -247,22 +247,23 @@ class SubsetController(base.BaseController):
             times_exist = True
             given_start = h.date_str_to_datetime(data['time_start'])
             given_end = h.date_str_to_datetime(data['time_end'])
-            package_start = h.date_str_to_datetime(package['iso_exTempStart'])
-            package_end = h.date_str_to_datetime(package['iso_exTempEnd'])
-            if given_start > package_end and given_end > package_end:
-                errors['time_start'] = [u'Time is after maximum']
-                errors['time_end'] = [u'Time is after maximum']
-                error_summary['time'] = u'The provided time range must intersect the dataset time range'
+            if 'iso_exTempStart' in package and 'iso_exTempEnd' in package:
+                package_start = h.date_str_to_datetime(package['iso_exTempStart'])
+                package_end = h.date_str_to_datetime(package['iso_exTempEnd'])
+                if given_start > package_end and given_end > package_end:
+                    errors['time_start'] = [u'Time is after maximum']
+                    errors['time_end'] = [u'Time is after maximum']
+                    error_summary['time'] = u'The provided time range must intersect the dataset time range'
 
-            if given_start < package_start and given_end < package_start:
-                errors['time_start'] = [u'Time is before minimum']
-                errors['time_end'] = [u'Time is before minimum']
-                error_summary['time'] = u'The provided time range must intersect the dataset time range'
+                if given_start < package_start and given_end < package_start:
+                    errors['time_start'] = [u'Time is before minimum']
+                    errors['time_end'] = [u'Time is before minimum']
+                    error_summary['time'] = u'The provided time range must intersect the dataset time range'
 
-            if abs(relativedelta(given_end, given_start).years) > 5:
-                errors['time_start'] = [u'Change time range']
-                errors['time_end'] = [u'Change time range']
-                error_summary['time'] = u'Currently we only support time ranges lower than 6 years'
+                if abs(relativedelta(given_end, given_start).years) > 5:
+                    errors['time_start'] = [u'Change time range']
+                    errors['time_end'] = [u'Change time range']
+                    error_summary['time'] = u'Currently we only support time ranges lower than 6 years'
 
         if data['time_start'] != "" and data['time_end'] == "":
             errors['time_end'] = [u'Missing value']
@@ -354,7 +355,7 @@ class SubsetController(base.BaseController):
                 context.pop('package')
 
                 new_package = toolkit.get_action('package_create')(context, new_package)
-                new_resource = toolkit.get_action('resource_create')(context, {'name': resource['name'], 'url': url_for_res, 'package_id': new_package['id'], 'format': data['accept']})
+                new_resource = toolkit.get_action('resource_create')(context, {'name': resource['name'], 'url': url_for_res, 'package_id': new_package['id'], 'format': data['accept'], 'subset_of': resource['id']})
 
                 toolkit.get_action('package_relationship_create')(context, {'subject': new_package['id'], 'object': package['id'], 'type': 'child_of'})
 
