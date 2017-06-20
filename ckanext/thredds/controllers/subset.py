@@ -355,9 +355,15 @@ class SubsetController(base.BaseController):
                 context.pop('package')
 
                 new_package = toolkit.get_action('package_create')(context, new_package)
-                new_resource = toolkit.get_action('resource_create')(context, {'name': resource['name'], 'url': url_for_res, 'package_id': new_package['id'], 'format': data['accept'], 'subset_of': resource['id']})
 
-                toolkit.get_action('package_relationship_create')(context, {'subject': new_package['id'], 'object': package['id'], 'type': 'child_of'})
+                new_resource = toolkit.get_action('resource_create')(context, {'name': 'subset_' + resource['name'], 'url': url_for_res, 'package_id': new_package['id'], 'format': data['accept'], 'subset_of': resource['id']})
+
+                toolkit.get_action('package_relationship_create')(context, {'subject': package['id'], 'object': new_package['id'], 'type': 'parent_of'})
+
+                new_package = toolkit.get_action('package_show')(context, {'id': new_package['id']})
+                package = toolkit.get_action('package_show')(context, {'id': package['id']})
+                toolkit.get_action('package_update')(context, new_package)
+                toolkit.get_action('package_update')(context, package)
 
                 redirect(h.url_for(controller='package', action='resource_read',
                                    id=new_package['id'], resource_id=new_resource['id']))
