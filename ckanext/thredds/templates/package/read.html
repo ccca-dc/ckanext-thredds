@@ -7,23 +7,26 @@
 {% block package_resources %}
 {% set parent = h.get_parent_dataset(pkg.id) %}
 {% set children = h.get_children_datasets(pkg.id) %}
-    {% if parent != None or children != None %}
-        <h3>Relationships</h3>
-        {% if parent != None %}
-            {% set url=h.url_for(controller='package', action='read', id=parent.name) %}
-            <p> This dataset is a child of <a href="{{ url }}">{{ parent.title }}</a></p>
-        {% endif %}
+    {% if parent != None %}
+        <h3>Relationship</h3>
+        {% set url=h.url_for(controller='package', action='read', id=parent.name) %}
+        <p> This dataset is derived from <a href="{{ url }}">{{ parent.title }}</a></p>
+    {% endif %}
 
-        {% if children != None %}
-            <a href="#dataset_subsets" class="btn" data-toggle="collapse">Children of this dataset</a>
-                <div id="dataset_subsets" class="collapse">
-                    <ul id="subset_list">
-                    {% for child in children %}
-                      {% set url=h.url_for(controller='package', action='read', id=child.name) %}
-                      <li><a href="{{ url }}">{{ child.title }}</a></li>
-                    {% endfor %}
-                    </ul>
-                </div>
+    {% if children != None %}
+        {% if parent == None %}
+        <a href="#dataset_subsets" class="btn" data-toggle="collapse">Relationship</a>
+            <div id="dataset_subsets" class="collapse">
+        {% endif %}
+                <p><b>The following datasets are deriven from this dataset:</b></p>
+                <ul id="subset_list">
+                {% for child in children %}
+                  {% set url=h.url_for(controller='package', action='read', id=child.name) %}
+                  <li><a href="{{ url }}">{{ child.title }}</a></li>
+                {% endfor %}
+                </ul>
+        {% if parent == None %}
+            </div>
         {% endif %}
     {% endif %}
 {{ super() }}
