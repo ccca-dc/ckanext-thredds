@@ -6,14 +6,14 @@
 
 {% block package_resources %}
 {% set parent = h.get_parent_dataset(pkg.id) %}
-{% set children = h.get_children_datasets(pkg.id) %}
+{% set children = h.get_public_children_datasets(pkg.id) %}
     {% if parent != None %}
         <h3>Relationship</h3>
         {% set url=h.url_for(controller='package', action='read', id=parent.name) %}
         <p> This dataset is derived from <a href="{{ url }}">{{ parent.title }}</a></p>
     {% endif %}
 
-    {% if children != None %}
+    {% if children|length > 0 %}
         {% if parent == None %}
         <a href="#dataset_subsets" class="btn" data-toggle="collapse">Relationship</a>
             <div id="dataset_subsets" class="collapse">
