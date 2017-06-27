@@ -1,0 +1,33 @@
+{% resource 'thredds/css/subset.css' %}
+
+{% ckan_extends %}
+
+{% set pkg = c.pkg_dict %}
+
+{% block package_resources %}
+{% set parent = h.get_parent_dataset(pkg.id) %}
+{% set children = h.get_public_children_datasets(pkg.id) %}
+    {% if parent != None %}
+        <h3>Relationship</h3>
+        {% set url=h.url_for(controller='package', action='read', id=parent.name) %}
+        <p> This dataset is derived from <a href="{{ url }}">{{ parent.title }}</a></p>
+    {% endif %}
+
+    {% if children|length > 0 %}
+        {% if parent == None %}
+        <a href="#dataset_subsets" class="btn" data-toggle="collapse">Relationship</a>
+            <div id="dataset_subsets" class="collapse">
+        {% endif %}
+                <p><b>The following datasets are deriven from this dataset:</b></p>
+                <ul id="subset_list">
+                {% for child in children %}
+                  {% set url=h.url_for(controller='package', action='read', id=child.name) %}
+                  <li><a href="{{ url }}">{{ child.title }}</a></li>
+                {% endfor %}
+                </ul>
+        {% if parent == None %}
+            </div>
+        {% endif %}
+    {% endif %}
+{{ super() }}
+{% endblock %}
