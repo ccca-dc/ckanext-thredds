@@ -80,13 +80,19 @@ class SubsetController(base.BaseController):
         else:
             data['all_layers'] = []
 
-            try:
-                layers = toolkit.get_action('thredds_get_layers')(context, {'id': resource['id']})
-                layer_details = toolkit.get_action('thredds_get_layerdetails')(context, {'id': resource['id'], 'layer': layers[0]['children'][0]['id']})
-            except Exception:
-                h.flash_error("This resource cannot create a subset")
-                redirect(h.url_for(controller='package', action='resource_read',
-                                   id=package['id'], resource_id=resource['id']))
+            from ckanapi import RemoteCKAN
+            demo = RemoteCKAN('https://sandboxdc.ccca.ac.at', apikey='b43be9c0-bcd9-4a1a-85a8-1f6ba5d49fc2')
+
+            layers = demo.call_action('thredds_get_layers', {'id': '88d350e9-5e91-4922-8d8c-8857553d5d2f'})
+            layer_details = demo.call_action('thredds_get_layerdetails',{'id':'88d350e9-5e91-4922-8d8c-8857553d5d2f','layer': layers[0]['children'][0]['id']})
+
+            # try:
+            #     layers = toolkit.get_action('thredds_get_layers')(context, {'id': resource['id']})
+            #     layer_details = toolkit.get_action('thredds_get_layerdetails')(context, {'id': resource['id'], 'layer': layers[0]['children'][0]['id']})
+            # except Exception:
+            #     h.flash_error("This resource cannot create a subset")
+            #     redirect(h.url_for(controller='package', action='resource_read',
+            #                        id=package['id'], resource_id=resource['id']))
 
             data['bbox'] = layer_details['bbox']
 
@@ -319,6 +325,15 @@ class SubsetController(base.BaseController):
 
                 ckan_url = config.get('ckan.site_url', '')
                 url_for_res = ckan_url + url
+
+                # check if url already exists
+                search_results = toolkit.get_action('resource_search')(context, {'query': "url:" + url_for_res})
+
+                if search_results['count'] > 0:
+                    h.flash_notice('This subset already exists.')
+                    redirect(h.url_for(controller='package', action='resource_read',
+                                       id=search_results['results'][0]['package_id'], resource_id=search_results['results'][0]['id']))
+
 
                 # creating new package from the current one with few changes
                 new_package = dict(package)
