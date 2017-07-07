@@ -80,19 +80,13 @@ class SubsetController(base.BaseController):
         else:
             data['all_layers'] = []
 
-            from ckanapi import RemoteCKAN
-            demo = RemoteCKAN('https://sandboxdc.ccca.ac.at', apikey='b43be9c0-bcd9-4a1a-85a8-1f6ba5d49fc2')
-
-            layers = demo.call_action('thredds_get_layers', {'id': '88d350e9-5e91-4922-8d8c-8857553d5d2f'})
-            layer_details = demo.call_action('thredds_get_layerdetails',{'id':'88d350e9-5e91-4922-8d8c-8857553d5d2f','layer': layers[0]['children'][0]['id']})
-
-            # try:
-            #     layers = toolkit.get_action('thredds_get_layers')(context, {'id': resource['id']})
-            #     layer_details = toolkit.get_action('thredds_get_layerdetails')(context, {'id': resource['id'], 'layer': layers[0]['children'][0]['id']})
-            # except Exception:
-            #     h.flash_error("This resource cannot create a subset")
-            #     redirect(h.url_for(controller='package', action='resource_read',
-            #                        id=package['id'], resource_id=resource['id']))
+            try:
+                layers = toolkit.get_action('thredds_get_layers')(context, {'id': resource['id']})
+                layer_details = toolkit.get_action('thredds_get_layerdetails')(context, {'id': resource['id'], 'layer': layers[0]['children'][0]['id']})
+            except Exception:
+                h.flash_error("This resource cannot create a subset")
+                redirect(h.url_for(controller='package', action='resource_read',
+                                   id=package['id'], resource_id=resource['id']))
 
             data['bbox'] = layer_details['bbox']
 
@@ -330,10 +324,13 @@ class SubsetController(base.BaseController):
                 search_results = toolkit.get_action('resource_search')(context, {'query': "url:" + url_for_res})
 
                 if search_results['count'] > 0:
-                    h.flash_notice('This subset already exists.')
-                    redirect(h.url_for(controller='package', action='resource_read',
-                                       id=search_results['results'][0]['package_id'], resource_id=search_results['results'][0]['id']))
-
+                    public_res_url = h.url_for(controller='package', action='resource_read',
+                                       id=search_results['results'][0]['package_id'], resource_id=search_results['results'][0]['id'])
+                    if data['private'] == 'False':
+                        h.flash_notice('This subset already exists.')
+                        redirect(public_res_url)
+                    else:
+                        h.flash_notice('<strong>Hint!</strong> You cannot set this dataset public, because another <strong><a href="' + public_res_url + '" class="alert-link">subset</a></strong> with this query is already public.', allow_html=True)
 
                 # creating new package from the current one with few changes
                 new_package = dict(package)

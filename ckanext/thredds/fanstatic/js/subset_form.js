@@ -151,10 +151,10 @@ this.ckan.module('subset-form', function (jQuery, _) {
         var featureGroupToInput = function(fg, input){
             if(drawnItems.getLayers()[0].toGeoJSON().geometry.type == "Polygon"){
                 var bounds = drawnItems.getLayers()[0].getBounds();
-                $('#north').val(bounds._northEast.lat);
-                $('#east').val(bounds._northEast.lng);
-                $('#south').val(bounds._southWest.lat);
-                $('#west').val(bounds._southWest.lng);
+                $('#north').val(bounds._northEast.lat.toFixed(4));
+                $('#east').val(bounds._northEast.lng.toFixed(4));
+                $('#south').val(bounds._southWest.lat.toFixed(4));
+                $('#west').val(bounds._southWest.lng.toFixed(4));
 
                 $('#southWest').show();
                 $('label[for="north"]').text("North");
@@ -166,8 +166,8 @@ this.ckan.module('subset-form', function (jQuery, _) {
                 $.each(gj, function(index, value){ polyarray.push(value.geometry.coordinates); });
                 mp = {"type": "MultiPolygon", "coordinates": polyarray};
 
-                $('#north').val(drawnItems.getLayers()[0]._latlng.lat);
-                $('#east').val(drawnItems.getLayers()[0]._latlng.lng);
+                $('#north').val(drawnItems.getLayers()[0]._latlng.lat.toFixed(4));
+                $('#east').val(drawnItems.getLayers()[0]._latlng.lng.toFixed(4));
                 $('#south').val("");
                 $('#west').val("");
                 $('#southWest').hide();
