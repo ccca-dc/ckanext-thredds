@@ -111,6 +111,23 @@ this.ckan.module('subset-form', function (jQuery, _) {
         var drawnItems = new L.FeatureGroup();
         map.addLayer(drawnItems);
 
+        var geojsonFeature = {
+            "type": "Feature",
+            "properties": {
+                "name": "Coors Field",
+                "amenity": "Baseball Stadium",
+                "popupContent": "This is where the Rockies play!"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [-104.99404, 39.75621]
+            }
+        };
+
+        bla = L.geoJson(geojsonFeature).addTo(map);
+        console.log(bla)
+
+
 
         /* Add GeoJSON layers for any GeoJSON resources of the dataset */
         //var existingLayers = {};
@@ -149,7 +166,11 @@ this.ckan.module('subset-form', function (jQuery, _) {
          * update inputid with that Multipolygon's geometry
          */
         var featureGroupToInput = function(fg, input){
-            if(drawnItems.getLayers()[0].toGeoJSON().geometry.type == "Polygon"){
+            geometry_type = fg.getLayers()[0].toGeoJSON().geometry.type;
+            if(geometry_type != "MultiPolygon"){
+                document.getElementById("select-extent").selectedIndex = "0";
+            }
+            if(geometry_type == "Polygon" || geometry_type == "MultiPolygon"){
                 var bounds = drawnItems.getLayers()[0].getBounds();
                 $('#north').val(bounds._northEast.lat.toFixed(4));
                 $('#east').val(bounds._northEast.lng.toFixed(4));
@@ -212,6 +233,15 @@ this.ckan.module('subset-form', function (jQuery, _) {
             $('#west').val("");
         });
 
+        $('#select-extent').on('change', function(e) {
+            drawnItems.clearLayers();
+            extent = L.geoJson(JSON.parse($("#select-extent").val()));
+            drawnItems.addLayer(extent);
+
+            featureGroupToInput(extent, this.input);
+        });
+
     }
+
   }
 });
