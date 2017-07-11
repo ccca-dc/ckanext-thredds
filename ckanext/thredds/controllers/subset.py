@@ -320,6 +320,18 @@ class SubsetController(base.BaseController):
                 ckan_url = config.get('ckan.site_url', '')
                 url_for_res = ckan_url + url
 
+                # check if url already exists
+                search_results = toolkit.get_action('resource_search')(context, {'query': "url:" + url_for_res})
+
+                if search_results['count'] > 0:
+                    public_res_url = h.url_for(controller='package', action='resource_read',
+                                       id=search_results['results'][0]['package_id'], resource_id=search_results['results'][0]['id'])
+                    if data['private'] == 'False':
+                        h.flash_notice('This subset already exists. Please use this subset for citation.')
+                        redirect(public_res_url)
+                    else:
+                        h.flash_notice('This dataset cannot be set public, because another <strong><a href="' + public_res_url + '" class="alert-link">subset</a></strong> with this query is already public.', allow_html=True)
+
                 # creating new package from the current one with few changes
                 new_package = dict(package)
                 new_package.pop('id')

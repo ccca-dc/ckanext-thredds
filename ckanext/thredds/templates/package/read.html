@@ -18,7 +18,7 @@
         <a href="#dataset_subsets" class="btn" data-toggle="collapse">Relationship</a>
             <div id="dataset_subsets" class="collapse">
         {% endif %}
-                <p><b>The following datasets are deriven from this dataset:</b></p>
+                <p><b>The following datasets are derived from this dataset:</b></p>
                 <ul id="subset_list">
                 {% for child in children %}
                   {% set url=h.url_for(controller='package', action='read', id=child.name) %}

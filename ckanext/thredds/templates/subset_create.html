@@ -34,6 +34,34 @@
                 <div id="dataset-map-container"></div>
               </div>
             {{ form.info(text="Draw the subset extent on the map", inline=false) }}
+
+            {% set austria = h.scheming_get_json_objects('austria.geojson') %}
+              {% set states = h.scheming_get_json_objects('austria_states.geojson') %}
+              {% set districts = h.scheming_get_json_objects('austria_districts.geojson') %}
+              {% set municipalities = h.scheming_get_json_objects('austria_municipalities.geojson') %}
+
+              <br>
+
+              <select id="select-extent">
+                <option value="">-- Select pre-defined extent --</option>
+                {% for area in austria %}
+                  <option value="{{ area['geometry'] | replace("u'","\"") | replace("'","\"") | empty_and_escape }}">{{ area['properties']['Area_Name'].title() }}</option>
+                {% endfor %}
+                <option disabled>States:</option>
+                {% for area in states %}
+                  <option value="{{ area['geometry'] | replace("u'","\"") | replace("'","\"") | empty_and_escape }}">{{ area['properties']['Area_Name'].title() }}</option>
+                {% endfor %}
+                <option disabled>Districts:</option>
+                {% for area in districts %}
+                  <option value="{{ area['geometry'] | replace("u'","\"") | replace("'","\"") | empty_and_escape }}">{{ area['properties']['Area_Name'].title() }}</option>
+                {% endfor %}
+                <option disabled>Municipalities:</option>
+                {% for area in municipalities %}
+                  <option value="{{ area['geometry'] | replace("u'","\"") | replace("'","\"") | empty_and_escape }}">{{ area['properties']['Area_Name'].capitalize() }}</option>
+                {% endfor %}
+            </select>
+
+
             <br>
             {% if data.point == False or data.point is not defined %}
                 {% call form.input('north', id='north', label=_('North'), value=data.north, error=errors.north) %}

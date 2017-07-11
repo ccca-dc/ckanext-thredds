@@ -1,40 +1,21 @@
-.. You should enable this project on travis-ci.org and coveralls.io to make
-   these badges work. The necessary Travis and Coverage config files have been
-   generated for you.
-
-.. image:: https://travis-ci.org/sureL89/ckanext-thredds.svg?branch=master
-    :target: https://travis-ci.org/sureL89/ckanext-thredds
-
-.. image:: https://coveralls.io/repos/sureL89/ckanext-thredds/badge.svg
-  :target: https://coveralls.io/r/sureL89/ckanext-thredds
-
-.. image:: https://pypip.in/download/ckanext-thredds/badge.svg
-    :target: https://pypi.python.org/pypi//ckanext-thredds/
-    :alt: Downloads
-
-.. image:: https://pypip.in/version/ckanext-thredds/badge.svg
-    :target: https://pypi.python.org/pypi/ckanext-thredds/
-    :alt: Latest Version
-
-.. image:: https://pypip.in/py_versions/ckanext-thredds/badge.svg
-    :target: https://pypi.python.org/pypi/ckanext-thredds/
-    :alt: Supported Python versions
-
-.. image:: https://pypip.in/status/ckanext-thredds/badge.svg
-    :target: https://pypi.python.org/pypi/ckanext-thredds/
-    :alt: Development Status
-
-.. image:: https://pypip.in/license/ckanext-thredds/badge.svg
-    :target: https://pypi.python.org/pypi/ckanext-thredds/
-    :alt: License
-
-=============
 ckanext-thredds
 =============
 
-.. Put a description of your extension here:
-   What does it do? What features does it have?
-   Consider including some screenshots or embedding a video!
+
+This extensions allows you to create subsets of NetCDF files.
+
+![Create Subset](doc/img/create_subset.png)
+
+A created NCSS query looks like this:
+
+![Link](doc/img/link.png)
+
+The created relationship exists between the resources as well as between the
+datasets. The relationship between the datasets is displayed like this:
+
+![Relationship Child](doc/img/relationship_child.png)
+
+![Relationship Child](doc/img/relationship_parent.png)
 
 
 ------------

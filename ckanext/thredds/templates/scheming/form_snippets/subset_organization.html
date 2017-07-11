@@ -1,0 +1,58 @@
+{# This is specific to datasets' owner_org field and won't work #}
+{# if used with other fields #}
+
+{% macro organization_option_tag(organization, selected_org) %}
+  {% block organization_option scoped %}
+    <option value="{{ organization.id }}"{%
+      if selected_org %} selected="selected"{% endif
+      %}>{{ organization.display_name }}</option>
+  {% endblock %}
+{% endmacro %}
+
+  <div data-module="dataset-visibility">
+  {% snippet "scheming/form_snippets/_organization_select.html",
+    field=field,
+    data=data,
+    errors=errors,
+    organizations_available=h.organizations_available('create_dataset'),
+    org_required=not h.check_config_permission('create_unowned_dataset')
+      or h.scheming_field_required(field),
+    organization_option_tag=organization_option_tag %}
+
+  {% block package_metadata_fields_visibility %}
+    <div class="control-group">
+      <label for="field-private" class="control-label">{{ _('Visibility') }}</label>
+      <div class="controls">
+        {% if data.private == false %}
+            <input value="public" readonly="readonly" type="text"/>
+        {% else %}
+            {% set subset_uniqueness = h.check_subset_uniqueness(data.id) if data.id is not undefined else [] %}
+            {% if subset_uniqueness|length > 0 %}
+                <input value="private" readonly="readonly" type="text"/>
+                <br><br>
+                <div class="alert alert-info">
+                    <button type="button" class="close" data-dismiss="alert">&times;</button>
+                    This dataset cannot be set public, because a
+                    <strong><a href="{{ subset_uniqueness[0]['public_resource'] }}">subset</a></strong>
+                    with the same query as your
+                    <strong><a href="{{ subset_uniqueness[0]['private_resource'] }}" class="alert-link">subset</a></strong>
+                    is already public and should be used for citation.
+                    <strong>Hint!</strong> You can delete your subset and then set the dataset public.
+                </div>
+            {% else %}
+                <select id="field-private" name="private">
+                  {% for option in [('True', _('Private')), ('False', _('Public'))] %}
+                  <option value="{{ option[0] }}" {% if option[0] == data.private|trim %}selected="selected"{% endif %}>{{ option[1] }}</option>
+                  {% endfor %}
+                </select>
+            {% endif %}
+        {% endif %}
+      </div>
+      <div class="info-block info-inline">
+          <i class="icon-info-sign"></i>
+          Server operation variable: Shall your dataset be visible to others? (default: no! - private)
+          <b>Attention:</b> Once set public it cannot be set private again nor can it be deleted!<br>
+     </div>
+    </div>
+  {% endblock %}
+  </div>
