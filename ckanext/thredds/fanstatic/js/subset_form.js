@@ -111,24 +111,6 @@ this.ckan.module('subset-form', function (jQuery, _) {
         var drawnItems = new L.FeatureGroup();
         map.addLayer(drawnItems);
 
-        var geojsonFeature = {
-            "type": "Feature",
-            "properties": {
-                "name": "Coors Field",
-                "amenity": "Baseball Stadium",
-                "popupContent": "This is where the Rockies play!"
-            },
-            "geometry": {
-                "type": "Point",
-                "coordinates": [-104.99404, 39.75621]
-            }
-        };
-
-        bla = L.geoJson(geojsonFeature).addTo(map);
-        console.log(bla)
-
-
-
         /* Add GeoJSON layers for any GeoJSON resources of the dataset */
         //var existingLayers = {};
         var url = window.location.href.split('dataset/edit/');
@@ -158,6 +140,17 @@ this.ckan.module('subset-form', function (jQuery, _) {
 
             },
             edit: { featureGroup: drawnItems }
+        });
+        var drawControlGeoJson = new L.Control.Draw({
+            draw: {
+                polyline: false,
+                circle: false,
+                marker: true,
+                polygon: false,
+                rectangle: {repeatMode: false}
+
+            },
+            edit: false
         });
         map.addControl(drawControl);
 
@@ -219,6 +212,9 @@ this.ckan.module('subset-form', function (jQuery, _) {
                 document.getElementById("radio_csv").disabled=false;
                 document.getElementById("radio_xml").disabled=false;
             }
+
+            map.removeControl(drawControlGeoJson);
+            map.addControl(drawControl);
         });
 
         map.on('draw:editstop', function(e){
@@ -239,6 +235,9 @@ this.ckan.module('subset-form', function (jQuery, _) {
             drawnItems.addLayer(extent);
 
             featureGroupToInput(extent, this.input);
+
+            map.removeControl(drawControl);
+            map.addControl(drawControlGeoJson);
         });
 
     }
