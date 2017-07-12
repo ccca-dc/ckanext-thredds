@@ -10,6 +10,7 @@ class ThreddsPlugin(plugins.SingletonPlugin):
     plugins.implements(plugins.IRoutes, inherit=True)
     plugins.implements(plugins.IActions)
     plugins.implements(plugins.ITemplateHelpers)
+    plugins.implements(plugins.IPackageController, inherit=True)
 
     # IConfigurer
 
@@ -79,3 +80,9 @@ class ThreddsPlugin(plugins.SingletonPlugin):
             'get_parent_resource': helpers.get_parent_resource,
             'check_subset_uniqueness': helpers.check_subset_uniqueness
             }
+
+    # IPackageController
+    def after_show(self, context, data_dict):
+        # Fix for relationship problem
+        data_dict.pop('relationships_as_object', None)
+        data_dict.pop('relationships_as_subject', None)

@@ -337,8 +337,6 @@ class SubsetController(base.BaseController):
                 new_package.pop('id')
                 new_package.pop('resources')
                 new_package.pop('groups')
-                new_package.pop('relationships_as_subject')
-                new_package.pop('relationships_as_object')
                 new_package.pop('revision_id')
                 new_package['owner_org'] = data['organization']
                 new_package['name'] = data['name']
@@ -370,12 +368,7 @@ class SubsetController(base.BaseController):
 
                 new_resource = toolkit.get_action('resource_create')(context, {'name': 'subset_' + resource['name'], 'url': url_for_res, 'package_id': new_package['id'], 'format': data['accept'], 'subset_of': resource['id']})
 
-                toolkit.get_action('package_relationship_create')(context, {'subject': package['id'], 'object': new_package['id'], 'type': 'parent_of'})
-
-                new_package = toolkit.get_action('package_show')(context, {'id': new_package['id']})
-                package = toolkit.get_action('package_show')(context, {'id': package['id']})
-                toolkit.get_action('package_update')(context, new_package)
-                toolkit.get_action('package_update')(context, package)
+                toolkit.get_action('package_relationship_create')(context, {'subject': new_package['id'], 'object': package['id'], 'type': 'child_of'})
 
                 redirect(h.url_for(controller='package', action='resource_read',
                                    id=new_package['id'], resource_id=new_resource['id']))

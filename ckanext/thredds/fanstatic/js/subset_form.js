@@ -141,6 +141,7 @@ this.ckan.module('subset-form', function (jQuery, _) {
             },
             edit: { featureGroup: drawnItems }
         });
+        map.addControl(drawControl);
         var drawControlGeoJson = new L.Control.Draw({
             draw: {
                 polyline: false,
@@ -152,7 +153,6 @@ this.ckan.module('subset-form', function (jQuery, _) {
             },
             edit: false
         });
-        map.addControl(drawControl);
 
 
         /* Aggregate all features in a FeatureGroup into one MultiPolygon,
@@ -213,8 +213,10 @@ this.ckan.module('subset-form', function (jQuery, _) {
                 document.getElementById("radio_xml").disabled=false;
             }
 
-            map.removeControl(drawControlGeoJson);
-            map.addControl(drawControl);
+            if(drawControlGeoJson._map !== null && drawControlGeoJson._map !== undefined){
+                map.addControl(drawControl);
+                map.removeControl(drawControlGeoJson);
+            }
         });
 
         map.on('draw:editstop', function(e){
@@ -236,8 +238,10 @@ this.ckan.module('subset-form', function (jQuery, _) {
 
             featureGroupToInput(extent, this.input);
 
-            map.removeControl(drawControl);
-            map.addControl(drawControlGeoJson);
+            if(drawControl._map !== undefined){
+                map.removeControl(drawControl);
+                map.addControl(drawControlGeoJson);
+            }
         });
 
     }

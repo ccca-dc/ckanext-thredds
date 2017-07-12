@@ -29,9 +29,13 @@ def get_public_children_datasets(package_id):
         relationships = tk.get_action('package_relationships_list')(ctx, {'id': package_id, 'rel': 'parent_of'})
 
         for r in relationships:
-            child = tk.get_action('package_show')(ctx, {'id': r['object']})
-            if child['private'] is False and child['state'] == 'active':
-                children.append(child)
+            try:
+                child = tk.get_action('package_show')(ctx, {'id': r['object']})
+                if child['state'] == 'active':
+                    children.append(child)
+            except logic.NotAuthorized:
+                # resources should not be returned if not authorized
+                pass
     except:
         pass
 
