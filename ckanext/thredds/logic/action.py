@@ -6,6 +6,28 @@ from owslib.wms import WebMapService
 import os
 import requests
 import json
+import ckan.plugins.toolkit as toolkit
+import ckan.lib.helpers as h
+import ckan.logic as logic
+from ckan.model import (PACKAGE_NAME_MIN_LENGTH, PACKAGE_NAME_MAX_LENGTH)
+from dateutil.relativedelta import relativedelta
+from ckan.common import _
+import ckan.lib.navl.dictization_functions as df
+import urllib
+import ast
+import ckan.lib.base as base
+from pylons import config
+
+check_access = logic.check_access
+
+_get_or_bust = logic.get_or_bust
+
+abort = base.abort
+
+NotAuthorized = logic.NotAuthorized
+NotFound = logic.NotFound
+Invalid = df.Invalid
+ValidationError = logic.ValidationError
 
 
 @ckan.logic.side_effect_free
@@ -25,7 +47,7 @@ def thredds_get_layers(context, data_dict):
 
     # Get URL for WMS Proxy
     wms_url = 'https://sandboxdc.ccca.ac.at/tds_proxy/wms/' + resource_id
-    
+
     # Headers and payload for thredds request
     headers={'Authorization':user.apikey}
 
@@ -35,7 +57,7 @@ def thredds_get_layers(context, data_dict):
     # Thredds request
     r = requests.get(wms_url, params=payload, headers=headers)
     layer_tds = json.loads(r.content)
-    
+
     # Filter Contents
     layers_filter = []
     for idx,childa in enumerate(layer_tds['children']):
@@ -67,7 +89,7 @@ def thredds_get_layerdetails(context, data_dict):
 
     # Get URL for WMS Proxy
     wms_url = 'https://sandboxdc.ccca.ac.at/tds_proxy/wms/' + resource_id
-    
+
     headers={'Authorization':user.apikey}
 
     payload={'item':'layerDetails',
@@ -81,5 +103,263 @@ def thredds_get_layerdetails(context, data_dict):
         del layer_details['datesWithData']
     except:
         pass
-    
+
     return layer_details
+
+
+@ckan.logic.side_effect_free
+def subset_create(context, data_dict):
+    '''Return the details of the resources layer
+
+    :param id: the id or name of the resource
+    :type id: string
+    :param layers: the layer ids
+    :type layers: list of strings
+    :param accept: format (NetCDF, XML or CSV)
+    :param res_create: creation of resource or just download (optional, default = False)
+    :param private: the visibility of the package (optional, default = True)
+    :param organization: organization when creating a resource (optional, default = first of your organizations)
+    :param title: the title of the created resource
+    :param north: northern degree or latitude if point (optional)
+    :param east: east degree or longitude if point (optional)
+    :param south: southern degree (optional)
+    :param west: western degree (optional)
+    :time_start: start of time (optional)
+    :time_end: end of time (optional)
+    :rtype: dictionary
+    '''
+
+    id = _get_or_bust(data_dict, 'id')
+    resource = toolkit.get_action('resource_show')(context, {'id': id})
+    package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
+    accept = _get_or_bust(data_dict, 'accept')
+
+    errors = {}
+
+    # error section
+    # error coordinate section, checking if values are entered and floats
+    data_dict['point'] = False
+    northSouthOk = False
+    eastWestOk = False
+    if data_dict.get('north', "") != "" and data_dict.get('east', "") != "":
+        try:
+            float(data_dict['north'])
+            northSouthOk = True
+        except (TypeError, ValueError):
+            errors['north'] = [u'Coordinate incorrect']
+        try:
+            float(data_dict['east'])
+            eastWestOk = True
+        except (TypeError, ValueError):
+            errors['east'] = [u'Coordinate incorrect']
+
+        if data_dict['south'] != "" and data_dict['west'] != "":
+            try:
+                float(data_dict['south'])
+            except (TypeError, ValueError):
+                northSouthOk = False
+                errors['south'] = [u'Coordinate incorrect']
+            try:
+                float(data_dict['west'])
+            except (TypeError, ValueError):
+                eastWestOk = False
+                errors['west'] = [u'Coordinate incorrect']
+        elif data_dict['south'] == "" and data_dict['west'] == "":
+            data_dict['point'] = True
+        elif data_dict['south'] != "" and data_dict['west'] == "":
+            northSouthOk = False
+            eastWestOk = False
+            errors['west'] = [u'Missing value']
+        elif data_dict['south'] == "" and data_dict['west'] != "":
+            northSouthOk = False
+            eastWestOk = False
+            errors['south'] = [u'Missing value']
+    elif data_dict.get('north', "") != "" and data_dict.get('east', "") == "":
+        errors['east'] = [u'Missing value']
+    elif data_dict.get('north', "") == "" and data_dict.get('east', "") != "":
+        errors['north'] = [u'Missing value']
+
+    # error coordinate section, checking if values are inside bbox
+    if northSouthOk is True:
+        northf = float(data_dict['north'])
+        if data_dict['south'] != "":
+            southf = float(data_dict['south'])
+            if northf > float(data_dict['bbox'][3]) and southf > float(data_dict['bbox'][3]):
+                errors['north'] = [u'coordinate is further north than bounding box of resource']
+                errors['south'] = [u'coordinate is further north than bounding box of resource']
+            if northf < float(data_dict['bbox'][1]) and southf < float(data_dict['bbox'][1]):
+                errors['north'] = [u'coordinate is further south than bounding box of resource']
+                errors['south'] = [u'coordinate is further south than bounding box of resource']
+        else:
+            if northf > float(data_dict['bbox'][3]):
+                errors['north'] = [u'latitude is further north than bounding box of resource']
+            if northf < float(data_dict['bbox'][1]):
+                errors['north'] = [u'latitude is further south than bounding box of resource']
+
+    if eastWestOk is True:
+        eastf = float(data_dict['east'])
+        if data_dict['west'] != "":
+            westf = float(data_dict['west'])
+            if eastf > float(data_dict['bbox'][2]) and westf > float(data_dict['bbox'][2]):
+                errors['east'] = [u'coordinate is further east than bounding box of resource']
+                errors['west'] = [u'coordinate is further east than bounding box of resource']
+            if eastf < float(data_dict['bbox'][0]) and westf < float(data_dict['bbox'][0]):
+                errors['east'] = [u'coordinate is further west than bounding box of resource']
+                errors['west'] = [u'coordinate is further west than bounding box of resource']
+        else:
+            if eastf > float(data_dict['bbox'][2]):
+                errors['east'] = [u'longitude is further east than bounding box of resource']
+            if eastf < float(data_dict['bbox'][0]):
+                errors['east'] = [u'longitude is further west than bounding box of resource']
+
+    # error layer section
+    if 'layers' not in data_dict or data_dict["layers"] == '':
+        errors['layers'] = [u'Missing Value']
+
+    # error resource creation section
+    if data_dict.get('res_create', 'False') == 'True':
+        if data_dict.get('title', "") == '':
+            errors['title'] = [u'Missing Value']
+        if data_dict.get('name', "") == '':
+            errors['name'] = [u'Missing Value']
+        else:
+            try:
+                toolkit.get_action('package_show')(context, {'id': data_dict['name']})
+
+                errors['name'] = [u'That URL is already in use.']
+            except NotFound:
+                pass
+
+            if len(data_dict['name']) < PACKAGE_NAME_MIN_LENGTH:
+                errors['name'] = [u'URL is shorter than minimum (' + str(PACKAGE_NAME_MIN_LENGTH) + u')']
+            if len(data_dict['name']) > PACKAGE_NAME_MAX_LENGTH:
+                errors['name'] = [u'URL is longer than maximum (' + str(PACKAGE_NAME_MAX_LENGTH) + u')']
+        if data_dict.get('organization', "") == '':
+            errors['organization'] = [u'Missing Value']
+
+    # error time section
+    times_exist = False
+    if data_dict.get('time_start', "") != "" and data_dict.get('time_end', "") != "":
+        times_exist = True
+        given_start = h.date_str_to_datetime(data_dict['time_start'])
+        given_end = h.date_str_to_datetime(data_dict['time_end'])
+        if 'iso_exTempStart' in package and 'iso_exTempEnd' in package:
+            package_start = h.date_str_to_datetime(package['iso_exTempStart'])
+            package_end = h.date_str_to_datetime(package['iso_exTempEnd'])
+            if given_start > package_end and given_end > package_end:
+                errors['time_start'] = [u'Time is after maximum']
+                errors['time_end'] = [u'Time is after maximum']
+            elif given_start < package_start and given_end < package_start:
+                errors['time_start'] = [u'Time is before minimum']
+                errors['time_end'] = [u'Time is before minimum']
+
+            if abs(relativedelta(given_end, given_start).years) > 5:
+                errors['time_start'] = [u'Change time range']
+                errors['time_end'] = [u'Change time range']
+    elif data_dict.get('time_start', "") != "" and data_dict.get('time_end', "") == "":
+        errors['time_end'] = [u'Missing value']
+    elif data_dict.get('time_start', "") == "" and data_dict.get('time_end', "") != "":
+        errors['time_start'] = [u'Missing value']
+
+    # end of error section
+    if len(errors) > 0:
+        raise ValidationError(errors)
+    else:
+        # start building URL params with var (required)
+        if type(data_dict['layers']) is list:
+            params = {'var': ','.join(data_dict['layers'])}
+        else:
+            params = {'var': data_dict['layers']}
+
+        # adding accept (always has a value)
+        params['accept'] = accept
+
+        # adding time
+        if times_exist is True:
+            try:
+                time_start = h.date_str_to_datetime(data_dict['time_start']).isoformat()
+                time_end = h.date_str_to_datetime(data_dict['time_end']).isoformat()
+                if time_end < time_start:
+                    # swap times if start time before end time
+                    data_dict['time_start'], data_dict['time_end'] = data_dict['time_end'], data_dict['time_start']
+                params['time_start'] = time_start
+                params['time_end'] = time_end
+            except (TypeError, ValueError):
+                raise Invalid(_('Date format incorrect'))
+
+        # adding coordinates
+        if data_dict.get('north', "") != "" and data_dict.get('east', "") != "":
+            if data_dict['point'] is True:
+                params['latitude'] = data_dict['north']
+                params['longitude'] = data_dict['east']
+            else:
+                params['north'] = data_dict['north']
+                params['south'] = data_dict['south']
+                params['east'] = data_dict['east']
+                params['west'] = data_dict['west']
+
+        url = ('/tds_proxy/ncss/%s?%s' % (resource['id'], urllib.urlencode(params)))
+
+        return_dict = dict()
+
+        # create resource if requested from user
+        if data_dict.get('res_create', 'False') == 'True':
+            try:
+                check_access('package_show', context, {'id': package['id']})
+            except NotAuthorized:
+                abort(403, _('Unauthorized to show package'))
+
+            ckan_url = config.get('ckan.site_url', '')
+            url_for_res = ckan_url + url
+
+            # check if url already exists
+            search_results = toolkit.get_action('resource_search')(context, {'query': "url:" + url_for_res})
+
+            if search_results['count'] > 0:
+                return_dict['existing_resource'] = toolkit.get_action('resource_show')(context, {'id': search_results['results'][0]['id']})
+                if data_dict.get('private', 'True') == 'False':
+                    return return_dict
+
+            # creating new package from the current one with few changes
+            new_package = dict(package)
+            new_package.pop('id')
+            new_package.pop('resources')
+            new_package.pop('groups')
+            new_package.pop('revision_id')
+            new_package['owner_org'] = data_dict['organization']
+            new_package['name'] = data_dict['name']
+            new_package['title'] = data_dict['title']
+            new_package['private'] = data_dict.get('private', 'True')
+
+            # add bbox if added
+            if 'north' in params:
+                new_package['iso_northBL'] = params['north']
+                new_package['iso_southBL'] = params['south']
+                new_package['iso_eastBL'] = params['east']
+                new_package['iso_westBL'] = params['west']
+
+            # add time if added
+            if times_exist is True:
+                new_package['iso_exTempStart'] = data_dict['time_start']
+                new_package['iso_exTempEnd'] = data_dict['time_end']
+
+            # add subset creator
+            new_package['contact_info'] = []
+            if 'contact_info' in package:
+                new_package['contact_info'] = ast.literal_eval(package['contact_info'])
+            new_package['contact_info'].extend([context['auth_user_obj'].fullname, "", context['auth_user_obj'].email, "Subset Creator"])
+
+            # need to pop package otherwise it overwrites the current pkg
+            context.pop('package')
+
+            new_package = toolkit.get_action('package_create')(context, new_package)
+
+            new_resource = toolkit.get_action('resource_create')(context, {'name': 'subset_' + resource['name'], 'url': url_for_res, 'package_id': new_package['id'], 'format': accept, 'subset_of': resource['id']})
+
+            toolkit.get_action('package_relationship_create')(context, {'subject': new_package['id'], 'object': package['id'], 'type': 'child_of'})
+
+            return_dict['new_resource'] = new_resource
+        else:
+            # redirect to url if user doesn't want to create a package
+            return_dict['url'] = str(url)
+        return return_dict
