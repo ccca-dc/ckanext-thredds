@@ -218,7 +218,7 @@ class SubsetController(base.BaseController):
             error_summary['layers'] = u'Missing value'
 
         # error resource creation section
-        if data['res_create'] == 'True':
+        if data.get('res_create', 'False') == 'True':
             if data['title'] == '':
                 errors['title'] = [u'Missing Value']
                 error_summary['title'] = u'Missing value'
@@ -311,7 +311,7 @@ class SubsetController(base.BaseController):
             url = ('/tds_proxy/ncss/%s?%s' % (resource['id'], urllib.urlencode(params)))
 
             # create resource if requested from user
-            if data['res_create'] == 'True':
+            if data.get('res_create', 'False') == 'True':
                 try:
                     check_access('package_show', context, {'id': package['id']})
                 except NotAuthorized:
