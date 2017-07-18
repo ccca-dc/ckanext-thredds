@@ -14,7 +14,6 @@ import ckan.authz as authz
 import ckan.lib.navl.dictization_functions as df
 from ckan.common import _
 import ast
-import urllib
 from dateutil.relativedelta import relativedelta
 
 get_action = logic.get_action
@@ -127,7 +126,7 @@ class SubsetController(base.BaseController):
             if 'new_resource' in data:
                 if 'existing_resource' in data:
                     public_res_url = h.url_for(controller='package', action='resource_read',
-                                       id=data['existing_resource']['id'], resource_id=data['existing_resource']['package_id'])
+                                       id=data['existing_resource']['package_id'], resource_id=data['existing_resource']['id'])
                     h.flash_notice('This dataset cannot be set public, because another <strong><a href="' + public_res_url + '" class="alert-link">subset</a></strong> with this query is already public.', allow_html=True)
 
                 redirect(h.url_for(controller='package', action='resource_read',

@@ -111,30 +111,36 @@ def thredds_get_layerdetails(context, data_dict):
 def subset_create(context, data_dict):
     '''Return the details of the resources layer
 
-    :param id: the id or name of the resource
-    :type id: string
-    :param layers: the layer ids
-    :type layers: list of strings
-    :param accept: format (NetCDF, XML or CSV)
-    :param res_create: creation of resource or just download (optional, default = False)
+    :param id: the id of the resource of which a subset is to be created
+    :param layers: list of layer ids that should be included in the subset
+    :param accept: format of the subset (NetCDF, XML or CSV)
+    :param res_create: true if dataset with resource should be created, false
+        if subset should just be downloaded (optional, default = False)
     :param private: the visibility of the package (optional, default = True)
-    :param organization: organization when creating a resource (optional, default = first of your organizations)
-    :param title: the title of the created resource
-    :param north: northern degree or latitude if point (optional)
-    :param east: east degree or longitude if point (optional)
-    :param south: southern degree (optional)
-    :param west: western degree (optional)
-    :time_start: start of time (optional)
-    :time_end: end of time (optional)
+    :param organization: id or name of the organization, which is owner of the
+        dataset (needed if res_create = True)
+    :param name: name of the created dataset (required if res_create = True)
+    :param title: title of the created dataset (required if res_create = True)
+    :param north: northern degree if bbox or latitude if point (optional)
+    :param east: eastern degree if bbox or longitude if point (optional)
+    :param south: southern degree if bbox (optional)
+    :param west: western degree if bbox (optional)
+    :param time_start: start of time (optional)
+    :param time_end: end of time (optional)
     :rtype: dictionary
     '''
+
+    errors = {}
 
     id = _get_or_bust(data_dict, 'id')
     resource = toolkit.get_action('resource_show')(context, {'id': id})
     package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
-    accept = _get_or_bust(data_dict, 'accept')
+    toolkit.get_action('organization_show')(context, {'id': data_dict['organization']})
 
-    errors = {}
+    layers = toolkit.get_action('thredds_get_layers')(context, {'id': resource['id']})
+    layer_details = toolkit.get_action('thredds_get_layerdetails')(context, {'id': resource['id'], 'layer': layers[0]['children'][0]['id']})
+
+    bbox = layer_details['bbox']
 
     # error section
     # error coordinate section, checking if values are entered and floats
@@ -153,7 +159,7 @@ def subset_create(context, data_dict):
         except (TypeError, ValueError):
             errors['east'] = [u'Coordinate incorrect']
 
-        if data_dict['south'] != "" and data_dict['west'] != "":
+        if data_dict.get('south', "") != "" and data_dict.get('west', "") != "":
             try:
                 float(data_dict['south'])
             except (TypeError, ValueError):
@@ -164,13 +170,13 @@ def subset_create(context, data_dict):
             except (TypeError, ValueError):
                 eastWestOk = False
                 errors['west'] = [u'Coordinate incorrect']
-        elif data_dict['south'] == "" and data_dict['west'] == "":
+        elif data_dict.get('south', "") == "" and data_dict.get('west', "") == "":
             data_dict['point'] = True
-        elif data_dict['south'] != "" and data_dict['west'] == "":
+        elif data_dict.get('south', "") != "" and data_dict.get('west', "") == "":
             northSouthOk = False
             eastWestOk = False
             errors['west'] = [u'Missing value']
-        elif data_dict['south'] == "" and data_dict['west'] != "":
+        elif data_dict.get('south', "") == "" and data_dict.get('west', "") != "":
             northSouthOk = False
             eastWestOk = False
             errors['south'] = [u'Missing value']
@@ -182,39 +188,35 @@ def subset_create(context, data_dict):
     # error coordinate section, checking if values are inside bbox
     if northSouthOk is True:
         northf = float(data_dict['north'])
-        if data_dict['south'] != "":
+        if data_dict.get('south', "") != "":
             southf = float(data_dict['south'])
-            if northf > float(data_dict['bbox'][3]) and southf > float(data_dict['bbox'][3]):
+            if northf > float(bbox[3]) and southf > float(bbox[3]):
                 errors['north'] = [u'coordinate is further north than bounding box of resource']
                 errors['south'] = [u'coordinate is further north than bounding box of resource']
-            if northf < float(data_dict['bbox'][1]) and southf < float(data_dict['bbox'][1]):
+            if northf < float(bbox[1]) and southf < float(bbox[1]):
                 errors['north'] = [u'coordinate is further south than bounding box of resource']
                 errors['south'] = [u'coordinate is further south than bounding box of resource']
         else:
-            if northf > float(data_dict['bbox'][3]):
+            if northf > float(bbox[3]):
                 errors['north'] = [u'latitude is further north than bounding box of resource']
-            if northf < float(data_dict['bbox'][1]):
+            if northf < float(bbox[1]):
                 errors['north'] = [u'latitude is further south than bounding box of resource']
 
     if eastWestOk is True:
         eastf = float(data_dict['east'])
-        if data_dict['west'] != "":
+        if data_dict.get('west', "") != "":
             westf = float(data_dict['west'])
-            if eastf > float(data_dict['bbox'][2]) and westf > float(data_dict['bbox'][2]):
+            if eastf > float(bbox[2]) and westf > float(bbox[2]):
                 errors['east'] = [u'coordinate is further east than bounding box of resource']
                 errors['west'] = [u'coordinate is further east than bounding box of resource']
-            if eastf < float(data_dict['bbox'][0]) and westf < float(data_dict['bbox'][0]):
+            if eastf < float(bbox[0]) and westf < float(bbox[0]):
                 errors['east'] = [u'coordinate is further west than bounding box of resource']
                 errors['west'] = [u'coordinate is further west than bounding box of resource']
         else:
-            if eastf > float(data_dict['bbox'][2]):
+            if eastf > float(bbox[2]):
                 errors['east'] = [u'longitude is further east than bounding box of resource']
-            if eastf < float(data_dict['bbox'][0]):
+            if eastf < float(bbox[0]):
                 errors['east'] = [u'longitude is further west than bounding box of resource']
-
-    # error layer section
-    if 'layers' not in data_dict or data_dict["layers"] == '':
-        errors['layers'] = [u'Missing Value']
 
     # error resource creation section
     if data_dict.get('res_create', 'False') == 'True':
@@ -241,9 +243,17 @@ def subset_create(context, data_dict):
     times_exist = False
     if data_dict.get('time_start', "") != "" and data_dict.get('time_end', "") != "":
         times_exist = True
-        given_start = h.date_str_to_datetime(data_dict['time_start'])
-        given_end = h.date_str_to_datetime(data_dict['time_end'])
-        if 'iso_exTempStart' in package and 'iso_exTempEnd' in package:
+        try:
+            given_start = h.date_str_to_datetime(data_dict['time_start'])
+        except (TypeError, ValueError):
+            errors['time_start'] = [u'Time is incorrect']
+            times_exist = False
+        try:
+            given_end = h.date_str_to_datetime(data_dict['time_end'])
+        except (TypeError, ValueError):
+            errors['time_end'] = [u'Time is incorrect']
+            times_exist = False
+        if 'iso_exTempStart' in package and 'iso_exTempEnd' in package and times_exist is True:
             package_start = h.date_str_to_datetime(package['iso_exTempStart'])
             package_end = h.date_str_to_datetime(package['iso_exTempEnd'])
             if given_start > package_end and given_end > package_end:
@@ -261,6 +271,25 @@ def subset_create(context, data_dict):
     elif data_dict.get('time_start', "") == "" and data_dict.get('time_end', "") != "":
         errors['time_start'] = [u'Missing value']
 
+    # error format section
+    if data_dict.get('accept', "") != "":
+        if data_dict['accept'].lower() not in {'netcdf', 'csv', 'xml'}:
+            errors['accept'] = [u'Wrong format']
+    else:
+        errors['accept'] = [u'Missing value']
+
+    # error layer section
+    if data_dict.get('layers', "") != "":
+        if type(data_dict['layers']) is list:
+            for l in data_dict['layers']:
+                if not any(child['id'] == l for child in layers[0]['children']):
+                    errors['layers'] = [u'layer "' + l + '" does not exist']
+        else:
+            if not any(child['id'] == data_dict['layers'] for child in layers[0]['children']):
+                errors['layers'] = [u'layer "' + data_dict['layers'] + '" does not exist']
+    else:
+        errors['layers'] = [u'Missing value']
+
     # end of error section
     if len(errors) > 0:
         raise ValidationError(errors)
@@ -272,7 +301,7 @@ def subset_create(context, data_dict):
             params = {'var': data_dict['layers']}
 
         # adding accept (always has a value)
-        params['accept'] = accept
+        params['accept'] = data_dict['accept'].lower()
 
         # adding time
         if times_exist is True:
@@ -290,13 +319,13 @@ def subset_create(context, data_dict):
         # adding coordinates
         if data_dict.get('north', "") != "" and data_dict.get('east', "") != "":
             if data_dict['point'] is True:
-                params['latitude'] = data_dict['north']
-                params['longitude'] = data_dict['east']
+                params['latitude'] = round(float(data_dict['north']), 4)
+                params['longitude'] = round(float(data_dict['east']), 4)
             else:
-                params['north'] = data_dict['north']
-                params['south'] = data_dict['south']
-                params['east'] = data_dict['east']
-                params['west'] = data_dict['west']
+                params['north'] = round(float(data_dict['north']), 4)
+                params['south'] = round(float(data_dict['south']), 4)
+                params['east'] = round(float(data_dict['east']), 4)
+                params['west'] = round(float(data_dict['west']), 4)
 
         url = ('/tds_proxy/ncss/%s?%s' % (resource['id'], urllib.urlencode(params)))
 
@@ -354,7 +383,7 @@ def subset_create(context, data_dict):
 
             new_package = toolkit.get_action('package_create')(context, new_package)
 
-            new_resource = toolkit.get_action('resource_create')(context, {'name': 'subset_' + resource['name'], 'url': url_for_res, 'package_id': new_package['id'], 'format': accept, 'subset_of': resource['id']})
+            new_resource = toolkit.get_action('resource_create')(context, {'name': 'subset_' + resource['name'], 'url': url_for_res, 'package_id': new_package['id'], 'format': data_dict['accept'], 'subset_of': resource['id']})
 
             toolkit.get_action('package_relationship_create')(context, {'subject': new_package['id'], 'object': package['id'], 'type': 'child_of'})
 
