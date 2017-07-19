@@ -35,7 +35,7 @@ to do so.
 if subset should just be downloaded (optional, default: False)
 * **private** (bool) - the visibility of the package (optional, default: True)
 * **organization** (string) - id or name of the organization, which is owner of the
-dataset (needed if res_create = True)
+dataset (required if res_create = True)
 * **name** (string) - name of the created dataset (required if res_create = True)
 * **title** (string) - title of the created dataset (required if res_create = True)
 * **north** (float) - northern degree if bbox or latitude if point (optional)

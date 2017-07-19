@@ -193,9 +193,14 @@ def subset_create(context, data_dict):
             if northf > float(bbox[3]) and southf > float(bbox[3]):
                 errors['north'] = [u'coordinate is further north than bounding box of resource']
                 errors['south'] = [u'coordinate is further north than bounding box of resource']
-            if northf < float(bbox[1]) and southf < float(bbox[1]):
+            elif northf < float(bbox[1]) and southf < float(bbox[1]):
                 errors['north'] = [u'coordinate is further south than bounding box of resource']
                 errors['south'] = [u'coordinate is further south than bounding box of resource']
+
+            if northf > float(bbox[3]):
+                data_dict['north'] = bbox[3]
+            if southf < float(bbox[1]):
+                data_dict['south'] = bbox[1]
         else:
             if northf > float(bbox[3]):
                 errors['north'] = [u'latitude is further north than bounding box of resource']
@@ -209,9 +214,14 @@ def subset_create(context, data_dict):
             if eastf > float(bbox[2]) and westf > float(bbox[2]):
                 errors['east'] = [u'coordinate is further east than bounding box of resource']
                 errors['west'] = [u'coordinate is further east than bounding box of resource']
-            if eastf < float(bbox[0]) and westf < float(bbox[0]):
+            elif eastf < float(bbox[0]) and westf < float(bbox[0]):
                 errors['east'] = [u'coordinate is further west than bounding box of resource']
                 errors['west'] = [u'coordinate is further west than bounding box of resource']
+
+            if eastf > float(bbox[2]):
+                data_dict['east'] = bbox[2]
+            if westf < float(bbox[0]):
+                data_dict['west'] = bbox[0]
         else:
             if eastf > float(bbox[2]):
                 errors['east'] = [u'longitude is further east than bounding box of resource']
@@ -263,9 +273,15 @@ def subset_create(context, data_dict):
                 errors['time_start'] = [u'Time is before minimum']
                 errors['time_end'] = [u'Time is before minimum']
 
+            if given_end > package_end:
+                data_dict['time_end'] = str(package_end)
+            if given_start < package_start:
+                data_dict['time_start'] = str(package_start)
+
+            # currently only 5 year ranges are permitted
             if abs(relativedelta(given_end, given_start).years) > 5:
-                errors['time_start'] = [u'Change time range']
-                errors['time_end'] = [u'Change time range']
+                errors['time_start'] = [u'Currently we only support time ranges lower than 6 years']
+                errors['time_end'] = [u'Currently we only support time ranges lower than 6 years']
     elif data_dict.get('time_start', "") != "" and data_dict.get('time_end', "") == "":
         errors['time_end'] = [u'Missing value']
     elif data_dict.get('time_start', "") == "" and data_dict.get('time_end', "") != "":
@@ -273,7 +289,9 @@ def subset_create(context, data_dict):
 
     # error format section
     if data_dict.get('accept', "") != "":
-        if data_dict['accept'].lower() not in {'netcdf', 'csv', 'xml'}:
+        if data_dict['point'] is True and data_dict['accept'].lower() not in {'netcdf', 'csv', 'xml'}:
+            errors['accept'] = [u'Wrong format']
+        elif data_dict['point'] is False and data_dict['accept'].lower() != 'netcdf':
             errors['accept'] = [u'Wrong format']
     else:
         errors['accept'] = [u'Missing value']
@@ -305,16 +323,13 @@ def subset_create(context, data_dict):
 
         # adding time
         if times_exist is True:
-            try:
-                time_start = h.date_str_to_datetime(data_dict['time_start']).isoformat()
-                time_end = h.date_str_to_datetime(data_dict['time_end']).isoformat()
-                if time_end < time_start:
-                    # swap times if start time before end time
-                    data_dict['time_start'], data_dict['time_end'] = data_dict['time_end'], data_dict['time_start']
-                params['time_start'] = time_start
-                params['time_end'] = time_end
-            except (TypeError, ValueError):
-                raise Invalid(_('Date format incorrect'))
+            time_start = h.date_str_to_datetime(data_dict['time_start']).isoformat()
+            time_end = h.date_str_to_datetime(data_dict['time_end']).isoformat()
+            if time_end < time_start:
+                # swap times if start time before end time
+                data_dict['time_start'], data_dict['time_end'] = data_dict['time_end'], data_dict['time_start']
+            params['time_start'] = time_start
+            params['time_end'] = time_end
 
         # adding coordinates
         if data_dict.get('north', "") != "" and data_dict.get('east', "") != "":
@@ -327,7 +342,8 @@ def subset_create(context, data_dict):
                 params['east'] = round(float(data_dict['east']), 4)
                 params['west'] = round(float(data_dict['west']), 4)
 
-        url = ('/tds_proxy/ncss/%s?%s' % (resource['id'], urllib.urlencode(params)))
+        ckan_url = config.get('ckan.site_url', '')
+        url = ('%s/tds_proxy/ncss/%s?%s' % (ckan_url, resource['id'], urllib.urlencode(params)))
 
         return_dict = dict()
 
@@ -338,11 +354,8 @@ def subset_create(context, data_dict):
             except NotAuthorized:
                 abort(403, _('Unauthorized to show package'))
 
-            ckan_url = config.get('ckan.site_url', '')
-            url_for_res = ckan_url + url
-
             # check if url already exists
-            search_results = toolkit.get_action('resource_search')(context, {'query': "url:" + url_for_res})
+            search_results = toolkit.get_action('resource_search')(context, {'query': "url:" + url})
 
             if search_results['count'] > 0:
                 return_dict['existing_resource'] = toolkit.get_action('resource_show')(context, {'id': search_results['results'][0]['id']})
@@ -360,12 +373,22 @@ def subset_create(context, data_dict):
             new_package['title'] = data_dict['title']
             new_package['private'] = data_dict.get('private', 'True')
 
-            # add bbox if added
+            # add bbox and spatial if added
             if 'north' in params:
-                new_package['iso_northBL'] = params['north']
-                new_package['iso_southBL'] = params['south']
-                new_package['iso_eastBL'] = params['east']
-                new_package['iso_westBL'] = params['west']
+                n = params['north']
+                s = params['south']
+                e = params['east']
+                w = params['west']
+
+                new_package['iso_northBL'] = n
+                new_package['iso_southBL'] = s
+                new_package['iso_eastBL'] = e
+                new_package['iso_westBL'] = w
+
+                coordinates = [[w, s], [e, s], [e, n], [w, n], [w, s]]
+                spatial = ('{"type": "MultiPolygon", "coordinates": [[' + str(coordinates) + ']]}')
+
+                new_package['spatial'] = spatial
 
             # add time if added
             if times_exist is True:
@@ -383,7 +406,7 @@ def subset_create(context, data_dict):
 
             new_package = toolkit.get_action('package_create')(context, new_package)
 
-            new_resource = toolkit.get_action('resource_create')(context, {'name': 'subset_' + resource['name'], 'url': url_for_res, 'package_id': new_package['id'], 'format': data_dict['accept'], 'subset_of': resource['id']})
+            new_resource = toolkit.get_action('resource_create')(context, {'name': 'subset_' + resource['name'], 'url': url, 'package_id': new_package['id'], 'format': data_dict['accept'], 'subset_of': resource['id']})
 
             toolkit.get_action('package_relationship_create')(context, {'subject': new_package['id'], 'object': package['id'], 'type': 'child_of'})
 
