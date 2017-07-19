@@ -35,37 +35,45 @@ def thredds_get_layers(context, data_dict):
     '''Return the layers of a resource from Thredds WMS.
     Exclude lat, lon, latitude, longitude, x, y
 
-    :param id: the id of the resource
+    :param: the id of the resource
     :type id: string
     :rtype: list
     '''
+
     # Resource ID
     model = context['model']
     user = context['auth_user_obj']
 
     resource_id = tk.get_or_bust(data_dict,'id')
+    resource = toolkit.get_action('resource_show')(context, {'id': resource_id})
 
     # Get URL for WMS Proxy
-    wms_url = 'https://sandboxdc.ccca.ac.at/tds_proxy/wms/' + resource_id
+    ckan_url = config.get('ckan.site_url', '')
+    wms_url = ckan_url + '/tds_proxy/wms/' + resource_id
 
     # Headers and payload for thredds request
-    headers={'Authorization':user.apikey}
+    try:
+        headers={'Authorization':user.apikey}
+    except:
+        raise NotAuthorized
 
     payload={'item':'menu',
              'request':'GetMetadata'}
 
     # Thredds request
-    r = requests.get(wms_url, params=payload, headers=headers)
-    layer_tds = json.loads(r.content)
+    try:
+        r = requests.get(wms_url, params=payload, headers=headers)
+        layer_tds = json.loads(r.content)
+    except Exception as e:
+        raise NotFound("Thredds Server can not provide layer informations for the resource")
 
     # Filter Contents
     layers_filter = []
     for idx,childa in enumerate(layer_tds['children']):
         layers_filter.append(dict())
         layers_filter[idx]['label'] = childa.get('label','')
-        layers_filter[idx]['children'] = ([el for el in childa['children'] if el['id'] not in
-                                   ['lat','lon','latitude','longitude','x','y']])
-
+        layers_filter[idx]['children'] = ([el for el in childa['children']
+                                           if el['id'] not in ['lat','lon','latitude','longitude','x','y']])
 
     return layers_filter
 
@@ -80,6 +88,7 @@ def thredds_get_layerdetails(context, data_dict):
     :type layer: string
     :rtype: dict
     '''
+
     # Resource ID
     model = context['model']
     user = context['auth_user_obj']
@@ -87,18 +96,29 @@ def thredds_get_layerdetails(context, data_dict):
     resource_id = tk.get_or_bust(data_dict,'id')
     layer_name = tk.get_or_bust(data_dict,'layer')
 
-    # Get URL for WMS Proxy
-    wms_url = 'https://sandboxdc.ccca.ac.at/tds_proxy/wms/' + resource_id
 
-    headers={'Authorization':user.apikey}
+    # Get URL for WMS Proxy
+    ckan_url = config.get('ckan.site_url', '')
+    wms_url = ckan_url + '/tds_proxy/wms/' + resource_id
+
+    try:
+        headers={'Authorization':user.apikey}
+    except:
+        raise NotAuthorized
 
     payload={'item':'layerDetails',
              'layerName':layer_name,
              'request':'GetMetadata'}
 
-    # WMS Object from url and extracted apikey from request header
-    r = requests.get(wms_url, params=payload, headers=headers)
-    layer_details = json.loads(r.content)
+    try:
+        r = requests.get(wms_url, params=payload, headers=headers)
+        layer_details = json.loads(r.content)
+    except Exception as e:
+        raise NotFound("Thredds Server can not provide layer details")
+
+    if 'exception' in layer_details:
+        raise NotFound("Thredds Server can not provide layer details")
+
     try:
         del layer_details['datesWithData']
     except:
