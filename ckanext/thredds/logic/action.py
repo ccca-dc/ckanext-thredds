@@ -39,7 +39,6 @@ def thredds_get_layers(context, data_dict):
     :type id: string
     :rtype: list
     '''
-    #TODO check_access no anonymous user
 
     # Resource ID
     model = context['model']
@@ -53,7 +52,10 @@ def thredds_get_layers(context, data_dict):
     wms_url = ckan_url + '/tds_proxy/wms/' + resource_id
 
     # Headers and payload for thredds request
-    headers={'Authorization':user.apikey}
+    try:
+        headers={'Authorization':user.apikey}
+    except:
+        raise NotAuthorized
 
     payload={'item':'menu',
              'request':'GetMetadata'}
@@ -86,6 +88,7 @@ def thredds_get_layerdetails(context, data_dict):
     :type layer: string
     :rtype: dict
     '''
+
     # Resource ID
     model = context['model']
     user = context['auth_user_obj']
@@ -98,7 +101,10 @@ def thredds_get_layerdetails(context, data_dict):
     ckan_url = config.get('ckan.site_url', '')
     wms_url = ckan_url + '/tds_proxy/wms/' + resource_id
 
-    headers={'Authorization':user.apikey}
+    try:
+        headers={'Authorization':user.apikey}
+    except:
+        raise NotAuthorized
 
     payload={'item':'layerDetails',
              'layerName':layer_name,
