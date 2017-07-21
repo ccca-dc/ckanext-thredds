@@ -65,7 +65,7 @@ def thredds_get_layers(context, data_dict):
         r = requests.get(wms_url, params=payload, headers=headers)
         layer_tds = json.loads(r.content)
     except Exception as e:
-        raise NotFound("Thredds Server can not provide layer informations for the resource")
+        raise NotFound("Thredds Server can not provide layer information for the resource")
 
     # Filter Contents
     layers_filter = []
@@ -383,7 +383,7 @@ def subset_create(context, data_dict):
                     return return_dict
 
             # creating new package from the current one with few changes
-            new_package = dict(package)
+            new_package = package.copy()
             new_package.pop('id')
             new_package.pop('resources')
             new_package.pop('groups')
