@@ -377,9 +377,13 @@ def subset_create(context, data_dict):
             # check if url already exists
             search_results = toolkit.get_action('resource_search')(context, {'query': "url:" + url})
 
+            # check if private is true or false otherwise set private = "True"
+            if 'private' not in data_dict or data_dict['private'].lower() not in {'true', 'false'}:
+                data_dict['private'] = 'True'
+
             if search_results['count'] > 0:
                 return_dict['existing_resource'] = toolkit.get_action('resource_show')(context, {'id': search_results['results'][0]['id']})
-                if data_dict.get('private', 'True') == 'False':
+                if data_dict.get('private', 'True').lower() == 'false':
                     return return_dict
 
             # creating new package from the current one with few changes
@@ -388,10 +392,14 @@ def subset_create(context, data_dict):
             new_package.pop('resources')
             new_package.pop('groups')
             new_package.pop('revision_id')
+            new_package.pop('metadata_created', None)
+            new_package.pop('metadata_modified', None)
+            new_package.pop('iso_mdDate', None)
+            new_package.pop('iso_creaDate', None)
             new_package['owner_org'] = data_dict['organization']
             new_package['name'] = data_dict['name']
             new_package['title'] = data_dict['title']
-            new_package['private'] = data_dict.get('private', 'True')
+            new_package['private'] = data_dict['private']
 
             # add bbox and spatial if added
             if 'north' in params:
