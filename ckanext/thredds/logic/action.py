@@ -17,6 +17,7 @@ import urllib
 import ast
 import ckan.lib.base as base
 from pylons import config
+import datetime
 
 check_access = logic.check_access
 
@@ -249,7 +250,7 @@ def subset_create(context, data_dict):
                 errors['east'] = [u'longitude is further west than bounding box of resource']
 
     # error resource creation section
-    if data_dict.get('res_create', 'False') == 'True':
+    if data_dict.get('res_create', 'False').lower() == 'true':
         if data_dict.get('title', "") == '':
             errors['title'] = [u'Missing Value']
         if data_dict.get('name', "") == '':
@@ -368,7 +369,7 @@ def subset_create(context, data_dict):
         return_dict = dict()
 
         # create resource if requested from user
-        if data_dict.get('res_create', 'False') == 'True':
+        if data_dict.get('res_create', 'False').lower() == 'true':
             try:
                 check_access('package_show', context, {'id': package['id']})
             except NotAuthorized:
@@ -392,10 +393,8 @@ def subset_create(context, data_dict):
             new_package.pop('resources')
             new_package.pop('groups')
             new_package.pop('revision_id')
-            new_package.pop('metadata_created', None)
-            new_package.pop('metadata_modified', None)
-            new_package.pop('iso_mdDate', None)
-            new_package.pop('iso_creaDate', None)
+
+            new_package['iso_mdDate'] = new_package['metadata_created'] = new_package['metadata_modified'] = datetime.datetime.now()
             new_package['owner_org'] = data_dict['organization']
             new_package['name'] = data_dict['name']
             new_package['title'] = data_dict['title']
