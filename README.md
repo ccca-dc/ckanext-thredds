@@ -17,6 +17,49 @@ datasets. The relationship between the datasets is displayed like this:
 
 ![Relationship Child](doc/img/relationship_parent.png)
 
+#### API function:
+
+##### subset_create(context, data_dict)
+
+Create a subset of a NetCDF resource.
+
+You must be logged in order to create and download a subset.
+If you want to create a new dataset with the subset, you must be authorized
+to do so.
+
+**Parameters:**
+* **id** (string) - the id of the resource of which a subset is to be created
+* **layers** (list of strings) - list of layer ids that should be included in the subset
+* **accept** (string) - format of the subset (NetCDF, XML or CSV)
+* **res_create** (bool) - true if dataset with resource should be created, false
+if subset should just be downloaded (optional, default: False)
+* **private** (bool) - the visibility of the package (optional, default: True)
+* **organization** (string) - id or name of the organization, which is owner of the
+dataset (required if res_create = True)
+* **name** (string) - name of the created dataset (required if res_create = True)
+* **title** (string) - title of the created dataset (required if res_create = True)
+* **north** (float) - northern degree if bbox or latitude if point (optional)
+* **east** (float) - eastern degree if bbox or longitude if point (optional)
+* **south** (float) - southern degree if bbox (optional)
+* **west** (float) - western degree if bbox (optional)
+* **time_start** (iso date string) - start of time (optional)
+* **time_end** (iso date string) - end of time (optional)
+
+**Returns:**
+
+* the created URL if res_create = False
+* the newly created resource if res_create = True as new_resource
+* the existing resource if res_create = True and a public resource with this
+query already exists as existing_resource
+
+*Hint: If you want to create a new public resource with the same query as another
+public resource, you just get existing_resource returned and no resource is
+being created. If you want to create a private resource and another public
+resource with the same query exists, you get both the new_resource and the
+existing_resource returned, but you are not allowed to set your private dataset
+public.*
+
+**Return type:** dictionary
 
 ------------
 Requirements

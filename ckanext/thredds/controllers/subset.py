@@ -14,7 +14,6 @@ import ckan.authz as authz
 import ckan.lib.navl.dictization_functions as df
 from ckan.common import _
 import ast
-import urllib
 from dateutil.relativedelta import relativedelta
 
 get_action = logic.get_action
@@ -32,6 +31,7 @@ log = logging.getLogger(__name__)
 NotAuthorized = logic.NotAuthorized
 NotFound = logic.NotFound
 Invalid = df.Invalid
+ValidationError = logic.ValidationError
 
 unflatten = df.unflatten
 
@@ -116,264 +116,29 @@ class SubsetController(base.BaseController):
 
         data['bbox'] = [n[2:-1] for n in data['bbox'].replace('[', '').replace(']', '').split(", ")]
         data['all_layers'] = ast.literal_eval(str(data['all_layers']))
+        data['id'] = resource['id']
 
         errors = {}
         error_summary = {}
 
-        # error section
-        # error coordinate section, checking if values are entered and floats
-        data['point'] = False
-        northSouthOk = False
-        eastWestOk = False
-        if data['north'] != "" and data['east'] != "":
-            try:
-                float(data['north'])
-                northSouthOk = True
-            except (TypeError, ValueError):
-                errors['north'] = [u'Coordinate incorrect']
-                error_summary['north'] = u'Coordinate incorrect'
-            try:
-                float(data['east'])
-                eastWestOk = True
-            except (TypeError, ValueError):
-                errors['east'] = [u'Coordinate incorrect']
-                error_summary['east'] = u'Coordinate incorrect'
-
-            if data['south'] != "" and data['west'] != "":
-                try:
-                    float(data['south'])
-                except (TypeError, ValueError):
-                    northSouthOk = False
-                    errors['south'] = [u'Coordinate incorrect']
-                    error_summary['south'] = u'Coordinate incorrect'
-                try:
-                    float(data['west'])
-                except (TypeError, ValueError):
-                    eastWestOk = False
-                    errors['west'] = [u'Coordinate incorrect']
-                    error_summary['west'] = u'Coordinate incorrect'
-            elif data['south'] == "" and data['west'] == "":
-                data['point'] = True
-            elif data['south'] != "" and data['west'] == "":
-                northSouthOk = False
-                eastWestOk = False
-                errors['west'] = [u'Missing value']
-                error_summary['west'] = u'Missing value'
-            elif data['south'] == "" and data['west'] != "":
-                northSouthOk = False
-                eastWestOk = False
-                errors['south'] = [u'Missing value']
-                error_summary['south'] = u'Missing value'
-        elif data['north'] != "" and data['east'] == "":
-            errors['east'] = [u'Missing value']
-            error_summary['east'] = u'Add east or delete north coordinate'
-        elif data['north'] == "" and data['east'] != "":
-            errors['north'] = [u'Missing value']
-            error_summary['north'] = u'Add north or delete east coordinate'
-
-        # error coordinate section, checking if values are inside bbox
-        if northSouthOk is True:
-            northf = float(data['north'])
-            if data['south'] != "":
-                southf = float(data['south'])
-                if northf > float(data['bbox'][3]) and southf > float(data['bbox'][3]):
-                    error_summary['latitude coordinates'] = u'north and south are further north than bounding box of resource'
-                    errors['north'] = [u'coordinate is further north than bounding box of resource']
-                    errors['south'] = [u'coordinate is further north than bounding box of resource']
-                if northf < float(data['bbox'][1]) and southf < float(data['bbox'][1]):
-                    error_summary['latitude coordinates'] = u'north and south are further south than bounding box of resource'
-                    errors['north'] = [u'coordinate is further south than bounding box of resource']
-                    errors['south'] = [u'coordinate is further south than bounding box of resource']
-            else:
-                if northf > float(data['bbox'][3]):
-                    errors['north'] = [u'latitude is further north than bounding box of resource']
-                    error_summary['latitude'] = u'coordinate is further north than bounding box of resource'
-                if northf < float(data['bbox'][1]):
-                    errors['north'] = [u'latitude is further south than bounding box of resource']
-                    error_summary['latitude'] = u'coordinate is further south than bounding box of resource'
-
-        if eastWestOk is True:
-            eastf = float(data['east'])
-            if data['west'] != "":
-                westf = float(data['west'])
-                if eastf > float(data['bbox'][2]) and westf > float(data['bbox'][2]):
-                    error_summary['longitude coordinates'] = u'east and west coordinates are further east than bounding box of resource'
-                    errors['east'] = [u'coordinate is further east than bounding box of resource']
-                    errors['west'] = [u'coordinate is further east than bounding box of resource']
-                if eastf < float(data['bbox'][0]) and westf < float(data['bbox'][0]):
-                    error_summary['longitude coordinates'] = u'east and west coordinates are further west than bounding box of resource'
-                    errors['east'] = [u'coordinate is further west than bounding box of resource']
-                    errors['west'] = [u'coordinate is further west than bounding box of resource']
-            else:
-                if eastf > float(data['bbox'][2]):
-                    errors['east'] = [u'longitude is further east than bounding box of resource']
-                    error_summary['longitude'] = u'coordinate is further east than bounding box of resource'
-                if eastf < float(data['bbox'][0]):
-                    errors['east'] = [u'longitude is further west than bounding box of resource']
-                    error_summary['longitude'] = u'coordinate is further west than bounding box of resource'
-
-        # error layer section
-        if 'layers' not in data or data["layers"] == '':
-            errors['layers'] = [u'Missing Value']
-            error_summary['layers'] = u'Missing value'
-
-        # error resource creation section
-        if data.get('res_create', 'False') == 'True':
-            if data['title'] == '':
-                errors['title'] = [u'Missing Value']
-                error_summary['title'] = u'Missing value'
-            if data['name'] == '':
-                errors['name'] = [u'Missing Value']
-                error_summary['name'] = u'Missing value'
-            else:
-                try:
-                    toolkit.get_action('package_show')(context, {'id': data['name']})
-
-                    errors['name'] = [u'That URL is already in use.']
-                    error_summary['name'] = u'That URL is already in use.'
-                except NotFound:
-                    pass
-
-                if len(data['name']) < PACKAGE_NAME_MIN_LENGTH:
-                    errors['name'] = [u'URL is too short.']
-                    error_summary['name'] = _('length is less than minimum %s') % (PACKAGE_NAME_MIN_LENGTH)
-                if len(data['name']) > PACKAGE_NAME_MAX_LENGTH:
-                    errors['name'] = [u'URL is too long.']
-                    error_summary['name'] = _('length is more than maximum %s') % (PACKAGE_NAME_MAX_LENGTH)
-
-        # error time section
-        times_exist = False
-        if data['time_start'] != "" and data['time_end'] != "":
-            times_exist = True
-            given_start = h.date_str_to_datetime(data['time_start'])
-            given_end = h.date_str_to_datetime(data['time_end'])
-            if 'iso_exTempStart' in package and 'iso_exTempEnd' in package:
-                package_start = h.date_str_to_datetime(package['iso_exTempStart'])
-                package_end = h.date_str_to_datetime(package['iso_exTempEnd'])
-                if given_start > package_end and given_end > package_end:
-                    errors['time_start'] = [u'Time is after maximum']
-                    errors['time_end'] = [u'Time is after maximum']
-                    error_summary['time'] = u'The provided time range must intersect the dataset time range'
-
-                if given_start < package_start and given_end < package_start:
-                    errors['time_start'] = [u'Time is before minimum']
-                    errors['time_end'] = [u'Time is before minimum']
-                    error_summary['time'] = u'The provided time range must intersect the dataset time range'
-
-                if abs(relativedelta(given_end, given_start).years) > 5:
-                    errors['time_start'] = [u'Change time range']
-                    errors['time_end'] = [u'Change time range']
-                    error_summary['time'] = u'Currently we only support time ranges lower than 6 years'
-
-        if data['time_start'] != "" and data['time_end'] == "":
-            errors['time_end'] = [u'Missing value']
-            error_summary['time end'] = u'Add end time or delete start time'
-
-        if data['time_start'] == "" and data['time_end'] != "":
-            errors['time_start'] = [u'Missing value']
-            error_summary['time start'] = u'Add start time or delete end time'
-
-        # end of error section
-        if len(errors) == 0:
-            # start building URL params with var (required)
-            if type(data['layers']) is list:
-                params = {'var': ','.join(data['layers'])}
-            else:
-                params = {'var': data['layers']}
-
-            # adding accept (always has a value)
-            params['accept'] = data['accept']
-
-            # adding time
-            if times_exist is True:
-                try:
-                    time_start = h.date_str_to_datetime(data['time_start']).isoformat()
-                    time_end = h.date_str_to_datetime(data['time_end']).isoformat()
-                    if time_end < time_start:
-                        # swap times if start time before end time
-                        data['time_start'], data['time_end'] = data['time_end'], data['time_start']
-                    params['time_start'] = time_start
-                    params['time_end'] = time_end
-                except (TypeError, ValueError):
-                    raise Invalid(_('Date format incorrect'))
-
-            # adding coordinates
-            if data['north'] != "" and data['east'] != "":
-                if data['point'] is True:
-                    params['latitude'] = data['north']
-                    params['longitude'] = data['east']
-                else:
-                    params['north'] = data['north']
-                    params['south'] = data['south']
-                    params['east'] = data['east']
-                    params['west'] = data['west']
-
-            url = ('/tds_proxy/ncss/%s?%s' % (resource['id'], urllib.urlencode(params)))
-
-            # create resource if requested from user
-            if data.get('res_create', 'False') == 'True':
-                try:
-                    check_access('package_show', context, {'id': package['id']})
-                except NotAuthorized:
-                    abort(403, _('Unauthorized to show package'))
-
-                ckan_url = config.get('ckan.site_url', '')
-                url_for_res = ckan_url + url
-
-                # check if url already exists
-                search_results = toolkit.get_action('resource_search')(context, {'query': "url:" + url_for_res})
-
-                if search_results['count'] > 0:
+        try:
+            data = toolkit.get_action('subset_create')(context, data)
+            if 'new_resource' in data:
+                if 'existing_resource' in data:
                     public_res_url = h.url_for(controller='package', action='resource_read',
-                                       id=search_results['results'][0]['package_id'], resource_id=search_results['results'][0]['id'])
-                    if data['private'] == 'False':
-                        h.flash_notice('This subset already exists. Please use this subset for citation.')
-                        redirect(public_res_url)
-                    else:
-                        h.flash_notice('This dataset cannot be set public, because another <strong><a href="' + public_res_url + '" class="alert-link">subset</a></strong> with this query is already public.', allow_html=True)
-
-                # creating new package from the current one with few changes
-                new_package = dict(package)
-                new_package.pop('id')
-                new_package.pop('resources')
-                new_package.pop('groups')
-                new_package.pop('revision_id')
-                new_package['owner_org'] = data['organization']
-                new_package['name'] = data['name']
-                new_package['title'] = data['title']
-                new_package['private'] = data['private']
-
-                # add bbox if added
-                if 'north' in params:
-                    new_package['iso_northBL'] = params['north']
-                    new_package['iso_southBL'] = params['south']
-                    new_package['iso_eastBL'] = params['east']
-                    new_package['iso_westBL'] = params['west']
-
-                # add time if added
-                if times_exist is True:
-                    new_package['iso_exTempStart'] = data['time_start']
-                    new_package['iso_exTempEnd'] = data['time_end']
-
-                # add subset creator
-                new_package['contact_info'] = []
-                if 'contact_info' in package:
-                    new_package['contact_info'] = ast.literal_eval(package['contact_info'])
-                new_package['contact_info'].extend([context['auth_user_obj'].fullname, "", context['auth_user_obj'].email, "Subset Creator"])
-
-                # need to pop package otherwise it overwrites the current pkg
-                context.pop('package')
-
-                new_package = toolkit.get_action('package_create')(context, new_package)
-
-                new_resource = toolkit.get_action('resource_create')(context, {'name': 'subset_' + resource['name'], 'url': url_for_res, 'package_id': new_package['id'], 'format': data['accept'], 'subset_of': resource['id']})
-
-                toolkit.get_action('package_relationship_create')(context, {'subject': new_package['id'], 'object': package['id'], 'type': 'child_of'})
+                                       id=data['existing_resource']['package_id'], resource_id=data['existing_resource']['id'])
+                    h.flash_notice('This dataset cannot be set public, because another <strong><a href="' + public_res_url + '" class="alert-link">subset</a></strong> with this query is already public.', allow_html=True)
 
                 redirect(h.url_for(controller='package', action='resource_read',
-                                   id=new_package['id'], resource_id=new_resource['id']))
-            else:
-                # redirect to url if user doesn't want to create a package
-                h.redirect_to(str(url))
+                                    id=data['new_resource']['package_id'], resource_id=data['new_resource']['id']))
+            elif 'new_resource' not in data and 'existing_resource' in data:
+                h.flash_notice('This subset already exists. Please use this subset for citation.')
+                redirect(h.url_for(controller='package', action='resource_read',
+                                    id=data['existing_resource']['package_id'], resource_id=data['existing_resource']['id']))
+            elif 'url' in data:
+                h.redirect_to(data['url'])
+        except ValidationError, e:
+            errors = e.error_dict
+            error_summary = e.error_summary
 
         return data, errors, error_summary

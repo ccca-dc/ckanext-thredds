@@ -173,6 +173,10 @@ this.ckan.module('subset-form', function (jQuery, _) {
                 $('#southWest').show();
                 $('label[for="north"]').text("North");
                 $('label[for="east"]').text("East");
+
+                document.getElementById("radio_netcdf").checked=true;
+                document.getElementById("radio_csv").disabled=true;
+                document.getElementById("radio_xml").disabled=true;
             }
             else{
                 var gj = drawnItems.toGeoJSON().features;
@@ -187,6 +191,9 @@ this.ckan.module('subset-form', function (jQuery, _) {
                 $('#southWest').hide();
                 $('label[for="north"]').text("Latitude");
                 $('label[for="east"]').text("Longitude");
+
+                document.getElementById("radio_csv").disabled=false;
+                document.getElementById("radio_xml").disabled=false;
             // TODO use input for element id
                 //$('#coordinates').val(JSON.stringify(polyarray));
             }
@@ -204,15 +211,6 @@ this.ckan.module('subset-form', function (jQuery, _) {
             featureGroupToInput(drawnItems, this.input);
             //$('#coordinates').val(JSON.stringify(e.layer.toGeoJSON().geometry.getBounds()));
             //e.layer.getBounds()._northEast.lat;
-            if(e.layer.toGeoJSON().geometry.type == "Polygon"){
-                document.getElementById("radio_netcdf").checked=true;
-                document.getElementById("radio_csv").disabled=true;
-                document.getElementById("radio_xml").disabled=true;
-            }else{
-                document.getElementById("radio_csv").disabled=false;
-                document.getElementById("radio_xml").disabled=false;
-            }
-
             if(drawControlGeoJson._map !== null && drawControlGeoJson._map !== undefined){
                 map.addControl(drawControl);
                 map.removeControl(drawControlGeoJson);
