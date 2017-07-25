@@ -156,7 +156,6 @@ def subset_create(context, data_dict):
     id = _get_or_bust(data_dict, 'id')
     resource = toolkit.get_action('resource_show')(context, {'id': id})
     package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
-    toolkit.get_action('organization_show')(context, {'id': data_dict['organization']})
 
     layers = toolkit.get_action('thredds_get_layers')(context, {'id': resource['id']})
     layer_details = toolkit.get_action('thredds_get_layerdetails')(context, {'id': resource['id'], 'layer': layers[0]['children'][0]['id']})
@@ -269,6 +268,8 @@ def subset_create(context, data_dict):
                 errors['name'] = [u'URL is longer than maximum (' + str(PACKAGE_NAME_MAX_LENGTH) + u')']
         if data_dict.get('organization', "") == '':
             errors['organization'] = [u'Missing Value']
+        else:
+            toolkit.get_action('organization_show')(context, {'id': data_dict['organization']})
 
     # error time section
     times_exist = False
