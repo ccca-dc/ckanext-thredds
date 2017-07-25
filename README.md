@@ -31,8 +31,10 @@ to do so.
 * **id** (string) - the id of the resource of which a subset is to be created
 * **layers** (list of strings) - list of layer ids that should be included in the subset
 * **accept** (string) - format of the subset (NetCDF, XML or CSV)
-* **res_create** (bool) - true if dataset with resource should be created, false
-if subset should just be downloaded (optional, default: False)
+* **type** (string) - (optional, default: download)
+  * **download** - if subset should just be downloaded
+  * **new_package** - if subset should be created as resource in a new package
+  * **existing_package** - if subset should be created as resource in an existing package
 * **private** (bool) - the visibility of the package (optional, default: True)
 * **organization** (string) - id or name of the organization, which is owner of the
 dataset (required if res_create = True)

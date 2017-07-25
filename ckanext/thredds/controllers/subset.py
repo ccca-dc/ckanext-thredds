@@ -111,17 +111,17 @@ class SubsetController(base.BaseController):
 
             try:
                 relationships = toolkit.get_action('package_relationships_list')(context, {'id': package['id'], 'rel': 'parent_of'})
-
-                print(relationships)
-
-                for rel in relationships:
-                    child = toolkit.get_action('package_show')(context, {'id': rel['object']})
-                    if child['state'] != 'deleted':
-                        data['relationships'].append(child)
             except:
                 data['relationships'] = []
 
-            print(data['relationships'])
+            for rel in relationships:
+                try:
+                    child = toolkit.get_action('package_show')(context, {'id': rel['object']})
+                    if child['state'] != 'deleted':
+                            check_access('resource_update', context, {'id': child['id']})
+                            data['relationships'].append(child)
+                except NotAuthorized:
+                    pass
 
             vars = {'data': data, 'errors': errors, 'error_summary': error_summary}
             return toolkit.render('subset_create.html', extra_vars=vars)

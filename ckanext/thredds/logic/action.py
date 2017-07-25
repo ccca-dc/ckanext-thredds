@@ -250,7 +250,7 @@ def subset_create(context, data_dict):
                 errors['east'] = [u'longitude is further west than bounding box of resource']
 
     # error resource creation section
-    if data_dict.get('type', 'download').lower() in {'new_package', 'existing_package'}:
+    if data_dict.get('type', 'download').lower() == 'new_package':
         if data_dict.get('title', "") == '':
             errors['title'] = [u'Missing Value']
         if data_dict.get('name', "") == '':
@@ -269,6 +269,17 @@ def subset_create(context, data_dict):
                 errors['name'] = [u'URL is longer than maximum (' + str(PACKAGE_NAME_MAX_LENGTH) + u')']
         if data_dict.get('organization', "") == '':
             errors['organization'] = [u'Missing Value']
+    elif data_dict.get('type', 'download').lower() == 'existing_package':
+        if data_dict.get('existing_package_id', "") == '':
+            errors['existing_package_id'] = [u'Missing Value']
+        else:
+            try:
+                toolkit.get_action('package_show')(context, {'id': data_dict['existing_package_id']})
+                check_access('package_update', context, {'id': data_dict['existing_package_id']})
+            except NotFound:
+                errors['existing_package_id'] = [u'Package not found']
+            except NotAuthorized:
+                errors['existing_package_id'] = [u'Not authorized to add subset to this package']
 
     # error time section
     times_exist = False
@@ -382,13 +393,13 @@ def subset_create(context, data_dict):
             if 'private' not in data_dict or data_dict['private'].lower() not in {'true', 'false'}:
                 data_dict['private'] = 'True'
 
-            if search_results['count'] > 0:
-                return_dict['existing_resource'] = toolkit.get_action('resource_show')(context, {'id': search_results['results'][0]['id']})
-                if data_dict.get('private', 'True').lower() == 'false':
-                    return return_dict
-
             # creating new package from the current one with few changes
             if data_dict.get('type', 'download').lower() == 'new_package':
+                if search_results['count'] > 0:
+                    return_dict['existing_resource'] = toolkit.get_action('resource_show')(context, {'id': search_results['results'][0]['id']})
+                    if data_dict.get('private', 'True').lower() == 'false':
+                        return return_dict
+
                 new_package = package.copy()
                 new_package.pop('id')
                 new_package.pop('resources')
@@ -433,10 +444,21 @@ def subset_create(context, data_dict):
                 context.pop('package')
 
                 new_package = toolkit.get_action('package_create')(context, new_package)
+                package_to_add_id = new_package['id']
+            else:
+                package_to_add_id = data_dict['existing_package_id']
+                existing_package = toolkit.get_action('package_show')(context, {'id': package_to_add_id})
 
-            new_resource = toolkit.get_action('resource_create')(context, {'name': 'subset_' + resource['name'], 'url': url, 'package_id': new_package['id'], 'format': data_dict['accept'], 'subset_of': resource['id']})
+                if search_results['count'] > 0:
+                    return_dict['existing_resource'] = toolkit.get_action('resource_show')(context, {'id': search_results['results'][0]['id']})
+                    if existing_package['private'] is False:
+                        return return_dict
 
-            toolkit.get_action('package_relationship_create')(context, {'subject': new_package['id'], 'object': package['id'], 'type': 'child_of'})
+                # check if resource can be added to this resource
+
+            new_resource = toolkit.get_action('resource_create')(context, {'name': 'subset_' + resource['name'], 'url': url, 'package_id': package_to_add_id, 'format': data_dict['accept'], 'subset_of': resource['id']})
+
+            toolkit.get_action('package_relationship_create')(context, {'subject': package_to_add_id, 'object': package['id'], 'type': 'child_of'})
 
             return_dict['new_resource'] = new_resource
         else:
