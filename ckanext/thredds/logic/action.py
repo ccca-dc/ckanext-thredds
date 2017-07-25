@@ -250,7 +250,7 @@ def subset_create(context, data_dict):
                 errors['east'] = [u'longitude is further west than bounding box of resource']
 
     # error resource creation section
-    if data_dict.get('res_create', 'False').lower() == 'true':
+    if data_dict.get('type', 'download').lower() in {'new_package', 'existing_package'}:
         if data_dict.get('title', "") == '':
             errors['title'] = [u'Missing Value']
         if data_dict.get('name', "") == '':
@@ -369,7 +369,7 @@ def subset_create(context, data_dict):
         return_dict = dict()
 
         # create resource if requested from user
-        if data_dict.get('res_create', 'False').lower() == 'true':
+        if data_dict.get('type', 'download').lower() in {'new_package', 'existing_package'}:
             try:
                 check_access('package_show', context, {'id': package['id']})
             except NotAuthorized:
@@ -388,50 +388,51 @@ def subset_create(context, data_dict):
                     return return_dict
 
             # creating new package from the current one with few changes
-            new_package = package.copy()
-            new_package.pop('id')
-            new_package.pop('resources')
-            new_package.pop('groups')
-            new_package.pop('revision_id')
+            if data_dict.get('type', 'download').lower() == 'new_package':
+                new_package = package.copy()
+                new_package.pop('id')
+                new_package.pop('resources')
+                new_package.pop('groups')
+                new_package.pop('revision_id')
 
-            new_package['iso_mdDate'] = new_package['metadata_created'] = new_package['metadata_modified'] = datetime.datetime.now()
-            new_package['owner_org'] = data_dict['organization']
-            new_package['name'] = data_dict['name']
-            new_package['title'] = data_dict['title']
-            new_package['private'] = data_dict['private']
+                new_package['iso_mdDate'] = new_package['metadata_created'] = new_package['metadata_modified'] = datetime.datetime.now()
+                new_package['owner_org'] = data_dict['organization']
+                new_package['name'] = data_dict['name']
+                new_package['title'] = data_dict['title']
+                new_package['private'] = data_dict['private']
 
-            # add bbox and spatial if added
-            if 'north' in params:
-                n = params['north']
-                s = params['south']
-                e = params['east']
-                w = params['west']
+                # add bbox and spatial if added
+                if 'north' in params:
+                    n = params['north']
+                    s = params['south']
+                    e = params['east']
+                    w = params['west']
 
-                new_package['iso_northBL'] = n
-                new_package['iso_southBL'] = s
-                new_package['iso_eastBL'] = e
-                new_package['iso_westBL'] = w
+                    new_package['iso_northBL'] = n
+                    new_package['iso_southBL'] = s
+                    new_package['iso_eastBL'] = e
+                    new_package['iso_westBL'] = w
 
-                coordinates = [[w, s], [e, s], [e, n], [w, n], [w, s]]
-                spatial = ('{"type": "MultiPolygon", "coordinates": [[' + str(coordinates) + ']]}')
+                    coordinates = [[w, s], [e, s], [e, n], [w, n], [w, s]]
+                    spatial = ('{"type": "MultiPolygon", "coordinates": [[' + str(coordinates) + ']]}')
 
-                new_package['spatial'] = spatial
+                    new_package['spatial'] = spatial
 
-            # add time if added
-            if times_exist is True:
-                new_package['iso_exTempStart'] = data_dict['time_start']
-                new_package['iso_exTempEnd'] = data_dict['time_end']
+                # add time if added
+                if times_exist is True:
+                    new_package['iso_exTempStart'] = data_dict['time_start']
+                    new_package['iso_exTempEnd'] = data_dict['time_end']
 
-            # add subset creator
-            new_package['contact_info'] = []
-            if 'contact_info' in package:
-                new_package['contact_info'] = ast.literal_eval(package['contact_info'])
-            new_package['contact_info'].extend([context['auth_user_obj'].fullname, "", context['auth_user_obj'].email, "Subset Creator"])
+                # add subset creator
+                new_package['contact_info'] = []
+                if 'contact_info' in package:
+                    new_package['contact_info'] = ast.literal_eval(package['contact_info'])
+                new_package['contact_info'].extend([context['auth_user_obj'].fullname, "", context['auth_user_obj'].email, "Subset Creator"])
 
-            # need to pop package otherwise it overwrites the current pkg
-            context.pop('package')
+                # need to pop package otherwise it overwrites the current pkg
+                context.pop('package')
 
-            new_package = toolkit.get_action('package_create')(context, new_package)
+                new_package = toolkit.get_action('package_create')(context, new_package)
 
             new_resource = toolkit.get_action('resource_create')(context, {'name': 'subset_' + resource['name'], 'url': url, 'package_id': new_package['id'], 'format': data_dict['accept'], 'subset_of': resource['id']})
 

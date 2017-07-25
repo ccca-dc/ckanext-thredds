@@ -108,9 +108,9 @@
 
             {% if data.create_pkg == True %}
               <div class="new-resource">
-                  <h3>Would you like to create a new resource in a new package?</h3>
-                  <input type="radio" name="res_create" value="False" {{ "checked " if data.res_create == "False" or data.res_create is not defined  }}> No, just download the subset <br><br>
-                  <input type="radio" name="res_create" value="True" {{ "checked " if data.res_create == "True" }}> Yes <br><br>
+                  <h3>Would you like to create a new resource?</h3>
+                  <input type="radio" name="type" value="download" {{ "checked " if data.type == "download" or data.res_create is not defined  }}> No, just download the subset <br><br>
+                  <input type="radio" name="type" value="new_package" {{ "checked " if data.type == "new_package" }}> Yes and a new dataset as well <br><br>
 
                   <div class="well">
                       {{ form.input('title', id='field-title', label=_('Package Title'), value=data.title, error=errors.title, placeholder=_('eg. A descriptive title'), attrs={'data-module': 'slug-preview-target'}) }}
@@ -128,6 +128,21 @@
                       <input type="radio" name="private" value="False" {{ "checked " if data.private == "False" }}> Yes &emsp;
                       <input type="radio" name="private" value="True" {{ "checked " if data.private == "True" or data.private is not defined }}> No, maybe at a later point
                   </div>
+
+                  <input type="radio" name="type" value="existing_package" {{ "checked " if data.type == "existing_package" }}> Yes, in an existing package<br><br>
+
+                  {% if data.relationships|length > 0 %}
+                  <div class="well">
+                      <h4>Package:</h4>
+                      <select id="select-package">
+                        <option value="">-- Select existing package --</option>
+                        {% for rel in data.relationships %}
+                            <option value="{{ rel_id }}">{{ rel.title }}</option>
+                        {% endfor %}
+                      </select>
+                      {{ form.info(text="Only derived datasets of this dataset are being displayed", inline=true) }}
+                  </div>
+                  {% endif %}
               </div>
             {% endif %}
 
