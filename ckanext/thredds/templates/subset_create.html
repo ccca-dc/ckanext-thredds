@@ -113,7 +113,7 @@
                   <input type="radio" name="type" value="new_package" {{ "checked " if data.type == "new_package" }}> <b>Yes</b> and a new dataset as well <br><br>
 
                   <div class="well">
-                      {{ form.input('title', id='field-title', label=_('Package Title'), value=data.title, error=errors.title, placeholder=_('eg. A descriptive title'), attrs={'data-module': 'slug-preview-target'}) }}
+                      {{ form.input('title', id='field-title', label=_('Dataset Title'), value=data.title, error=errors.title, placeholder=_('eg. A descriptive title'), attrs={'data-module': 'slug-preview-target'}) }}
 
                       {% set prefix = h.url_for(controller='package', action='read', id='') %}
                       {% set domain = h.url_for(controller='package', action='read', id='', qualified=true) %}
@@ -133,13 +133,13 @@
                   <input type="radio" name="type" value="existing_package" {{ "checked " if data.type == "existing_package" }}> <b>Yes</b>, in an existing package<br><br>
 
                   <div class="well">
-                      <select name="existing_package_id">
-                        <option value="">-- Select existing package --</option>
-                        {% for rel in data.relationships %}
-                            <option value="{{ rel.id }}">{{ rel.title }}</option>
-                        {% endfor %}
-                      </select>
-                      {{ form.info(text="Only derived datasets of this dataset are being displayed", inline=true) }}
+                      <label class="control-label" for="existing_package_id">Dataset</label>
+                          <select name="existing_package_id">
+                            {% for rel in data.relationships %}
+                                <option value="{{ rel.id }}">{{ rel.title }}</option>
+                            {% endfor %}
+                          </select>
+                          {{ form.info(text="Only derived datasets of this dataset can be selected", inline=true) }}
                   </div>
                   {% endif %}
               </div>

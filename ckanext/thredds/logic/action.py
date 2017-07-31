@@ -274,12 +274,29 @@ def subset_create(context, data_dict):
             errors['existing_package_id'] = [u'Missing Value']
         else:
             try:
+                package_exists = False
                 toolkit.get_action('package_show')(context, {'id': data_dict['existing_package_id']})
                 check_access('package_update', context, {'id': data_dict['existing_package_id']})
+                package_exists = True
+
+                relationships = toolkit.get_action('package_relationships_list')(context, {'id': package['id'], 'rel': 'parent_of'})
+
+                is_child_of = False
+                for rel in relationships:
+                    if rel['object'] == data_dict['existing_package_id']:
+                        is_child_of = True
+                        break
+
+                if is_child_of is False:
+                    errors['existing_package_id'] = [u'Given package is not derived from original package']
             except NotFound:
-                errors['existing_package_id'] = [u'Package not found']
+                if not package_exists:
+                    errors['existing_package_id'] = [u'Package not found']
+                else:
+                    errors['existing_package_id'] = [u'There are no derived packages available to use; change type']
             except NotAuthorized:
                 errors['existing_package_id'] = [u'Not authorized to add subset to this package']
+
 
     # error time section
     times_exist = False
