@@ -136,7 +136,7 @@
                       <label class="control-label" for="existing_package_id">Dataset</label>
                           <select name="existing_package_id">
                             {% for rel in data.relationships %}
-                                <option value="{{ rel.id }}">{{ rel.title }}</option>
+                                <option value="{{ rel.name }}">{{ rel.title }}</option>
                             {% endfor %}
                           </select>
                           {{ form.info(text="Only derived datasets of this dataset can be selected", inline=true) }}

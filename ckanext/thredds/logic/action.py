@@ -452,10 +452,15 @@ def subset_create(context, data_dict):
                     new_package['iso_exTempEnd'] = data_dict['time_end']
 
                 # add subset creator
-                new_package['contact_info'] = []
-                if 'contact_info' in package:
-                    new_package['contact_info'] = ast.literal_eval(package['contact_info'])
-                new_package['contact_info'].extend([context['auth_user_obj'].fullname, "", context['auth_user_obj'].email, "Subset Creator"])
+                subset_creator = dict()
+                subset_creator['name'] = context['auth_user_obj'].fullname
+                subset_creator['mail'] = context['auth_user_obj'].email
+                subset_creator['role'] = "Subset Creator"
+                subset_creator['department'] = ""
+
+                contacts = toolkit.get_action('package_contact_show')(context, {'package_id': package['id']})
+                contacts.append(subset_creator)
+                new_package['contact_info'] = json.dumps(contacts)
 
                 # need to pop package otherwise it overwrites the current pkg
                 context.pop('package')
@@ -466,12 +471,32 @@ def subset_create(context, data_dict):
                 package_to_add_id = data_dict['existing_package_id']
                 existing_package = toolkit.get_action('package_show')(context, {'id': package_to_add_id})
 
+                # add subset creator if not already added
+                subset_creators = toolkit.get_action('package_contact_show')(context, {'package_id': package_to_add_id, 'search_param': 'role', 'search_value': 'Subset Creator'})
+
+                sc_added = False
+
+                for subset_creator in subset_creators:
+                    if subset_creator['name'] == context['auth_user_obj'].fullname:
+                        sc_added = True
+
+                if sc_added is False:
+                    subset_creator = dict()
+                    subset_creator['name'] = context['auth_user_obj'].fullname
+                    subset_creator['mail'] = context['auth_user_obj'].email
+                    subset_creator['role'] = "Subset Creator"
+                    subset_creator['department'] = ""
+
+                    contacts = toolkit.get_action('package_contact_show')(context, {'package_id': package_to_add_id})
+                    contacts.append(subset_creator)
+                    existing_package['contact_info'] = json.dumps(contacts)
+
+                    toolkit.get_action('package_update')(context, existing_package)
+
                 if search_results['count'] > 0:
                     return_dict['existing_resource'] = toolkit.get_action('resource_show')(context, {'id': search_results['results'][0]['id']})
                     if existing_package['private'] is False:
                         return return_dict
-
-                # check if resource can be added to this resource
 
             new_resource = toolkit.get_action('resource_create')(context, {'name': 'subset_' + resource['name'], 'url': url, 'package_id': package_to_add_id, 'format': data_dict['accept'], 'subset_of': resource['id']})
 
