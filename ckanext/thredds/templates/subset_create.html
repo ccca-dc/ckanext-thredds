@@ -110,7 +110,7 @@
               <div class="new-resource">
                   <h3>Would you like to create a new resource?</h3>
                   <input type="radio" name="type" value="download" {{ "checked " if data.type == "download" or data.res_create is not defined  }}> <b>No</b>, just download the subset <br><br>
-                  <input type="radio" name="type" value="new_package" {{ "checked " if data.type == "new_package" }}> <b>Yes</b> and a new dataset as well <br><br>
+                  <input type="radio" name="type" value="new_package" {{ "checked " if data.type == "new_package" }}> <b>Yes</b> and create a new dataset as well <br><br>
 
                   <div class="well">
                       {{ form.input('title', id='field-title', label=_('Dataset Title'), value=data.title, error=errors.title, placeholder=_('eg. A descriptive title'), attrs={'data-module': 'slug-preview-target'}) }}
