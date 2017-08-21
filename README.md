@@ -50,9 +50,10 @@ dataset (required if res_create = True)
 **Returns:**
 
 * the created URL if res_create = False
-* the newly created resource if res_create = True as new_resource
-* the existing resource if res_create = True and a public resource with this
-query already exists as existing_resource
+* the newly created resource if type = new_package or existing_package as
+new_resource
+* the existing resource if type = new_package or existing_package and a public
+resource with this query already exists as existing_resource
 
 *Hint: If you want to create a new public resource with the same query as another
 public resource, you just get existing_resource returned and no resource is
