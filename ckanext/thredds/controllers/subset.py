@@ -110,11 +110,11 @@ class SubsetController(base.BaseController):
             data['relationships'] = []
 
             try:
-                relationships = toolkit.get_action('package_relationships_list')(context, {'id': package['id'], 'rel': 'parent_of'})
+                data['relationships'] = toolkit.get_action('package_relationships_list')(context, {'id': package['id'], 'rel': 'parent_of'})
             except:
                 data['relationships'] = []
 
-            for rel in relationships:
+            for rel in data['relationships']:
                 try:
                     child = toolkit.get_action('package_show')(context, {'id': rel['object']})
                     if child['state'] != 'deleted':
