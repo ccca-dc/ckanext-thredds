@@ -23,7 +23,8 @@ datasets. The relationship between the datasets is displayed like this:
 
 Create a subset of a NetCDF resource.
 
-You must be logged in order to create and download a subset.
+You must be logged in in order to create and download a subset and the original
+resource must be public.
 If you want to create a new dataset with the subset, you must be authorized
 to do so.
 

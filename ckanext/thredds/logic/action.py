@@ -410,6 +410,8 @@ def subset_create(context, data_dict):
             if 'private' not in data_dict or data_dict['private'].lower() not in {'true', 'false'}:
                 data_dict['private'] = 'True'
 
+            user = toolkit.get_action('user_show')(context, {'id': context['auth_user_obj'].id})
+
             # creating new package from the current one with few changes
             if data_dict.get('type', 'download').lower() == 'new_package':
                 if search_results['count'] > 0:
@@ -453,8 +455,8 @@ def subset_create(context, data_dict):
 
                 # add subset creator
                 subset_creator = dict()
-                subset_creator['name'] = context['auth_user_obj'].fullname
-                subset_creator['mail'] = context['auth_user_obj'].email
+                subset_creator['name'] = user['display_name']
+                subset_creator['mail'] = user['email']
                 subset_creator['role'] = "Subset Creator"
                 subset_creator['department'] = ""
 
@@ -477,13 +479,14 @@ def subset_create(context, data_dict):
                 sc_added = False
 
                 for subset_creator in subset_creators:
-                    if subset_creator['name'] == context['auth_user_obj'].fullname:
+                    if subset_creator['mail'] == user['email']:
                         sc_added = True
+                        break
 
                 if sc_added is False:
                     subset_creator = dict()
-                    subset_creator['name'] = context['auth_user_obj'].fullname
-                    subset_creator['mail'] = context['auth_user_obj'].email
+                    subset_creator['name'] = user['display_name']
+                    subset_creator['mail'] = user['email']
                     subset_creator['role'] = "Subset Creator"
                     subset_creator['department'] = ""
 
