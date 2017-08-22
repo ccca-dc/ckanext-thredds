@@ -108,12 +108,12 @@
 
             {% if data.create_pkg == True %}
               <div class="new-resource">
-                  <h3>Would you like to create a new resource in a new package?</h3>
-                  <input type="radio" name="res_create" value="False" {{ "checked " if data.res_create == "False" or data.res_create is not defined  }}> No, just download the subset <br><br>
-                  <input type="radio" name="res_create" value="True" {{ "checked " if data.res_create == "True" }}> Yes <br><br>
+                  <h3>Would you like to create a new resource?</h3>
+                  <input type="radio" name="type" value="download" {{ "checked " if data.type == "download" or data.res_create is not defined  }}> <b>No</b>, just download the subset <br><br>
+                  <input type="radio" name="type" value="new_package" {{ "checked " if data.type == "new_package" }}> <b>Yes</b> and create a new dataset as well <br><br>
 
                   <div class="well">
-                      {{ form.input('title', id='field-title', label=_('Package Title'), value=data.title, error=errors.title, placeholder=_('eg. A descriptive title'), attrs={'data-module': 'slug-preview-target'}) }}
+                      {{ form.input('title', id='field-title', label=_('Dataset Title'), value=data.title, error=errors.title, placeholder=_('eg. A descriptive title'), attrs={'data-module': 'slug-preview-target'}) }}
 
                       {% set prefix = h.url_for(controller='package', action='read', id='') %}
                       {% set domain = h.url_for(controller='package', action='read', id='', qualified=true) %}
@@ -128,6 +128,20 @@
                       <input type="radio" name="private" value="False" {{ "checked " if data.private == "False" }}> Yes &emsp;
                       <input type="radio" name="private" value="True" {{ "checked " if data.private == "True" or data.private is not defined }}> No, maybe at a later point
                   </div>
+
+                  {% if data.relationships|length > 0 %}
+                  <input type="radio" name="type" value="existing_package" {{ "checked " if data.type == "existing_package" }}> <b>Yes</b>, in an existing dataset<br><br>
+
+                  <div class="well">
+                      <label class="control-label" for="existing_package_id">Dataset</label>
+                          <select name="existing_package_id">
+                            {% for rel in data.relationships %}
+                                <option value="{{ rel.name }}">{{ rel.title }}</option>
+                            {% endfor %}
+                          </select>
+                          {{ form.info(text="Only derived datasets of this dataset can be selected", inline=true) }}
+                  </div>
+                  {% endif %}
               </div>
             {% endif %}
 

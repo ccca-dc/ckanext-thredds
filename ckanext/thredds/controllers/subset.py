@@ -107,6 +107,22 @@ class SubsetController(base.BaseController):
             for org in toolkit.get_action('organization_list_for_user')(context, {'permission': 'create_dataset'}):
                 data['organizations'].append({'value': org['id'], 'text': org['display_name']})
 
+            data['relationships'] = []
+
+            try:
+                relationships = toolkit.get_action('package_relationships_list')(context, {'id': package['id'], 'rel': 'parent_of'})
+            except:
+                relationships = []
+
+            for rel in relationships:
+                try:
+                    child = toolkit.get_action('package_show')(context, {'id': rel['object']})
+                    if child['state'] != 'deleted':
+                            check_access('resource_update', context, {'id': child['id']})
+                            data['relationships'].append(child)
+                except NotAuthorized:
+                    pass
+
             vars = {'data': data, 'errors': errors, 'error_summary': error_summary}
             return toolkit.render('subset_create.html', extra_vars=vars)
 

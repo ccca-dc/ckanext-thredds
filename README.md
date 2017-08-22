@@ -23,7 +23,8 @@ datasets. The relationship between the datasets is displayed like this:
 
 Create a subset of a NetCDF resource.
 
-You must be logged in order to create and download a subset.
+You must be logged in in order to create and download a subset and the original
+resource must be public.
 If you want to create a new dataset with the subset, you must be authorized
 to do so.
 
@@ -31,8 +32,10 @@ to do so.
 * **id** (string) - the id of the resource of which a subset is to be created
 * **layers** (list of strings) - list of layer ids that should be included in the subset
 * **accept** (string) - format of the subset (NetCDF, XML or CSV)
-* **res_create** (bool) - true if dataset with resource should be created, false
-if subset should just be downloaded (optional, default: False)
+* **type** (string) - (optional, default: download)
+  * **download** - if subset should just be downloaded
+  * **new_package** - if subset should be created as resource in a new package
+  * **existing_package** - if subset should be created as resource in an existing package
 * **private** (bool) - the visibility of the package (optional, default: True)
 * **organization** (string) - id or name of the organization, which is owner of the
 dataset (required if res_create = True)
@@ -48,9 +51,10 @@ dataset (required if res_create = True)
 **Returns:**
 
 * the created URL if res_create = False
-* the newly created resource if res_create = True as new_resource
-* the existing resource if res_create = True and a public resource with this
-query already exists as existing_resource
+* the newly created resource if type = new_package or existing_package as
+new_resource
+* the existing resource if type = new_package or existing_package and a public
+resource with this query already exists as existing_resource
 
 *Hint: If you want to create a new public resource with the same query as another
 public resource, you just get existing_resource returned and no resource is
