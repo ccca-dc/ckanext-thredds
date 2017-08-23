@@ -16,32 +16,35 @@
           <form method="post" enctype="multipart/form-data">
               {{ form.errors(error_summary) }}
 
-               <h3>Queries</h3>
+              {% set queries = h.get_queries_from_user(c.userobj.id) %}
 
-               {% set queries = h.get_queries_from_user(c.userobj.id) %}
+              {% if queries|length > 0 %}
 
-               <div name="querydiv" id="querydiv" class="dropdown">
-                 <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">Select Query
-                 <span class="caret"></span></button>
-                 <ul id="querylist" class="dropdown-menu">
-                   {% for q in queries %}
-                   <li value="hallo"><a href="#">
-                       {% if q.accept %}<b>format:</b> {{ q.accept }}{% endif %}
-                       {% if q.north %}<b>north:</b> {{ q.north }}{% endif %}
-                       {% if q.east %}<b>east:</b> {{ q.east }}{% endif %}
-                       {% if q.south %}<b>south:</b> {{ q.south }}{% endif %}
-                       {% if q.west %}<b>west:</b> {{ q.west }}{% endif %}
-                       {% if q.latitude %}<b>latitude:</b> {{ q.latitude }}{% endif %}
-                       {% if q.longitude %}<b>longitude:</b> {{ q.longitude }}{% endif %}
-                       {% if q.time_start %}<b>time_start:</b> {{ q.time_start }}{% endif %}
-                       {% if q.time_end %} <b>time_end:</b> {{ q.time_end }}{% endif %}
-                   </a></li>
-                   {% endfor %}
-                 </ul>
-                </div>
-                <br>
-                {{ form.info(text="All queries that you have previously entered are being displayed", inline=true) }}
-                <br>
+                   <h3>Queries</h3>
+                   <div name="querydiv" id="querydiv" class="dropdown">
+                     <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">Select Query
+                     <span class="caret"></span></button>
+                     <ul id="querylist" class="dropdown-menu">
+                       {% for q in queries %}
+                       <li value="hallo"><a href="#">
+                           {% if q.accept %}<b>format:</b> {{ q.accept }}{% endif %}
+                           {% if q.north %}<b>north:</b> {{ q.north }}{% endif %}
+                           {% if q.east %}<b>east:</b> {{ q.east }}{% endif %}
+                           {% if q.south %}<b>south:</b> {{ q.south }}{% endif %}
+                           {% if q.west %}<b>west:</b> {{ q.west }}{% endif %}
+                           {% if q.latitude %}<b>latitude:</b> {{ q.latitude }}{% endif %}
+                           {% if q.longitude %}<b>longitude:</b> {{ q.longitude }}{% endif %}
+                           {% if q.time_start %}<b>time_start:</b> {{ q.time_start }}{% endif %}
+                           {% if q.time_end %} <b>time_end:</b> {{ q.time_end }}{% endif %}
+                       </a></li>
+                       {% endfor %}
+                     </ul>
+                    </div>
+                    <br>
+                    {{ form.info(text="All queries that you have previously entered can be selected", inline=true) }}
+                    <br>
+
+            {% endif %}
 
               <h3>Layers</h3>
               {% for layer in data.all_layers %}
