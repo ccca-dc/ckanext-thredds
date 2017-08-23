@@ -87,7 +87,7 @@
 .leaflet-top,
 .leaflet-bottom {
 	position: absolute;
-	z-index: 1000;
+	z-index: 499;
 	pointer-events: none;
 	}
 .leaflet-top {
