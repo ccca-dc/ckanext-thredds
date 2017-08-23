@@ -79,7 +79,8 @@ class ThreddsPlugin(plugins.SingletonPlugin):
             'get_parent_dataset': helpers.get_parent_dataset,
             'get_public_children_datasets': helpers.get_public_children_datasets,
             'get_parent_resource': helpers.get_parent_resource,
-            'check_subset_uniqueness': helpers.check_subset_uniqueness
+            'check_subset_uniqueness': helpers.check_subset_uniqueness,
+            'get_queries_from_user': helpers.get_queries_from_user
             }
 
     # IPackageController

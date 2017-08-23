@@ -134,7 +134,7 @@ def subset_create(context, data_dict):
 
     :param id: the id of the resource of which a subset is to be created
     :param layers: list of layer ids that should be included in the subset
-    :param accept: format of the subset (NetCDF, XML or CSV)
+    :param format: format of the subset (NetCDF, XML or CSV)
     :param res_create: true if dataset with resource should be created, false
         if subset should just be downloaded (optional, default = False)
     :param private: the visibility of the package (optional, default = True)
@@ -337,13 +337,13 @@ def subset_create(context, data_dict):
         errors['time_start'] = [u'Missing value']
 
     # error format section
-    if data_dict.get('accept', "") != "":
-        if data_dict['point'] is True and data_dict['accept'].lower() not in {'netcdf', 'csv', 'xml'}:
-            errors['accept'] = [u'Wrong format']
-        elif data_dict['point'] is False and data_dict['accept'].lower() != 'netcdf':
-            errors['accept'] = [u'Wrong format']
+    if data_dict.get('format', "") != "":
+        if data_dict['point'] is True and data_dict['format'].lower() not in {'netcdf', 'csv', 'xml'}:
+            errors['format'] = [u'Wrong format']
+        elif data_dict['point'] is False and data_dict['format'].lower() != 'netcdf':
+            errors['format'] = [u'Wrong format']
     else:
-        errors['accept'] = [u'Missing value']
+        errors['format'] = [u'Missing value']
 
     # error layer section
     if data_dict.get('layers', "") != "":
@@ -367,8 +367,8 @@ def subset_create(context, data_dict):
         else:
             params = {'var': data_dict['layers']}
 
-        # adding accept (always has a value)
-        params['accept'] = data_dict['accept'].lower()
+        # adding format
+        params['accept'] = data_dict['format'].lower()
 
         # adding time
         if times_exist is True:
@@ -501,7 +501,7 @@ def subset_create(context, data_dict):
                     if existing_package['private'] is False:
                         return return_dict
 
-            new_resource = toolkit.get_action('resource_create')(context, {'name': 'subset_' + resource['name'], 'url': url, 'package_id': package_to_add_id, 'format': data_dict['accept'], 'subset_of': resource['id']})
+            new_resource = toolkit.get_action('resource_create')(context, {'name': 'subset_' + resource['name'], 'url': url, 'package_id': package_to_add_id, 'format': data_dict['format'], 'subset_of': resource['id']})
 
             toolkit.get_action('package_relationship_create')(context, {'subject': package_to_add_id, 'object': package['id'], 'type': 'child_of'})
 

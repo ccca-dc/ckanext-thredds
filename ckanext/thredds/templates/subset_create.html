@@ -1,6 +1,7 @@
 {% resource 'thredds/spatial_form' %}
 {% resource 'thredds/jquery.datetimepicker.full.js' %}
 {% resource 'thredds/subset_datepicker.js' %}
+{% resource 'thredds/stored_queries.js' %}
 
 {% import 'macros/form.html' as form %}
 
@@ -14,6 +15,34 @@
           <h1>Create Subset</h1>
           <form method="post" enctype="multipart/form-data">
               {{ form.errors(error_summary) }}
+
+               <h3>Queries</h3>
+
+               {% set queries = h.get_queries_from_user(c.userobj.id) %}
+
+               <div name="querydiv" id="querydiv" class="dropdown">
+                 <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">Select Query
+                 <span class="caret"></span></button>
+                 <ul id="querylist" class="dropdown-menu">
+                   {% for q in queries %}
+                   <li value="hallo"><a href="#">
+                       {% if q.accept %}<b>format:</b> {{ q.accept }}{% endif %}
+                       {% if q.north %}<b>north:</b> {{ q.north }}{% endif %}
+                       {% if q.east %}<b>east:</b> {{ q.east }}{% endif %}
+                       {% if q.south %}<b>south:</b> {{ q.south }}{% endif %}
+                       {% if q.west %}<b>west:</b> {{ q.west }}{% endif %}
+                       {% if q.latitude %}<b>latitude:</b> {{ q.latitude }}{% endif %}
+                       {% if q.longitude %}<b>longitude:</b> {{ q.longitude }}{% endif %}
+                       {% if q.time_start %}<b>time_start:</b> {{ q.time_start }}{% endif %}
+                       {% if q.time_end %} <b>time_end:</b> {{ q.time_end }}{% endif %}
+                   </a></li>
+                   {% endfor %}
+                 </ul>
+                </div>
+                <br>
+                {{ form.info(text="All queries that you have previously entered are being displayed", inline=true) }}
+                <br>
+
               <h3>Layers</h3>
               {% for layer in data.all_layers %}
                 <p><input type="checkbox" name="layers" value="{{ layer['id'] }}" {{ "checked " if layer['id'] in data.layers }}> {{ layer['label'] }}</p>
@@ -101,9 +130,9 @@
 
             <h3>Format</h3>
             <p>
-            <input type="radio" name="accept" id="radio_netcdf" value="netCDF" {{ "checked " if data.accept == "netCDF" or data.accept is not defined }}> netCDF &emsp;
-            <input type="radio" name="accept" id="radio_csv" value="CSV" {{ "checked " if data.accept == "CSV" }} {{ "disabled" if data.point == False }}> CSV &emsp;
-            <input type="radio" name="accept" id="radio_xml" value="XML" {{ "checked " if data.accept == "XML" }} {{ "disabled" if data.point == False }}> XML
+            <input type="radio" name="format" id="radio_netcdf" value="netCDF" {{ "checked " if data.format|lower == "netcdf" or data.format is not defined }}> netCDF &emsp;
+            <input type="radio" name="format" id="radio_csv" value="CSV" {{ "checked " if data.format|lower == "csv" }} {{ "disabled" if data.point == False }}> CSV &emsp;
+            <input type="radio" name="format" id="radio_xml" value="XML" {{ "checked " if data.format|lower == "xml" }} {{ "disabled" if data.point == False }}> XML
             </p>
 
             {% if data.create_pkg == True %}
@@ -148,7 +177,6 @@
             <div class="form-actions">
               <button class="btn btn-primary save" type="submit" name="save">{{ _('Submit') }}</button>
            </div>
-
           </form>
       </div>
 

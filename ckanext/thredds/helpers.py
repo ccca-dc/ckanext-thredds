@@ -4,6 +4,7 @@ import ckan.lib.base as base
 import ckan.model as model
 import ckan.logic as logic
 import ckan.lib.helpers as h
+import urlparse
 
 
 def get_parent_dataset(package_id):
@@ -72,3 +73,29 @@ def check_subset_uniqueness(package_id):
                 uniqueness_problems.append({'private_resource': private_res_url, 'public_resource': public_res_url})
 
     return uniqueness_problems
+
+
+def get_queries_from_user(user_id):
+    ctx = {'model': model}
+
+    packages = tk.get_action('package_search')(ctx, {'q': 'creator_user_id:"' + user_id + '"', 'include_private': 'True'})
+
+    urls = []
+
+    for package in packages['results']:
+        try:
+            tk.get_action('package_relationships_list')(ctx, {'id': package['id'], 'rel': 'child_of'})
+
+            for resource in package['resources']:
+                if resource.get('subset_of', "") != "":
+                    url = dict()
+                    parsed = urlparse.urlparse(resource['url'])
+                    params = urlparse.parse_qs(parsed.query)
+                    for param in params:
+                        url[param] = params.get(param, [""])[0]
+                    if url not in urls:
+                        urls.append(url)
+        except:
+            pass
+
+    return urls
