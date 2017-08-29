@@ -21,30 +21,38 @@
               {% if queries|length > 0 %}
 
                    <h3>Queries</h3>
-                   <div name="querydiv" id="querydiv" class="dropdown">
+                   <div name="querydiv" id="querydiv" class="btn-group">
                      <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">Select Query
+                     <span class="badge">{{queries|length}}</span>
                      <span class="caret"></span></button>
-                     <ul id="querylist" class="dropdown-menu">
+                     <ul id="querylist" class="scrollable-menu dropdown-menu" >
                        {% for q in queries %}
-                       <li value="hallo"><a href="#">
-                           <b>{{ q.name }}</b>
+                       <li><a href="#">
+                           <div value="{{ q }}">
+                          <h5>{{ q.name }}
+                          <br><small>
+                           {{ q.format }}
+                           {%- if q.north -%}, {{ q.north }}/{% endif %}
+                           {%- if q.east -%}{{ q.east }}/{% endif %}
+                           {%- if q.south -%}{{ q.south }}/{% endif %}
+                           {%- if q.west -%}{{ q.west }}{% endif %}
+                           {%- if q.latitude -%}, {{ q.latitude }}/{% endif %}
+                           {%- if q.longitude -%}{{ q.longitude }}{% endif %}
+                           {%- if q.time_start -%}, {{ h.date_str_to_datetime(q.time_start) }} {% endif %}
+                           {%- if q.time_end -%}- {{ h.date_str_to_datetime(q.time_end) }}{% endif %}
                            <br>
-                           {{ q.accept }}
-                           {% if q.north %}, {{ q.north }}/{% endif %}
-                           {% if q.east %}{{ q.east }}/{% endif %}
-                           {% if q.south %}{{ q.south }}/{% endif %}
-                           {% if q.west %}{{ q.west }}{% endif %}
-                           {% if q.latitude %}, {{ q.latitude }}/{% endif %}
-                           {% if q.longitude %}{{ q.longitude }}{% endif %}
-                           {% if q.time_start %}, {{ q.time_start }}{% endif %}
-                           {% if q.time_end %} - {{ q.time_end }}{% endif %}
-                           <br>
-                           created: {{ q.created }}
+                           <span class="badge">
+                           created: {{ h.date_str_to_datetime(q.created).strftime('%Y-%m-%d %H:%M:%S') }}
+                           </span>
+                           </small></h5>
+                       </div>
                        </a></li>
                        {% endfor %}
+                        <li role="separator" class="divider"></li>
+                        <li><a href="#">Want to get all queries?</a></li>
                      </ul>
                     </div>
-                    <br>
+                    <br><br>
                     {{ form.info(text="All queries that you have previously entered can be selected", inline=true) }}
                     <br>
 

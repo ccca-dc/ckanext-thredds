@@ -89,12 +89,15 @@ def get_queries_from_user(user_id):
             for resource in package['resources']:
                 if resource.get('subset_of', "") != "":
                     url = dict()
-                    url['name'] = resource['name']
-                    url['created'] = h.date_str_to_datetime(resource['created'])
+                    url['name'] = str(resource['name'])
+                    url['created'] = str(resource['created'])
                     parsed = urlparse.urlparse(resource['url'])
                     params = urlparse.parse_qs(parsed.query)
                     for param in params:
-                        url[param] = params.get(param, [""])[0]
+                        if param == "accept":
+                            url['format'] = str(params[param][0])
+                        else:
+                            url[str(param)] = str(params.get(param, [""])[0])
                     if url not in urls:
                         urls.append(url)
         except:
