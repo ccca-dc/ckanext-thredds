@@ -261,6 +261,8 @@ def subset_create(context, data_dict):
                 errors['name'] = [u'That URL is already in use.']
             except NotFound:
                 pass
+            except NotAuthorized:
+                errors['name'] = [u'That URL is already in use.']
 
             if len(data_dict['name']) < PACKAGE_NAME_MIN_LENGTH:
                 errors['name'] = [u'URL is shorter than minimum (' + str(PACKAGE_NAME_MIN_LENGTH) + u')']
