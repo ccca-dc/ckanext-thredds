@@ -27,15 +27,19 @@
                      <ul id="querylist" class="dropdown-menu">
                        {% for q in queries %}
                        <li value="hallo"><a href="#">
-                           {% if q.accept %}<b>format:</b> {{ q.accept }}{% endif %}
-                           {% if q.north %}<b>north:</b> {{ q.north }}{% endif %}
-                           {% if q.east %}<b>east:</b> {{ q.east }}{% endif %}
-                           {% if q.south %}<b>south:</b> {{ q.south }}{% endif %}
-                           {% if q.west %}<b>west:</b> {{ q.west }}{% endif %}
-                           {% if q.latitude %}<b>latitude:</b> {{ q.latitude }}{% endif %}
-                           {% if q.longitude %}<b>longitude:</b> {{ q.longitude }}{% endif %}
-                           {% if q.time_start %}<b>time_start:</b> {{ q.time_start }}{% endif %}
-                           {% if q.time_end %} <b>time_end:</b> {{ q.time_end }}{% endif %}
+                           <b>{{ q.name }}</b>
+                           <br>
+                           {{ q.accept }}
+                           {% if q.north %}, {{ q.north }}/{% endif %}
+                           {% if q.east %}{{ q.east }}/{% endif %}
+                           {% if q.south %}{{ q.south }}/{% endif %}
+                           {% if q.west %}{{ q.west }}{% endif %}
+                           {% if q.latitude %}, {{ q.latitude }}/{% endif %}
+                           {% if q.longitude %}{{ q.longitude }}{% endif %}
+                           {% if q.time_start %}, {{ q.time_start }}{% endif %}
+                           {% if q.time_end %} - {{ q.time_end }}{% endif %}
+                           <br>
+                           created: {{ q.created }}
                        </a></li>
                        {% endfor %}
                      </ul>

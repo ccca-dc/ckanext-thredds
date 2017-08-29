@@ -89,6 +89,8 @@ def get_queries_from_user(user_id):
             for resource in package['resources']:
                 if resource.get('subset_of', "") != "":
                     url = dict()
+                    url['name'] = resource['name']
+                    url['created'] = h.date_str_to_datetime(resource['created'])
                     parsed = urlparse.urlparse(resource['url'])
                     params = urlparse.parse_qs(parsed.query)
                     for param in params:
