@@ -78,29 +78,49 @@ def check_subset_uniqueness(package_id):
 def get_queries_from_user(user_id):
     ctx = {'model': model}
 
-    packages = tk.get_action('package_search')(ctx, {'q': 'creator_user_id:"' + user_id + '"', 'include_private': 'True'})
+    user_packages = tk.get_action('package_search')(ctx, {'q': 'creator_user_id:"' + user_id + '"', 'include_private': 'True'})
+    all_packages = tk.get_action('package_search')(ctx, {'include_private': 'False'})
 
-    urls = []
+    user_queries = []
 
-    for package in packages['results']:
+    for package in user_packages['results']:
         try:
             tk.get_action('package_relationships_list')(ctx, {'id': package['id'], 'rel': 'child_of'})
 
             for resource in package['resources']:
                 if resource.get('subset_of', "") != "":
-                    url = dict()
-                    url['name'] = str(resource['name'])
-                    url['created'] = str(resource['created'])
-                    parsed = urlparse.urlparse(resource['url'])
-                    params = urlparse.parse_qs(parsed.query)
-                    for param in params:
-                        if param == "accept":
-                            url['format'] = str(params[param][0])
-                        else:
-                            url[str(param)] = str(params.get(param, [""])[0])
-                    if url not in urls:
-                        urls.append(url)
+                    query = _get_params(resource)
+                    if query not in user_queries:
+                        user_queries.append(query)
         except:
             pass
 
-    return urls
+    all_queries = []
+    for package in all_packages['results']:
+        if package not in user_packages['results']:
+            try:
+                tk.get_action('package_relationships_list')(ctx, {'id': package['id'], 'rel': 'child_of'})
+
+                for resource in package['resources']:
+                    if resource.get('subset_of', "") != "":
+                        query = _get_params(resource)
+                        if query not in all_queries:
+                            all_queries.append(query)
+            except:
+                pass
+
+    return user_queries, all_queries
+
+
+def _get_params(resource):
+    query = dict()
+    query['name'] = str(resource['name'])
+    query['created'] = str(resource['created'])
+    parsed = urlparse.urlparse(resource['url'])
+    params = urlparse.parse_qs(parsed.query)
+    for param in params:
+        if param == "accept":
+            query['format'] = str(params[param][0])
+        else:
+            query[str(param)] = str(params.get(param, [""])[0])
+    return query

@@ -16,18 +16,18 @@
           <form method="post" enctype="multipart/form-data">
               {{ form.errors(error_summary) }}
 
-              {% set queries = h.get_queries_from_user(c.userobj.id) %}
+              {% set user_queries, all_queries = h.get_queries_from_user(c.userobj.id) %}
 
-              {% if queries|length > 0 %}
+              {% if user_queries|length > 0 or all_queries|length > 0 %}
 
                    <h3>Queries</h3>
                    <div name="querydiv" id="querydiv" class="btn-group">
                      <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">Select Query
-                     <span class="badge">{{queries|length}}</span>
                      <span class="caret"></span></button>
                      <ul id="querylist" class="scrollable-menu dropdown-menu" >
-                       {% for q in queries %}
-                       <li><a href="#">
+                       <h5>Your Queries: <span class="badge">{{user_queries|length}}</span></h5>
+                       {% for q in user_queries %}
+                       <li data-module="stored_queries" data-module-user_queries="{{ user_queries }}" data-module-all_queries="{{ all_queries }}"><a href="#">
                            <div value="{{ q }}">
                           <h5>{{ q.name }}
                           <br><small>
@@ -48,12 +48,14 @@
                        </div>
                        </a></li>
                        {% endfor %}
-                        <li role="separator" class="divider"></li>
-                        <li><a href="#">Want to get all queries?</a></li>
+                       {% if all_queries|length > 0 %}
+                        <li id="add_all_queries" role="separator" class="divider"></li>
+                        <li data-module="stored_queries" data-module-user_queries="{{ user_queries }}" data-module-all_queries="{{ all_queries }}"><a href="#">Want to get all queries? ({{ all_queries|length }} more)</a></li>
+                        {% endif %}
                      </ul>
                     </div>
                     <br><br>
-                    {{ form.info(text="All queries that you have previously entered can be selected", inline=true) }}
+                    {{ form.info(text="Queries that have been entered previously can be selected", inline=true) }}
                     <br>
 
             {% endif %}
