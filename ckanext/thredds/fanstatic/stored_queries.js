@@ -17,7 +17,7 @@ ckan.module('stored_queries', function($) {
     },
 
     _onClick: function(event) {
-        _fillFields = function(element) {
+        var _fillFields = function(element) {
             var valQuoteChange = element.find('div:first').attr("value").replace(/'/g, '"');
             params = JSON.parse(valQuoteChange);
             for (param in params) {
@@ -64,7 +64,7 @@ ckan.module('stored_queries', function($) {
             var all_queries = JSON.parse(this.all_queries.replace(/'/g, '"'));
             this.el.text("");
             this.el.append($('<h5 name="dropdown_heading">Other Public Queries: <span class="badge">' + all_queries.length + '</span></h5>'));
-            for (i = 0; i < all_queries.length; i++) {
+            for (var i = 0; i < all_queries.length; i++) {
                 var li = '<li name="pubQuery"><a href="#">\
                           <div value="' + JSON.stringify(all_queries[i]).replace(/"/g, "'") +'"><h5>\
                           '+ all_queries[i]['name'] + '\
