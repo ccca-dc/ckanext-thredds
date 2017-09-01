@@ -17,3 +17,6 @@ input[type=text] {
     max-height: 500px;
     overflow-x: hidden;
 }
+h5[name=dropdown_heading] {
+    margin-left: 10px;
+}

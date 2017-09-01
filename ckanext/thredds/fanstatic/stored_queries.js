@@ -28,6 +28,10 @@ ckan.module('stored_queries', function($) {
                         $('label[for="east"]').text("East");
 
                         $('#north').val(params[param]);
+
+                        document.getElementById("radio_netcdf").checked=true;
+                        document.getElementById("radio_csv").disabled=true;
+                        document.getElementById("radio_xml").disabled=true;
                     } else if(param == "latitude"){
                         $('#south').val("");
                         $('#west').val("");
@@ -36,6 +40,9 @@ ckan.module('stored_queries', function($) {
                         $('label[for="east"]').text("Longitude");
 
                         $('#north').val(params[param]);
+
+                        document.getElementById("radio_csv").disabled=false;
+                        document.getElementById("radio_xml").disabled=false;
                     } else if(param == "longitude"){
                         $('#east').val(params[param]);
                     }
@@ -51,12 +58,12 @@ ckan.module('stored_queries', function($) {
                 }
             };
 
-        if(!this.el.text().includes("Want to get all queries?")){
+        if(this.el.attr("id") != "other_queries"){
             _fillFields(this.el);
-        }else if(this.el.text().includes("Want to get all queries?")){
+        }else{
             var all_queries = JSON.parse(this.all_queries.replace(/'/g, '"'));
             this.el.text("");
-            this.el.append($('<h5>Other Public Queries: <span class="badge">' + all_queries.length + '</span></h5>'));
+            this.el.append($('<h5 name="dropdown_heading">Other Public Queries: <span class="badge">' + all_queries.length + '</span></h5>'));
             for (i = 0; i < all_queries.length; i++) {
                 var li = '<li name="pubQuery"><a href="#">\
                           <div value="' + JSON.stringify(all_queries[i]).replace(/"/g, "'") +'"><h5>\
@@ -73,10 +80,10 @@ ckan.module('stored_queries', function($) {
                     li += all_queries[i]['longitude'];
                 }
                 if(all_queries[i]['time_start']){
-                    li += ', ' + all_queries[i]['time_start'] + ' - ';
-                    li += all_queries[i]['time_end'];
+                    li += ', ' + moment(new Date(all_queries[i]['time_start'])).format("YYYY-MM-DD hh:mm:ss") + ' - ';
+                    li += moment(new Date(all_queries[i]['time_end'])).format("YYYY-MM-DD hh:mm:ss");
                 }
-                li += '<br><span class="badge">created: ' + all_queries[i]['created'] + '</span>';
+                li += '<br><span class="badge">created: ' + moment(new Date(all_queries[i]['created'])).format("YYYY-MM-DD hh:mm:ss") + '</span>';
                 $('ul#querylist').append($(li));
             }
             $('li[name = "pubQuery"]').click(function(e){
