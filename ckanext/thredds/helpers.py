@@ -81,7 +81,7 @@ def get_queries_from_user(user_id):
     # CKAN 2.7. has include_private in package_search, lower versions not
     # user_packages = tk.get_action('package_search')(ctx, {'q': 'creator_user_id:"' + user_id + '"', 'include_private': 'True'})
     user_packages = tk.get_action('user_show')(ctx, {'id': user_id, 'include_datasets': 'True'})
-    all_packages = tk.get_action('package_search')(ctx)
+    all_packages = tk.get_action('package_search')(ctx, {})
 
     user_queries = []
 
