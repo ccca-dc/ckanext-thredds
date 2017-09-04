@@ -78,12 +78,14 @@ def check_subset_uniqueness(package_id):
 def get_queries_from_user(user_id):
     ctx = {'model': model}
 
-    user_packages = tk.get_action('package_search')(ctx, {'q': 'creator_user_id:"' + user_id + '"', 'include_private': 'True'})
+    # CKAN 2.7. has include_private in package_search, lower versions not
+    # user_packages = tk.get_action('package_search')(ctx, {'q': 'creator_user_id:"' + user_id + '"', 'include_private': 'True'})
+    user_packages = tk.get_action('user_show')(ctx, {'id': user_id, 'include_datasets': 'True'})
     all_packages = tk.get_action('package_search')(ctx, {'include_private': 'False'})
 
     user_queries = []
 
-    for package in user_packages['results']:
+    for package in user_packages['datasets']:
         try:
             tk.get_action('package_relationships_list')(ctx, {'id': package['id'], 'rel': 'child_of'})
 
@@ -97,7 +99,7 @@ def get_queries_from_user(user_id):
 
     all_queries = []
     for package in all_packages['results']:
-        if package not in user_packages['results']:
+        if package not in user_packages['datasets']:
             try:
                 tk.get_action('package_relationships_list')(ctx, {'id': package['id'], 'rel': 'child_of'})
 

@@ -116,6 +116,7 @@ class SubsetController(base.BaseController):
 
             for rel in relationships:
                 try:
+                    check_access('package_show', context, {'id': rel['object']})
                     child = toolkit.get_action('package_show')(context, {'id': rel['object']})
                     if child['state'] != 'deleted':
                             check_access('resource_update', context, {'id': child['id']})

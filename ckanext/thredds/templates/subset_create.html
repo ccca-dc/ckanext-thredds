@@ -28,24 +28,24 @@
                        <h5 name="dropdown_heading">Your Queries: <span class="badge">{{user_queries|length}}</span></h5>
                        {% for q in user_queries %}
                        <li data-module="stored_queries" data-module-user_queries="{{ user_queries }}" data-module-all_queries="{{ all_queries }}"><a href="#">
-                           <div value="{{ q }}">
-                          <h5>{{ q.name }}
-                          <br><small>
-                           {{ q.format }}
-                           {%- if q.north -%}, {{ q.north }}/{% endif %}
-                           {%- if q.east -%}{{ q.east }}/{% endif %}
-                           {%- if q.south -%}{{ q.south }}/{% endif %}
-                           {%- if q.west -%}{{ q.west }}{% endif %}
-                           {%- if q.latitude -%}, {{ q.latitude }}/{% endif %}
-                           {%- if q.longitude -%}{{ q.longitude }}{% endif %}
-                           {%- if q.time_start -%}, {{ h.date_str_to_datetime(q.time_start) }} {% endif %}
-                           {%- if q.time_end -%}- {{ h.date_str_to_datetime(q.time_end) }}{% endif %}
-                           <br>
-                           <span class="badge">
-                           created: {{ h.date_str_to_datetime(q.created).strftime('%Y-%m-%d %H:%M:%S') }}
-                           </span>
-                           </small></h5>
-                       </div>
+                          <div value="{{ q }}">
+                              <h5>{{ q.name }}
+                              <br><small>
+                               {{ q.format }}
+                               {%- if q.north -%}, {{ q.north }}/{% endif %}
+                               {%- if q.east -%}{{ q.east }}/{% endif %}
+                               {%- if q.south -%}{{ q.south }}/{% endif %}
+                               {%- if q.west -%}{{ q.west }}{% endif %}
+                               {%- if q.latitude -%}, {{ q.latitude }}/{% endif %}
+                               {%- if q.longitude -%}{{ q.longitude }}{% endif %}
+                               {%- if q.time_start -%}, {{ h.date_str_to_datetime(q.time_start) }} {% endif %}
+                               {%- if q.time_end -%}- {{ h.date_str_to_datetime(q.time_end) }}{% endif %}
+                               <br>
+                               <span class="badge">
+                               created: {{ h.date_str_to_datetime(q.created).strftime('%Y-%m-%d %H:%M:%S') }}
+                               </span>
+                               </small></h5>
+                           </div>
                        </a></li>
                        {% endfor %}
                        {% if all_queries|length > 0 %}

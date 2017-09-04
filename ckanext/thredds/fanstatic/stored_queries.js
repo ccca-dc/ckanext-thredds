@@ -19,8 +19,8 @@ ckan.module('stored_queries', function($) {
     _onClick: function(event) {
         var _fillFields = function(element) {
             var valQuoteChange = element.find('div:first').attr("value").replace(/'/g, '"');
-            params = JSON.parse(valQuoteChange);
-            for (param in params) {
+            var params = JSON.parse(valQuoteChange);
+            for (var param in params) {
                 //if (params[param].match(/[a-z]/i)){
                     if(param == "north"){
                         $('#southWest').show();
@@ -49,7 +49,7 @@ ckan.module('stored_queries', function($) {
                     else if($("[name='" + param + "']").is(':radio') != true){
                         $("[name='" + param + "']").val(params[param]);
                     }else{
-                        for (j = 0; j < $("[name='" + param + "']").length; j++) {
+                        for (var j = 0; j < $("[name='" + param + "']").length; j++) {
                             if($("[name='" + param + "']")[j].value.toLowerCase() ==params[param]){
                                 $("[name='" + param + "']")[j].checked=true;
                             }
