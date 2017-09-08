@@ -67,7 +67,7 @@ ckan.module('stored_queries', function($) {
             for (var i = 0; i < all_queries.length; i++) {
                 var li = '<li name="pubQuery"><a href="#">\
                           <div value="' + JSON.stringify(all_queries[i]).replace(/"/g, "'") +'"><h5>\
-                          '+ all_queries[i]['name'] + '\
+                          '+ all_queries[i]['query_name'] + '\
                           <br><small>\
                           '+ all_queries[i]['format'];
                 if(all_queries[i]['north']){
