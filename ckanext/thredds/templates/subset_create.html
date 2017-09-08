@@ -148,8 +148,8 @@
             <h3>Format</h3>
             <p>
             <input type="radio" name="format" id="radio_netcdf" value="netCDF" {{ "checked " if data.format|lower == "netcdf" or data.format is not defined }}> netCDF &emsp;
-            <input type="radio" name="format" id="radio_csv" value="CSV" {{ "checked " if data.format|lower == "csv" }} {{ "disabled" if data.point == False }}> CSV &emsp;
-            <input type="radio" name="format" id="radio_xml" value="XML" {{ "checked " if data.format|lower == "xml" }} {{ "disabled" if data.point == False }}> XML
+            <input type="radio" name="format" id="radio_csv" value="CSV" {{ "checked " if data.format|lower == "csv" }} {{ "disabled" if data.point == False or data.point is not defined }}> CSV &emsp;
+            <input type="radio" name="format" id="radio_xml" value="XML" {{ "checked " if data.format|lower == "xml" }} {{ "disabled" if data.point == False or data.point is not defined }}> XML
             </p>
 
             {% if data.create_pkg == True %}
