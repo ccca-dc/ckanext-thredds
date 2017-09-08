@@ -255,16 +255,15 @@ def subset_create(context, data_dict):
         if data_dict.get('name', "") == '':
             errors['name'] = [u'Missing Value']
         else:
-            try:
-                toolkit.get_action('package_show')(context, {'id': data_dict['name']})
+            model = context['model']
+            session = context['session']
+            result = session.query(model.Package).filter_by(name=data_dict['name']).first()
 
+            if result:
                 errors['name'] = [u'That URL is already in use.']
-            except NotFound:
-                pass
-
-            if len(data_dict['name']) < PACKAGE_NAME_MIN_LENGTH:
+            elif len(data_dict['name']) < PACKAGE_NAME_MIN_LENGTH:
                 errors['name'] = [u'URL is shorter than minimum (' + str(PACKAGE_NAME_MIN_LENGTH) + u')']
-            if len(data_dict['name']) > PACKAGE_NAME_MAX_LENGTH:
+            elif len(data_dict['name']) > PACKAGE_NAME_MAX_LENGTH:
                 errors['name'] = [u'URL is longer than maximum (' + str(PACKAGE_NAME_MAX_LENGTH) + u')']
         if data_dict.get('organization', "") == '':
             errors['organization'] = [u'Missing Value']

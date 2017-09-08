@@ -29,7 +29,7 @@
                        {% for q in user_queries %}
                        <li data-module="stored_queries" data-module-user_queries="{{ user_queries }}" data-module-all_queries="{{ all_queries }}"><a href="#">
                           <div value="{{ q }}">
-                              <h5>{{ q.name }}
+                              <h5>{{ q.query_name }}
                               <br><small>
                                {{ q.format }}
                                {%- if q.north -%}, {{ q.north }}/{% endif %}

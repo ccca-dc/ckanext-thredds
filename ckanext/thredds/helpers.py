@@ -120,7 +120,8 @@ def get_queries_from_user(user_id):
 
 def _get_params(resource):
     query = dict()
-    query['name'] = str(resource['name'])
+    # don't call it just name, otherwise problem in template
+    query['query_name'] = str(resource['name'])
     query['created'] = str(resource['created'])
     parsed = urlparse.urlparse(resource['url'])
     params = urlparse.parse_qs(parsed.query)
