@@ -87,6 +87,20 @@ this.ckan.module('subset-form', function (jQuery, _) {
       jQuery.proxyAll(this, /_on/);
       this.el.ready(this._onReady);
 
+      if($('#north').val()!="" && $('#south').val()==""){
+          $('#southWest').hide();
+          $('label[for="north"]').text("Latitude");
+          $('label[for="east"]').text("Longitude");
+      }
+
+      // should not be in this module
+      if(document.getElementById("new_package").checked==true){
+          document.getElementById('new_package_well').style.display = 'block';
+          document.getElementById('existing_package_well').style.display = 'none';
+      }else if(document.getElementById("existing_package").checked==true){
+          document.getElementById('existing_package_well').style.display = 'block';
+          document.getElementById('new_package_well').style.display = 'none';
+      }
     },
 
 

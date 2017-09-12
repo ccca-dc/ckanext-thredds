@@ -21,42 +21,43 @@ ckan.module('stored_queries', function($) {
             var valQuoteChange = element.find('div:first').attr("value").replace(/'/g, '"');
             var params = JSON.parse(valQuoteChange);
             for (var param in params) {
-                //if (params[param].match(/[a-z]/i)){
-                    if(param == "north"){
-                        $('#southWest').show();
-                        $('label[for="north"]').text("North");
-                        $('label[for="east"]').text("East");
+                if(param == "north"){
+                    $('#southWest').show();
+                    $('label[for="north"]').text("North");
+                    $('label[for="east"]').text("East");
 
-                        $('#north').val(params[param]);
+                    $('#north').val(params[param]);
 
-                        document.getElementById("radio_netcdf").checked=true;
-                        document.getElementById("radio_csv").disabled=true;
-                        document.getElementById("radio_xml").disabled=true;
-                    } else if(param == "latitude"){
-                        $('#south').val("");
-                        $('#west').val("");
-                        $('#southWest').hide();
-                        $('label[for="north"]').text("Latitude");
-                        $('label[for="east"]').text("Longitude");
+                    document.getElementById("radio_netcdf").checked=true;
+                    document.getElementById("radio_csv").disabled=true;
+                    document.getElementById("radio_xml").disabled=true;
+                } else if(param == "latitude"){
+                    $('#south').val("");
+                    $('#west').val("");
+                    $('#southWest').hide();
+                    $('label[for="north"]').text("Latitude");
+                    $('label[for="east"]').text("Longitude");
 
-                        $('#north').val(params[param]);
+                    $('#north').val(params[param]);
 
-                        document.getElementById("radio_csv").disabled=false;
-                        document.getElementById("radio_xml").disabled=false;
-                    } else if(param == "longitude"){
-                        $('#east').val(params[param]);
-                    }
-                    else if($("[name='" + param + "']").is(':radio') != true){
-                        $("[name='" + param + "']").val(params[param]);
-                    }else{
-                        for (var j = 0; j < $("[name='" + param + "']").length; j++) {
-                            if($("[name='" + param + "']")[j].value.toLowerCase() ==params[param]){
-                                $("[name='" + param + "']")[j].checked=true;
-                            }
+                    document.getElementById("radio_csv").disabled=false;
+                    document.getElementById("radio_xml").disabled=false;
+                } else if(param == "longitude"){
+                    $('#east').val(params[param]);
+                } else if(param == "time_start" || param == "time_end"){
+                     $("[name='" + param + "']").val(moment(new Date(params[param])).format("YYYY-MM-DD hh:mm:ss"));
+                }
+                else if($("[name='" + param + "']").is(':radio') != true){
+                    $("[name='" + param + "']").val(params[param]);
+                }else{
+                    for (var j = 0; j < $("[name='" + param + "']").length; j++) {
+                        if($("[name='" + param + "']")[j].value.toLowerCase() ==params[param]){
+                            $("[name='" + param + "']")[j].checked=true;
                         }
                     }
                 }
-            };
+            }
+        };
 
         if(this.el.attr("id") != "other_queries"){
             _fillFields(this.el);
