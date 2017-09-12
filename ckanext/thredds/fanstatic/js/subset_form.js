@@ -94,12 +94,16 @@ this.ckan.module('subset-form', function (jQuery, _) {
       }
 
       // should not be in this module
-      if(document.getElementById("new_package").checked==true){
+      if(document.getElementById('new_package') !== null && document.getElementById("new_package").checked==true){
           document.getElementById('new_package_well').style.display = 'block';
-          document.getElementById('existing_package_well').style.display = 'none';
-      }else if(document.getElementById("existing_package").checked==true){
+          if(document.getElementById('existing_package') !== null){
+            document.getElementById('existing_package_well').style.display = 'none';
+          }
+      }else if(document.getElementById('existing_package') !== null && document.getElementById("existing_package").checked==true){
           document.getElementById('existing_package_well').style.display = 'block';
-          document.getElementById('new_package_well').style.display = 'none';
+          if(document.getElementById('new_package') !== null){
+            document.getElementById('new_package_well').style.display = 'none';
+          }
       }
     },
 
@@ -258,16 +262,24 @@ this.ckan.module('subset-form', function (jQuery, _) {
 
         // following elements should not be in this module
         $(':radio[id=download]').change(function() {
-            document.getElementById('existing_package_well').style.display = 'none';
-            document.getElementById('new_package_well').style.display = 'none';
+            if(document.getElementById('new_package') !== null){
+                document.getElementById('new_package_well').style.display = 'none';
+            }
+            if(document.getElementById('existing_package') !== null){
+                document.getElementById('existing_package_well').style.display = 'none';
+            }
         });
         $(':radio[id=new_package]').change(function() {
             document.getElementById('new_package_well').style.display = 'block';
-            document.getElementById('existing_package_well').style.display = 'none';
+            if(document.getElementById('existing_package') !== null){
+                document.getElementById('existing_package_well').style.display = 'none';
+            }
         });
         $(':radio[id=existing_package]').change(function() {
             document.getElementById('existing_package_well').style.display = 'block';
-            document.getElementById('new_package_well').style.display = 'none';
+            if(document.getElementById('new_package') !== null){
+                document.getElementById('new_package_well').style.display = 'none';
+            }
         });
 
         $("#subset-form :input").tooltip({ 'trigger': 'focus' });
