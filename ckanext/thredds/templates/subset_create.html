@@ -41,7 +41,7 @@
                   <div class="division">
                    <h3>Reuse Query</h3>
                    <div name="querydiv" id="querydiv" class="btn-group">
-                     <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">Select Query
+                     <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">Select Query Template
                      <span class="caret"></span></button>
                      <ul id="querylist" class="scrollable-menu dropdown-menu" >
                        <h5 name="dropdown_heading">Your Queries: <span class="badge">{{user_queries|length}}</span></h5>
@@ -141,9 +141,9 @@
                     {% set end = h.date_str_to_datetime(data.pkg.iso_exTempEnd) %}
                 {% endif %}
                 <div id="left">
-                    {{ input('time_start', title='min: ' + start|string if data.pkg.iso_exTempStart is defined, id='time_start', label=_('From'), value=data.time_start, error=errors.time_start, attrs={'data-module': 'subset_datepicker', 'data-placement': 'right'}) }}
+                    {{ input('time_start', title='min: ' + start|string if data.pkg.iso_exTempStart is defined, id='time_start', label=_('From'), value=data.time_start, error=errors.time_start, attrs={'data-module': 'subset_datepicker','data-module-year_start': start.year if data.pkg.iso_exTempStart is defined else 1950, 'data-module-year_end': end.year if data.pkg.iso_exTempEnd is defined else 2100, 'data-placement': 'right'}) }}
                 </div>
-                {{ input('time_end', title='max: ' + end|string if data.pkg.iso_exTempEnd is defined, id='time_end', label=_('To'), value=data.time_end, error=errors.time_end, attrs={'data-module': 'subset_datepicker', 'data-placement': 'right'}) }}
+                {{ input('time_end', title='max: ' + end|string if data.pkg.iso_exTempEnd is defined, id='time_end', label=_('To'), value=data.time_end, error=errors.time_end, attrs={'data-module': 'subset_datepicker','data-module-year_start': start.year if data.pkg.iso_exTempStart is defined else 1950, 'data-module-year_end': end.year if data.pkg.iso_exTempEnd is defined else 2100, 'data-placement': 'right'}) }}
                 <p class="info-text">If no time range is chosen, the nearest point in time is taken.</p>
             </div>
 
