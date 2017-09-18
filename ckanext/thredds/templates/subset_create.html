@@ -123,12 +123,16 @@
               <div id="left">
                   {{ input('north', id='north', label=_('North'), value=data.north|float|round(4) if data.north != "" and data.north is defined, error=errors.north, title='min: ' + data.bbox[1]|float|round(4)|string + ' max: ' + data.bbox[3]|float|round(4)|string, attrs={'data-placement': 'right'}) }}
               </div>
-              {{ input('east', id='east', label=_('East'), value=data.east|float|round(4) if data.east != "" and data.east is defined, error=errors.east, title='min: ' + data.bbox[0]|float|round(4)|string + ' max: ' + data.bbox[2]|float|round(4)|string, attrs={'data-placement': 'right'}) }}
+              <div id="right">
+                  {{ input('east', id='east', label=_('East'), value=data.east|float|round(4) if data.east != "" and data.east is defined, error=errors.east, title='min: ' + data.bbox[0]|float|round(4)|string + ' max: ' + data.bbox[2]|float|round(4)|string, attrs={'data-placement': 'right'}) }}
+              </div>
               <div id="southWest">
                   <div id="left">
                       {{ input('south', id='south', label=_('South'), value=data.south|float|round(4) if data.south != "" and data.south is defined, error=errors.south, title='min: ' + data.bbox[1]|float|round(4)|string + ' max: ' + data.bbox[3]|float|round(4)|string, attrs={'data-placement': 'right'}) }}
                   </div>
-                  {{ input('west', id='west', label=_('West'), value=data.west|float|round(4) if data.west != "" and data.west is defined, error=errors.west, title='min: ' + data.bbox[0]|float|round(4)|string + ' max: ' + data.bbox[2]|float|round(4)|string, attrs={'data-placement': 'right'}) }}
+                  <div id="right">
+                      {{ input('west', id='west', label=_('West'), value=data.west|float|round(4) if data.west != "" and data.west is defined, error=errors.west, title='min: ' + data.bbox[0]|float|round(4)|string + ' max: ' + data.bbox[2]|float|round(4)|string, attrs={'data-placement': 'right'}) }}
+                  </div>
               </div>
             </div>
 
@@ -143,7 +147,9 @@
                 <div id="left">
                     {{ input('time_start', title='min: ' + start|string if data.pkg.iso_exTempStart is defined, id='time_start', label=_('From'), value=data.time_start, error=errors.time_start, attrs={'data-module': 'subset_datepicker','data-module-year_start': start.year if data.pkg.iso_exTempStart is defined else 1950, 'data-module-year_end': end.year if data.pkg.iso_exTempEnd is defined else 2100, 'data-placement': 'right'}) }}
                 </div>
-                {{ input('time_end', title='max: ' + end|string if data.pkg.iso_exTempEnd is defined, id='time_end', label=_('To'), value=data.time_end, error=errors.time_end, attrs={'data-module': 'subset_datepicker','data-module-year_start': start.year if data.pkg.iso_exTempStart is defined else 1950, 'data-module-year_end': end.year if data.pkg.iso_exTempEnd is defined else 2100, 'data-placement': 'right'}) }}
+                <div id="right">
+                    {{ input('time_end', title='max: ' + end|string if data.pkg.iso_exTempEnd is defined, id='time_end', label=_('To'), value=data.time_end, error=errors.time_end, attrs={'data-module': 'subset_datepicker','data-module-year_start': start.year if data.pkg.iso_exTempStart is defined else 1950, 'data-module-year_end': end.year if data.pkg.iso_exTempEnd is defined else 2100, 'data-placement': 'right'}) }}
+                </div>
                 <p class="info-text">If no time range is chosen, the nearest point in time is taken.</p>
             </div>
 

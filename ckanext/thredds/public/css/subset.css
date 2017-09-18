@@ -34,6 +34,10 @@ h5[name=dropdown_heading] {
 #left {
     float: left;
     margin-right: 160px;
+    display: inline-block;
+}
+#right {
+    display: inline-block;
 }
 #southWest {
     float:left;

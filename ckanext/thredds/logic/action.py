@@ -216,11 +216,11 @@ def subset_create(context, data_dict):
             elif northf < float(bbox[1]) and southf < float(bbox[1]):
                 errors['north'] = [u'coordinate is further south than bounding box of resource']
                 errors['south'] = [u'coordinate is further south than bounding box of resource']
-
-            if northf > float(bbox[3]):
-                data_dict['north'] = bbox[3]
-            if southf < float(bbox[1]):
-                data_dict['south'] = bbox[1]
+            else:
+                if northf > float(bbox[3]):
+                    data_dict['north'] = bbox[3]
+                if southf < float(bbox[1]):
+                    data_dict['south'] = bbox[1]
         else:
             if northf > float(bbox[3]):
                 errors['north'] = [u'latitude is further north than bounding box of resource']
@@ -237,11 +237,11 @@ def subset_create(context, data_dict):
             elif eastf < float(bbox[0]) and westf < float(bbox[0]):
                 errors['east'] = [u'coordinate is further west than bounding box of resource']
                 errors['west'] = [u'coordinate is further west than bounding box of resource']
-
-            if eastf > float(bbox[2]):
-                data_dict['east'] = bbox[2]
-            if westf < float(bbox[0]):
-                data_dict['west'] = bbox[0]
+            else:
+                if eastf > float(bbox[2]):
+                    data_dict['east'] = bbox[2]
+                if westf < float(bbox[0]):
+                    data_dict['west'] = bbox[0]
         else:
             if eastf > float(bbox[2]):
                 errors['east'] = [u'longitude is further east than bounding box of resource']
