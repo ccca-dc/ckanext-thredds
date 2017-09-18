@@ -1,6 +1,7 @@
 {% resource 'thredds/spatial_form' %}
 {% resource 'thredds/jquery.datetimepicker.full.js' %}
 {% resource 'thredds/subset_datepicker.js' %}
+{% resource 'thredds/stored_queries.js' %}
 
 {% import 'macros/form.html' as form %}
 
@@ -8,13 +9,23 @@
 
 {% block subtitle %}{{ _('Create Subset') }}{% endblock %}
 
+<!-- wrote own macro because of the title attribute, otherwise copied from CKAN -->
+{% macro input(name, id='', label='', value='', placeholder='', type='text', error="", classes=[], attrs={}, is_required=false, title='') %}
+    {%- set extra_html = caller() if caller -%}
+
+    {% call form.input_block(id or name, label or name, error, classes, extra_html=extra_html, is_required=is_required) %}
+      <input id="{{ id or name }}" title="{{ title }}" type="{{ type }}" name="{{ name }}" value="{{ value | empty_and_escape }}" placeholder="{{ placeholder }}" {{ form.attributes(attrs) }} />
+    {% endcall %}
+{% endmacro %}
+
 {% block primary %}
     {% block form %}
       <div class="module-content">
           <h1>Create Subset</h1>
-          <form method="post" enctype="multipart/form-data">
+          <form id="subset-form" method="post" enctype="multipart/form-data">
               {{ form.errors(error_summary) }}
-              <h3>Layers</h3>
+
+              <h3>Select Layers/Parameters</h3>
               {% for layer in data.all_layers %}
                 <p><input type="checkbox" name="layers" value="{{ layer['id'] }}" {{ "checked " if layer['id'] in data.layers }}> {{ layer['label'] }}</p>
               {% endfor %}
@@ -23,7 +34,55 @@
               <input name="bbox" type="hidden" value="{{ data.bbox }}">
               <input name="all_layers" type="hidden" value="{{ data.all_layers }}">
 
-              <h3>Coordinates</h3>
+              {% set user_queries, all_queries = h.get_queries_from_user(c.userobj.id) %}
+
+              {% if user_queries|length > 0 or all_queries|length > 0 %}
+
+                  <div class="division">
+                   <h3>Reuse Query</h3>
+                   <div name="querydiv" id="querydiv" class="btn-group">
+                     <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">Select Query Template
+                     <span class="caret"></span></button>
+                     <ul id="querylist" class="scrollable-menu dropdown-menu" >
+                       <h5 name="dropdown_heading">Your Queries: <span class="badge">{{user_queries|length}}</span></h5>
+                       {% for q in user_queries %}
+                       {% set url = h.url_for(controller='package', action=url_action, id=q.pkg_id, resource_id=q.query_name) %}
+                       <li data-module="stored_queries" data-module-user_queries="{{ user_queries }}" data-module-all_queries="{{ all_queries }}"><a href="#">
+                          <div value="{{ q }}">
+                              <h5>{{ q.query_name }}
+                              <br><small>
+                               {{ q.format }}
+                               {%- if q.north -%}, {{ q.north }}/{% endif %}
+                               {%- if q.east -%}{{ q.east }}/{% endif %}
+                               {%- if q.south -%}{{ q.south }}/{% endif %}
+                               {%- if q.west -%}{{ q.west }}{% endif %}
+                               {%- if q.latitude -%}, {{ q.latitude }}/{% endif %}
+                               {%- if q.longitude -%}{{ q.longitude }}{% endif %}
+                               {%- if q.time_start -%}, {{ h.date_str_to_datetime(q.time_start) }} {% endif %}
+                               {%- if q.time_end -%}- {{ h.date_str_to_datetime(q.time_end) }}{% endif %}
+                               <br>
+                               <span class="badge">
+                               created: {{ h.date_str_to_datetime(q.created).strftime('%Y-%m-%d %H:%M:%S') }}
+                               </span>
+                               </small></h5>
+                           </div>
+                       </a></li>
+                       {% endfor %}
+                       {% if all_queries|length > 0 %}
+                        <li id="add_all_queries" role="separator" class="divider"></li>
+                        <li data-module="stored_queries" data-module-user_queries="{{ user_queries }}" data-module-all_queries="{{ all_queries }}" id="other_queries"><a href="#">Want to get other public queries? ({{ all_queries|length }} more)</a></li>
+                        {% endif %}
+                     </ul>
+                    </div>
+                    <p class="info-text">
+                        Use <b>spatial</b>, <b>time</b> and <b>format</b> arguments from queries that were stored as a resource or skip that point and fill them out by yourself.
+                    </p>
+                </div>
+
+            {% endif %}
+
+            <div class="division">
+              <h3>Choose Geographical Extent</h3>
 
               {% set map_config = h.get_common_map_config() %}
               <div class="dataset-map"
@@ -33,17 +92,16 @@
                 data-module-default_extent="{{ default_extent }}">
                 <div id="dataset-map-container"></div>
               </div>
-            {{ form.info(text="Draw the subset extent on the map", inline=false) }}
+              <p class="info-text">Draw the subset extent as point or polygon on the map or select a pre-defined extent.</p>
 
-            {% set austria = h.scheming_get_json_objects('austria.geojson') %}
+              {% set austria = h.scheming_get_json_objects('austria.geojson') %}
               {% set states = h.scheming_get_json_objects('austria_states.geojson') %}
               {% set districts = h.scheming_get_json_objects('austria_districts.geojson') %}
               {% set municipalities = h.scheming_get_json_objects('austria_municipalities.geojson') %}
-
               <br>
 
               <select id="select-extent">
-                <option value="">-- Select pre-defined extent --</option>
+                <option value="">-- Select predefined extent --</option>
                 {% for area in austria %}
                   <option value="{{ area['geometry'] | replace("u'","\"") | replace("'","\"") | empty_and_escape }}">{{ area['properties']['Area_Name'].title() }}</option>
                 {% endfor %}
@@ -59,60 +117,59 @@
                 {% for area in municipalities %}
                   <option value="{{ area['geometry'] | replace("u'","\"") | replace("'","\"") | empty_and_escape }}">{{ area['properties']['Area_Name'].capitalize() }}</option>
                 {% endfor %}
-            </select>
+              </select>
 
+              <br>
+              <div id="left">
+                  {{ input('north', id='north', label=_('North'), value=data.north|float|round(4) if data.north != "" and data.north is defined, error=errors.north, title='min: ' + data.bbox[1]|float|round(4)|string + ' max: ' + data.bbox[3]|float|round(4)|string, attrs={'data-placement': 'right'}) }}
+              </div>
+              <div id="right">
+                  {{ input('east', id='east', label=_('East'), value=data.east|float|round(4) if data.east != "" and data.east is defined, error=errors.east, title='min: ' + data.bbox[0]|float|round(4)|string + ' max: ' + data.bbox[2]|float|round(4)|string, attrs={'data-placement': 'right'}) }}
+              </div>
+              <div id="southWest">
+                  <div id="left">
+                      {{ input('south', id='south', label=_('South'), value=data.south|float|round(4) if data.south != "" and data.south is defined, error=errors.south, title='min: ' + data.bbox[1]|float|round(4)|string + ' max: ' + data.bbox[3]|float|round(4)|string, attrs={'data-placement': 'right'}) }}
+                  </div>
+                  <div id="right">
+                      {{ input('west', id='west', label=_('West'), value=data.west|float|round(4) if data.west != "" and data.west is defined, error=errors.west, title='min: ' + data.bbox[0]|float|round(4)|string + ' max: ' + data.bbox[2]|float|round(4)|string, attrs={'data-placement': 'right'}) }}
+                  </div>
+              </div>
+            </div>
 
-            <br>
-            {% if data.point == False or data.point is not defined %}
-                {% call form.input('north', id='north', label=_('North'), value=data.north, error=errors.north) %}
-                    &emsp; <u>min:</u> &emsp; {{ data.bbox[1][0:5] }} &emsp; <u>max:</u> &emsp; {{ data.bbox[3][0:5] }}
-                {% endcall %}
-                {% call form.input('east', id='east', label=_('East'), value=data.east, error=errors.east) %}
-                    &emsp; <u>min:</u> &emsp; {{ data.bbox[0][0:5] }} &emsp; <u>max:</u> &emsp; {{ data.bbox[2][0:5] }}
-                {% endcall %}
-                <div id="southWest">
-                {{ form.input('south', id='south', label=_('South'), value=data.south, error=errors.south) }}
-                {{ form.input('west', id='west', label=_('West'), value=data.west, error=errors.west) }}
-                </div>
-            {% else %}
-                {% call form.input('north', id='north', label=_('Latitude'), value=data.north, error=errors.north) %}
-                    &emsp; <u>min:</u> &emsp; {{ data.bbox[1][0:5] }} &emsp; <u>max:</u> &emsp; {{ data.bbox[3][0:5] }}
-                {% endcall %}
-                {% call form.input('east', id='east', label=_('Longitude'), value=data.east, error=errors.east) %}
-                    &emsp; <u>min:</u> &emsp; {{ data.bbox[0][0:5] }} &emsp; <u>max:</u> &emsp; {{ data.bbox[2][0:5] }}
-                {% endcall %}
-                <div id="southWest" style="display: none;">
-                {{ form.input('south', id='south', label=_('South'), value=data.south, error=errors.south) }}
-                {{ form.input('west', id='west', label=_('West'), value=data.west, error=errors.west) }}
-                </div>
-            {% endif %}
-
-             <h3>Time</h3>
-            {% call form.input('time_start', id='time_start', label=_('From'), value=data.time_start, error=errors.time_start, attrs={'data-module': 'subset_datepicker'}) %}
-                {% if data.pkg.iso_exTempStart is defined and data.pkg.iso_exTempStart != "" %}
-                    &emsp; <u>min:</u> &emsp; {{ h.date_str_to_datetime(data.pkg.iso_exTempStart) }}
+            <div class="division">
+                <h3>Choose Time Range</h3>
+                {% if data.pkg.iso_exTempStart is defined %}
+                    {% set start = h.date_str_to_datetime(data.pkg.iso_exTempStart) %}
                 {% endif %}
-            {% endcall %}
-            {% call form.input('time_end', id='time_end', label=_('To'), value=data.time_end, error=errors.time_end, attrs={'data-module': 'subset_datepicker'}) %}
-                {% if data.pkg.iso_exTempStart is defined and data.pkg.iso_exTempEnd != "" %}
-                    &emsp; <u>max:</u> &emsp; {{ h.date_str_to_datetime(data.pkg.iso_exTempEnd) }}
+                {% if data.pkg.iso_exTempStart is defined %}
+                    {% set end = h.date_str_to_datetime(data.pkg.iso_exTempEnd) %}
                 {% endif %}
-            {% endcall %}
+                <div id="left">
+                    {{ input('time_start', title='min: ' + start|string if data.pkg.iso_exTempStart is defined, id='time_start', label=_('From'), value=data.time_start, error=errors.time_start, attrs={'data-module': 'subset_datepicker','data-module-year_start': start.year if data.pkg.iso_exTempStart is defined else 1950, 'data-module-year_end': end.year if data.pkg.iso_exTempEnd is defined else 2100, 'data-placement': 'right'}) }}
+                </div>
+                <div id="right">
+                    {{ input('time_end', title='max: ' + end|string if data.pkg.iso_exTempEnd is defined, id='time_end', label=_('To'), value=data.time_end, error=errors.time_end, attrs={'data-module': 'subset_datepicker','data-module-year_start': start.year if data.pkg.iso_exTempStart is defined else 1950, 'data-module-year_end': end.year if data.pkg.iso_exTempEnd is defined else 2100, 'data-placement': 'right'}) }}
+                </div>
+                <p class="info-text">If no time range is chosen, the nearest point in time is taken.</p>
+            </div>
 
-            <h3>Format</h3>
-            <p>
-            <input type="radio" name="accept" id="radio_netcdf" value="netCDF" {{ "checked " if data.accept == "netCDF" or data.accept is not defined }}> netCDF &emsp;
-            <input type="radio" name="accept" id="radio_csv" value="CSV" {{ "checked " if data.accept == "CSV" }} {{ "disabled" if data.point == False }}> CSV &emsp;
-            <input type="radio" name="accept" id="radio_xml" value="XML" {{ "checked " if data.accept == "XML" }} {{ "disabled" if data.point == False }}> XML
-            </p>
+            <div class="division">
+                <h3>Choose Format</h3>
+                <p>
+                <input type="radio" name="format" id="radio_netcdf" value="netCDF" {{ "checked " if data.format|lower == "netcdf" or data.format is not defined }}> netCDF &emsp;
+                <input type="radio" name="format" id="radio_csv" value="CSV" {{ "checked " if data.format|lower == "csv" }} {{ "disabled" if data.point == False or data.point is not defined }}> CSV &emsp;
+                <input type="radio" name="format" id="radio_xml" value="XML" {{ "checked " if data.format|lower == "xml" }} {{ "disabled" if data.point == False or data.point is not defined }}> XML
+                </p>
+                <p class="info-text">XML and CSV can only be chosen if the subset coordinates were drawn as a point.</p>
+            </div>
 
             {% if data.create_pkg == True %}
-              <div class="new-resource">
-                  <h3>Would you like to create a new resource?</h3>
-                  <input type="radio" name="type" value="download" {{ "checked " if data.type == "download" or data.res_create is not defined  }}> <b>No</b>, just download the subset <br><br>
-                  <input type="radio" name="type" value="new_package" {{ "checked " if data.type == "new_package" }}> <b>Yes</b> and create a new dataset as well <br><br>
+              <div class="division">
+                  <h3>Would you like to create a new resource within the CCCA data portal?</h3>
+                  <input type="radio" name="type" value="download" {{ "checked " if data.type == "download" or data.res_create is not defined  }} id="download"> <b>No</b>, just download the subset <br><br>
+                  <input type="radio" name="type" value="new_package" {{ "checked " if data.type == "new_package" }} id="new_package"> <b>Yes</b> and create a new dataset as well <br><br>
 
-                  <div class="well">
+                  <div class="well" id="new_package_well" style="display:none">
                       {{ form.input('title', id='field-title', label=_('Dataset Title'), value=data.title, error=errors.title, placeholder=_('eg. A descriptive title'), attrs={'data-module': 'slug-preview-target'}) }}
 
                       {% set prefix = h.url_for(controller='package', action='read', id='') %}
@@ -130,13 +187,13 @@
                   </div>
 
                   {% if data.relationships|length > 0 %}
-                  <input type="radio" name="type" value="existing_package" {{ "checked " if data.type == "existing_package" }}> <b>Yes</b>, in an existing dataset<br><br>
+                  <input type="radio" name="type" value="existing_package" {{ "checked " if data.type == "existing_package" }} id="existing_package"> <b>Yes</b>, in an existing dataset<br><br>
 
-                  <div class="well">
+                  <div class="well" id="existing_package_well" style="display:none">
                       <label class="control-label" for="existing_package_id">Dataset</label>
                           <select name="existing_package_id">
                             {% for rel in data.relationships %}
-                                <option value="{{ rel.name }}">{{ rel.title }}</option>
+                                <option value="{{ rel.name }}" {{ "selected" if data.existing_package_id == rel.name }}>{{ rel.title }}</option>
                             {% endfor %}
                           </select>
                           {{ form.info(text="Only derived datasets of this dataset can be selected", inline=true) }}
@@ -148,7 +205,6 @@
             <div class="form-actions">
               <button class="btn btn-primary save" type="submit" name="save">{{ _('Submit') }}</button>
            </div>
-
           </form>
       </div>
 

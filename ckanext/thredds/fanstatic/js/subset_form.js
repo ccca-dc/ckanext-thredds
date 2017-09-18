@@ -87,6 +87,24 @@ this.ckan.module('subset-form', function (jQuery, _) {
       jQuery.proxyAll(this, /_on/);
       this.el.ready(this._onReady);
 
+      if($('#north').val()!="" && $('#south').val()==""){
+          $('#southWest').hide();
+          $('label[for="north"]').text("Latitude");
+          $('label[for="east"]').text("Longitude");
+      }
+
+      // should not be in this module
+      if(document.getElementById('new_package') !== null && document.getElementById("new_package").checked==true){
+          document.getElementById('new_package_well').style.display = 'block';
+          if(document.getElementById('existing_package') !== null){
+            document.getElementById('existing_package_well').style.display = 'none';
+          }
+      }else if(document.getElementById('existing_package') !== null && document.getElementById("existing_package").checked==true){
+          document.getElementById('existing_package_well').style.display = 'block';
+          if(document.getElementById('new_package') !== null){
+            document.getElementById('new_package_well').style.display = 'none';
+          }
+      }
     },
 
 
@@ -242,6 +260,29 @@ this.ckan.module('subset-form', function (jQuery, _) {
             }
         });
 
+        // following elements should not be in this module
+        $(':radio[id=download]').change(function() {
+            if(document.getElementById('new_package') !== null){
+                document.getElementById('new_package_well').style.display = 'none';
+            }
+            if(document.getElementById('existing_package') !== null){
+                document.getElementById('existing_package_well').style.display = 'none';
+            }
+        });
+        $(':radio[id=new_package]').change(function() {
+            document.getElementById('new_package_well').style.display = 'block';
+            if(document.getElementById('existing_package') !== null){
+                document.getElementById('existing_package_well').style.display = 'none';
+            }
+        });
+        $(':radio[id=existing_package]').change(function() {
+            document.getElementById('existing_package_well').style.display = 'block';
+            if(document.getElementById('new_package') !== null){
+                document.getElementById('new_package_well').style.display = 'none';
+            }
+        });
+
+        $("#subset-form :input").tooltip({ 'trigger': 'focus' });
     }
 
   }

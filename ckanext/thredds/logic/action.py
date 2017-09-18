@@ -134,7 +134,7 @@ def subset_create(context, data_dict):
 
     :param id: the id of the resource of which a subset is to be created
     :param layers: list of layer ids that should be included in the subset
-    :param accept: format of the subset (NetCDF, XML or CSV)
+    :param format: format of the subset (NetCDF, XML or CSV)
     :param res_create: true if dataset with resource should be created, false
         if subset should just be downloaded (optional, default = False)
     :param private: the visibility of the package (optional, default = True)
@@ -216,11 +216,11 @@ def subset_create(context, data_dict):
             elif northf < float(bbox[1]) and southf < float(bbox[1]):
                 errors['north'] = [u'coordinate is further south than bounding box of resource']
                 errors['south'] = [u'coordinate is further south than bounding box of resource']
-
-            if northf > float(bbox[3]):
-                data_dict['north'] = bbox[3]
-            if southf < float(bbox[1]):
-                data_dict['south'] = bbox[1]
+            else:
+                if northf > float(bbox[3]):
+                    data_dict['north'] = bbox[3]
+                if southf < float(bbox[1]):
+                    data_dict['south'] = bbox[1]
         else:
             if northf > float(bbox[3]):
                 errors['north'] = [u'latitude is further north than bounding box of resource']
@@ -237,11 +237,11 @@ def subset_create(context, data_dict):
             elif eastf < float(bbox[0]) and westf < float(bbox[0]):
                 errors['east'] = [u'coordinate is further west than bounding box of resource']
                 errors['west'] = [u'coordinate is further west than bounding box of resource']
-
-            if eastf > float(bbox[2]):
-                data_dict['east'] = bbox[2]
-            if westf < float(bbox[0]):
-                data_dict['west'] = bbox[0]
+            else:
+                if eastf > float(bbox[2]):
+                    data_dict['east'] = bbox[2]
+                if westf < float(bbox[0]):
+                    data_dict['west'] = bbox[0]
         else:
             if eastf > float(bbox[2]):
                 errors['east'] = [u'longitude is further east than bounding box of resource']
@@ -255,18 +255,15 @@ def subset_create(context, data_dict):
         if data_dict.get('name', "") == '':
             errors['name'] = [u'Missing Value']
         else:
-            try:
-                toolkit.get_action('package_show')(context, {'id': data_dict['name']})
+            model = context['model']
+            session = context['session']
+            result = session.query(model.Package).filter_by(name=data_dict['name']).first()
 
+            if result:
                 errors['name'] = [u'That URL is already in use.']
-            except NotFound:
-                pass
-            except NotAuthorized:
-                errors['name'] = [u'That URL is already in use.']
-
-            if len(data_dict['name']) < PACKAGE_NAME_MIN_LENGTH:
+            elif len(data_dict['name']) < PACKAGE_NAME_MIN_LENGTH:
                 errors['name'] = [u'URL is shorter than minimum (' + str(PACKAGE_NAME_MIN_LENGTH) + u')']
-            if len(data_dict['name']) > PACKAGE_NAME_MAX_LENGTH:
+            elif len(data_dict['name']) > PACKAGE_NAME_MAX_LENGTH:
                 errors['name'] = [u'URL is longer than maximum (' + str(PACKAGE_NAME_MAX_LENGTH) + u')']
         if data_dict.get('organization', "") == '':
             errors['organization'] = [u'Missing Value']
@@ -339,13 +336,13 @@ def subset_create(context, data_dict):
         errors['time_start'] = [u'Missing value']
 
     # error format section
-    if data_dict.get('accept', "") != "":
-        if data_dict['point'] is True and data_dict['accept'].lower() not in {'netcdf', 'csv', 'xml'}:
-            errors['accept'] = [u'Wrong format']
-        elif data_dict['point'] is False and data_dict['accept'].lower() != 'netcdf':
-            errors['accept'] = [u'Wrong format']
+    if data_dict.get('format', "") != "":
+        if data_dict['point'] is True and data_dict['format'].lower() not in {'netcdf', 'csv', 'xml'}:
+            errors['format'] = [u'Wrong format']
+        elif data_dict['point'] is False and data_dict['format'].lower() != 'netcdf':
+            errors['format'] = [u'Wrong format']
     else:
-        errors['accept'] = [u'Missing value']
+        errors['format'] = [u'Missing value']
 
     # error layer section
     if data_dict.get('layers', "") != "":
@@ -369,8 +366,8 @@ def subset_create(context, data_dict):
         else:
             params = {'var': data_dict['layers']}
 
-        # adding accept (always has a value)
-        params['accept'] = data_dict['accept'].lower()
+        # adding format
+        params['accept'] = data_dict['format'].lower()
 
         # adding time
         if times_exist is True:
@@ -503,7 +500,7 @@ def subset_create(context, data_dict):
                     if existing_package['private'] is False:
                         return return_dict
 
-            new_resource = toolkit.get_action('resource_create')(context, {'name': 'subset_' + resource['name'], 'url': url, 'package_id': package_to_add_id, 'format': data_dict['accept'], 'subset_of': resource['id']})
+            new_resource = toolkit.get_action('resource_create')(context, {'name': 'subset_' + resource['name'], 'url': url, 'package_id': package_to_add_id, 'format': data_dict['format'], 'subset_of': resource['id']})
 
             toolkit.get_action('package_relationship_create')(context, {'subject': package_to_add_id, 'object': package['id'], 'type': 'child_of'})
 
