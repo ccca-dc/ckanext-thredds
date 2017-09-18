@@ -320,11 +320,11 @@ def subset_create(context, data_dict):
             elif given_start < package_start and given_end < package_start:
                 errors['time_start'] = [u'Time is before minimum']
                 errors['time_end'] = [u'Time is before minimum']
-
-            if given_end > package_end:
-                data_dict['time_end'] = str(package_end)
-            if given_start < package_start:
-                data_dict['time_start'] = str(package_start)
+            else:
+                if given_end > package_end:
+                    data_dict['time_end'] = str(package_end)
+                if given_start < package_start:
+                    data_dict['time_start'] = str(package_start)
 
             # currently only 5 year ranges are permitted
             if abs(relativedelta(given_end, given_start).years) > 5:
