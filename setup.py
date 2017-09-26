@@ -80,8 +80,12 @@ setup(
     entry_points='''
         [ckan.plugins]
         thredds=ckanext.thredds.plugin:ThreddsPlugin
-	[babel.extractors]
-	ckan = ckan.lib.extract:extract_ckan
+
+        [ckan.celery_task]
+        tasks = ckanext.thredds.celery_import:task_imports
+
+        [babel.extractors]
+        ckan = ckan.lib.extract:extract_ckan
     ''',
 
     # If you are changing from the default layout of your extension, you may

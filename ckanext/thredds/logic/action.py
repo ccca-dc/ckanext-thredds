@@ -18,6 +18,7 @@ import ast
 import ckan.lib.base as base
 from pylons import config
 import datetime
+from ckan.lib.celery_app import celery
 
 check_access = logic.check_access
 
@@ -393,6 +394,15 @@ def subset_create(context, data_dict):
         ckan_url = config.get('ckan.site_url', '')
         url = ('%s/tds_proxy/ncss/%s?%s' % (ckan_url, resource['id'], urllib.urlencode(params)))
 
+        user = toolkit.get_action('user_show')(context, {'id': context['auth_user_obj'].id})
+
+        smtp_server = config.get('smtp.server')
+        smtp_send_from = config.get('smtp.mail_from')
+        smtp_user = config.get('smtp.user')
+        smtp_password = config.get('smtp.password')
+        smtp_starttls = config.get('smtp.starttls')
+        celery.send_task("NAME.subset_create", args=["Hello World", resource, url, smtp_server, smtp_send_from, smtp_user, smtp_password, user['email'], smtp_starttls])
+
         return_dict = dict()
 
         # create resource if requested from user
@@ -408,8 +418,6 @@ def subset_create(context, data_dict):
             # check if private is true or false otherwise set private = "True"
             if 'private' not in data_dict or data_dict['private'].lower() not in {'true', 'false'}:
                 data_dict['private'] = 'True'
-
-            user = toolkit.get_action('user_show')(context, {'id': context['auth_user_obj'].id})
 
             # creating new package from the current one with few changes
             if data_dict.get('type', 'download').lower() == 'new_package':
