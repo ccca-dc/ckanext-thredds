@@ -401,7 +401,7 @@ def subset_create(context, data_dict):
         smtp_user = config.get('smtp.user')
         smtp_password = config.get('smtp.password')
         smtp_starttls = config.get('smtp.starttls')
-        celery.send_task("NAME.subset_create", args=["Hello World", resource, url, smtp_server, smtp_send_from, smtp_user, smtp_password, user['email'], smtp_starttls])
+        celery.send_task("NAME.subset_create", args=[resource, ckan_url, params, smtp_server, smtp_send_from, smtp_user, smtp_password, user['email'], smtp_starttls])
 
         return_dict = dict()
 

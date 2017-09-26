@@ -13,6 +13,9 @@ from email.mime.multipart import MIMEMultipart
 from email.utils import COMMASPACE, formatdate
 import socket
 import logging
+import requests
+from xml.etree import ElementTree
+import urllib
 
 abort = base.abort
 redirect = base.redirect
@@ -20,11 +23,37 @@ log = logging.getLogger(__name__)
 
 
 @celery.task(name="NAME.subset_create")
-def subset_create(message, res, request, smtp_server, smtp_send_from, smtp_user, smtp_password, send_to, smtp_starttls):
+def subset_create(res, ckan_url, params, smtp_server, smtp_send_from, smtp_user, smtp_password, send_to, smtp_starttls):
+
+    req_params = params.copy()
+    req_params['response_file'] = "false"
+    headers = {"Authorization":""}
+
+    r = requests.get('http://sandboxdc.ccca.ac.at/tds_proxy/ncss/88d350e9-5e91-4922-8d8c-8857553d5d2f', params=req_params, headers=headers)
+    print(params)
+
+    tree = ElementTree.fromstring(r.content)
+    location = tree.get('location')
+
+    lat_lon_box = tree.findall('LatLonBox')
+    params['north'] = lat_lon_box[0].find('north').text
+    params['east'] = lat_lon_box[0].find('east').text
+    params['south'] = lat_lon_box[0].find('south').text
+    params['west'] = lat_lon_box[0].find('west').text
+
+    time_span = tree.findall('TimeSpan')
+    params['time_start'] = time_span[0].find('begin').text
+    params['time_end'] = time_span[0].find('begin').text
+
+    correct_url = ('%s/tds_proxy/ncss/%s?%s' % (ckan_url, res['id'], urllib.urlencode(params)))
+
+    print(params)
+    print(correct_url)
+
     # sending of email after successful subset creation
     # copied nearly everything from mail_recipient (cannot use method because there is no config)
     subject = 'Subset Download'
-    body = 'Your subset is ready to download'
+    body = 'Your subset is ready to download: ' + location
     msg = MIMEText(body.encode('utf-8'), 'plain', 'utf-8')
     subject = Header(subject.encode('utf-8'), 'utf-8')
     msg['Subject'] = subject
