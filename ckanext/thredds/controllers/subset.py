@@ -133,21 +133,24 @@ class SubsetController(base.BaseController):
         error_summary = {}
 
         try:
-            data = toolkit.get_action('subset_create')(context, data)
-            if 'new_resource' in data:
-                if 'existing_resource' in data:
-                    public_res_url = h.url_for(controller='package', action='resource_read',
-                                       id=data['existing_resource']['package_id'], resource_id=data['existing_resource']['id'])
-                    h.flash_notice('This dataset cannot be set public, because another <strong><a href="' + public_res_url + '" class="alert-link">subset</a></strong> with this query is already public.', allow_html=True)
-
-                redirect(h.url_for(controller='package', action='resource_read',
-                                    id=data['new_resource']['package_id'], resource_id=data['new_resource']['id']))
-            elif 'new_resource' not in data and 'existing_resource' in data:
-                h.flash_notice('This subset already exists. Please use this subset for citation.')
-                redirect(h.url_for(controller='package', action='resource_read',
-                                    id=data['existing_resource']['package_id'], resource_id=data['existing_resource']['id']))
-            elif 'url' in data:
-                h.redirect_to(data['url'])
+            toolkit.get_action('subset_create')(context, data)
+            # if 'new_resource' in data:
+            #     if 'existing_resource' in data:
+            #         public_res_url = h.url_for(controller='package', action='resource_read',
+            #                            id=data['existing_resource']['package_id'], resource_id=data['existing_resource']['id'])
+            #         h.flash_notice('This dataset cannot be set public, because another <strong><a href="' + public_res_url + '" class="alert-link">subset</a></strong> with this query is already public.', allow_html=True)
+            #
+            #     redirect(h.url_for(controller='package', action='resource_read',
+            #                         id=data['new_resource']['package_id'], resource_id=data['new_resource']['id']))
+            # elif 'new_resource' not in data and 'existing_resource' in data:
+            #     h.flash_notice('This subset already exists. Please use this subset for citation.')
+            #     redirect(h.url_for(controller='package', action='resource_read',
+            #                         id=data['existing_resource']['package_id'], resource_id=data['existing_resource']['id']))
+            # elif 'url' in data:
+            #     h.redirect_to(data['url'])
+            h.flash_notice('Your subset is being created. This might take a while, you will receive an E-Mail when your subset is available')
+            redirect(h.url_for(controller='package', action='resource_read',
+                                     id=package['id'], resource_id=resource['id']))
         except ValidationError, e:
             errors = e.error_dict
             error_summary = e.error_summary

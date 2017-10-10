@@ -81,9 +81,6 @@ setup(
         [ckan.plugins]
         thredds=ckanext.thredds.plugin:ThreddsPlugin
 
-        [ckan.celery_task]
-        tasks = ckanext.thredds.celery_import:task_imports
-
         [babel.extractors]
         ckan = ckan.lib.extract:extract_ckan
     ''',

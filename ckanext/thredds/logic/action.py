@@ -3,7 +3,6 @@
 import ckan.plugins.toolkit as tk
 import ckan.logic
 from owslib.wms import WebMapService
-import os
 import requests
 import json
 import ckan.plugins.toolkit as toolkit
@@ -14,11 +13,15 @@ from dateutil.relativedelta import relativedelta
 from ckan.common import _
 import ckan.lib.navl.dictization_functions as df
 import urllib
-import ast
 import ckan.lib.base as base
 from pylons import config
 import datetime
 from ckan.lib.celery_app import celery
+import ckan.plugins as p
+import socket
+import ckan.lib.mailer as mailer
+import time
+from xml.etree import ElementTree
 
 check_access = logic.check_access
 
@@ -361,159 +364,223 @@ def subset_create(context, data_dict):
     if len(errors) > 0:
         raise ValidationError(errors)
     else:
-        # start building URL params with var (required)
-        if type(data_dict['layers']) is list:
-            params = {'var': ','.join(data_dict['layers'])}
-        else:
-            params = {'var': data_dict['layers']}
-
-        # adding format
-        params['accept'] = data_dict['format'].lower()
-
-        # adding time
-        if times_exist is True:
-            time_start = h.date_str_to_datetime(data_dict['time_start']).isoformat()
-            time_end = h.date_str_to_datetime(data_dict['time_end']).isoformat()
-            if time_end < time_start:
-                # swap times if start time before end time
-                data_dict['time_start'], data_dict['time_end'] = data_dict['time_end'], data_dict['time_start']
-            params['time_start'] = time_start
-            params['time_end'] = time_end
-
-        # adding coordinates
-        if data_dict.get('north', "") != "" and data_dict.get('east', "") != "":
-            if data_dict['point'] is True:
-                params['latitude'] = round(float(data_dict['north']), 4)
-                params['longitude'] = round(float(data_dict['east']), 4)
-            else:
-                params['north'] = round(float(data_dict['north']), 4)
-                params['south'] = round(float(data_dict['south']), 4)
-                params['east'] = round(float(data_dict['east']), 4)
-                params['west'] = round(float(data_dict['west']), 4)
-
-        ckan_url = config.get('ckan.site_url', '')
-        url = ('%s/tds_proxy/ncss/%s?%s' % (ckan_url, resource['id'], urllib.urlencode(params)))
-
         user = toolkit.get_action('user_show')(context, {'id': context['auth_user_obj'].id})
 
-        smtp_server = config.get('smtp.server')
-        smtp_send_from = config.get('smtp.mail_from')
-        smtp_user = config.get('smtp.user')
-        smtp_password = config.get('smtp.password')
-        smtp_starttls = config.get('smtp.starttls')
-        celery.send_task("NAME.subset_create", args=[resource, ckan_url, params, smtp_server, smtp_send_from, smtp_user, smtp_password, user['email'], smtp_starttls])
+        site_user = toolkit.get_action('get_site_user')({'model': ckan.model, 'ignore_auth': True, 'defer_commit': True}, {})
+        context = json.dumps({
+            'username': user['name'],
+            'site_url': config.get('ckan.site_url_internally') or config.get('ckan.site_url'),
+            'apikey': user['apikey'],
+            'site_user_apikey': site_user['apikey']
+        })
 
-        return_dict = dict()
+        try:
+            enqueue_job = toolkit.enqueue_job
+        except AttributeError:
+            from ckanext.rq.jobs import enqueue as enqueue_job
+            enqueue_job(subset_job, [context, resource, data_dict, times_exist, user])
 
-        # create resource if requested from user
-        if data_dict.get('type', 'download').lower() in {'new_package', 'existing_package'}:
-            try:
-                check_access('package_show', context, {'id': package['id']})
-            except NotAuthorized:
-                abort(403, _('Unauthorized to show package'))
 
-            # check if url already exists
-            search_results = toolkit.get_action('resource_search')(context, {'query': "url:" + url})
+def subset_job(context, resource, data_dict, times_exist, user):
+    '''
+    Background job create subset.
+    '''
+    context = json.loads(context)
 
-            # check if private is true or false otherwise set private = "True"
-            if 'private' not in data_dict or data_dict['private'].lower() not in {'true', 'false'}:
-                data_dict['private'] = 'True'
+    # start building URL params with var (required)
+    if type(data_dict['layers']) is list:
+        params = {'var': ','.join(data_dict['layers'])}
+    else:
+        params = {'var': data_dict['layers']}
 
-            # creating new package from the current one with few changes
-            if data_dict.get('type', 'download').lower() == 'new_package':
-                if search_results['count'] > 0:
-                    return_dict['existing_resource'] = toolkit.get_action('resource_show')(context, {'id': search_results['results'][0]['id']})
-                    if data_dict.get('private', 'True').lower() == 'false':
-                        return return_dict
+    # adding format
+    params['accept'] = data_dict['format'].lower()
 
-                new_package = package.copy()
-                new_package.pop('id')
-                new_package.pop('resources')
-                new_package.pop('groups')
-                new_package.pop('revision_id')
+    # adding time
+    if times_exist is True:
+        time_start = h.date_str_to_datetime(data_dict['time_start']).isoformat()
+        time_end = h.date_str_to_datetime(data_dict['time_end']).isoformat()
+        if time_end < time_start:
+            # swap times if start time before end time
+            data_dict['time_start'], data_dict['time_end'] = data_dict['time_end'], data_dict['time_start']
+        params['time_start'] = time_start
+        params['time_end'] = time_end
 
-                new_package['iso_mdDate'] = new_package['metadata_created'] = new_package['metadata_modified'] = datetime.datetime.now()
-                new_package['owner_org'] = data_dict['organization']
-                new_package['name'] = data_dict['name']
-                new_package['title'] = data_dict['title']
-                new_package['private'] = data_dict['private']
+    # adding coordinates
+    if data_dict.get('north', "") != "" and data_dict.get('east', "") != "":
+        if data_dict['point'] is True:
+            params['latitude'] = round(float(data_dict['north']), 4)
+            params['longitude'] = round(float(data_dict['east']), 4)
+        else:
+            params['north'] = round(float(data_dict['north']), 4)
+            params['south'] = round(float(data_dict['south']), 4)
+            params['east'] = round(float(data_dict['east']), 4)
+            params['west'] = round(float(data_dict['west']), 4)
 
-                # add bbox and spatial if added
-                if 'north' in params:
-                    n = params['north']
-                    s = params['south']
-                    e = params['east']
-                    w = params['west']
+    ckan_url = config.get('ckan.site_url', '')
 
-                    new_package['iso_northBL'] = n
-                    new_package['iso_southBL'] = s
-                    new_package['iso_eastBL'] = e
-                    new_package['iso_westBL'] = w
+    req_params = params.copy()
+    req_params['response_file'] = "false"
+    headers = {"Authorization": ""}
 
-                    coordinates = [[w, s], [e, s], [e, n], [w, n], [w, s]]
-                    spatial = ('{"type": "MultiPolygon", "coordinates": [[' + str(coordinates) + ']]}')
+    r = requests.get('http://sandboxdc.ccca.ac.at/tds_proxy/ncss/88d350e9-5e91-4922-8d8c-8857553d5d2f', params=req_params, headers=headers)
 
-                    new_package['spatial'] = spatial
+    tree = ElementTree.fromstring(r.content)
+    location = tree.get('location')
 
-                # add time if added
-                if times_exist is True:
-                    new_package['iso_exTempStart'] = data_dict['time_start']
-                    new_package['iso_exTempEnd'] = data_dict['time_end']
+    # differ between bbox and point
+    lat_lon_box = tree.findall('LatLonBox')
+    params['north'] = float(lat_lon_box[0].find('north').text)
+    params['east'] = float(lat_lon_box[0].find('east').text)
+    params['south'] = float(lat_lon_box[0].find('south').text)
+    params['west'] = float(lat_lon_box[0].find('west').text)
 
-                # add subset creator
+    time_span = tree.findall('TimeSpan')
+    params['time_start'] = time_span[0].find('begin').text
+    params['time_end'] = time_span[0].find('begin').text
+
+    correct_url = ('%s/tds_proxy/ncss/%s?%s' % (ckan_url, resource['id'], urllib.urlencode(params)))
+
+    package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
+
+    return_dict = dict()
+
+    # create resource if requested from user
+    if data_dict.get('type', 'download').lower() in {'new_package', 'existing_package'}:
+        try:
+            check_access('package_show', context, {'id': package['id']})
+        except NotAuthorized:
+            abort(403, _('Unauthorized to show package'))
+
+        # check if url already exists
+        search_results = toolkit.get_action('resource_search')(context, {'query': "url:" + correct_url})
+
+        # check if private is true or false otherwise set private = "True"
+        if 'private' not in data_dict or data_dict['private'].lower() not in {'true', 'false'}:
+            data_dict['private'] = 'True'
+
+        # creating new package from the current one with few changes
+        if data_dict.get('type', 'download').lower() == 'new_package':
+            if search_results['count'] > 0:
+                return_dict['existing_resource'] = toolkit.get_action('resource_show')(context, {'id': search_results['results'][0]['id']})
+                if data_dict.get('private', 'True').lower() == 'false':
+                    return return_dict
+
+            new_package = package.copy()
+            new_package.pop('id')
+            new_package.pop('resources')
+            new_package.pop('groups')
+            new_package.pop('revision_id')
+
+            new_package['iso_mdDate'] = new_package['metadata_created'] = new_package['metadata_modified'] = datetime.datetime.now()
+            new_package['owner_org'] = data_dict['organization']
+            new_package['name'] = data_dict['name']
+            new_package['title'] = data_dict['title']
+            new_package['private'] = data_dict['private']
+
+            # add bbox and spatial if added
+            if 'north' in params:
+                n = params['north']
+                s = params['south']
+                e = params['east']
+                w = params['west']
+
+                new_package['iso_northBL'] = n
+                new_package['iso_southBL'] = s
+                new_package['iso_eastBL'] = e
+                new_package['iso_westBL'] = w
+
+                coordinates = [[w, s], [e, s], [e, n], [w, n], [w, s]]
+                spatial = ('{"type": "MultiPolygon", "coordinates": [[' + str(coordinates) + ']]}')
+                print(spatial)
+
+                new_package['spatial'] = spatial
+
+            # add time if added
+            if times_exist is True:
+                new_package['iso_exTempStart'] = data_dict['time_start']
+                new_package['iso_exTempEnd'] = data_dict['time_end']
+
+            # add subset creator
+            subset_creator = dict()
+            subset_creator['name'] = user['display_name']
+            subset_creator['mail'] = user['email']
+            subset_creator['role'] = "Subset Creator"
+            subset_creator['department'] = ""
+
+            contacts = toolkit.get_action('package_contact_show')(context, {'package_id': package['id']})
+            contacts.append(subset_creator)
+            new_package['contact_info'] = json.dumps(contacts)
+
+            # need to pop package otherwise it overwrites the current pkg
+            context.pop('package')
+
+            new_package = toolkit.get_action('package_create')(context, new_package)
+            package_to_add_id = new_package['id']
+        else:
+            package_to_add_id = data_dict['existing_package_id']
+            existing_package = toolkit.get_action('package_show')(context, {'id': package_to_add_id})
+
+            # add subset creator if not already added
+            subset_creators = toolkit.get_action('package_contact_show')(context, {'package_id': package_to_add_id, 'search_param': 'role', 'search_value': 'Subset Creator'})
+
+            sc_added = False
+
+            for subset_creator in subset_creators:
+                if subset_creator['mail'] == user['email']:
+                    sc_added = True
+                    break
+
+            if sc_added is False:
                 subset_creator = dict()
                 subset_creator['name'] = user['display_name']
                 subset_creator['mail'] = user['email']
                 subset_creator['role'] = "Subset Creator"
                 subset_creator['department'] = ""
 
-                contacts = toolkit.get_action('package_contact_show')(context, {'package_id': package['id']})
+                contacts = toolkit.get_action('package_contact_show')(context, {'package_id': package_to_add_id})
                 contacts.append(subset_creator)
-                new_package['contact_info'] = json.dumps(contacts)
+                existing_package['contact_info'] = json.dumps(contacts)
 
-                # need to pop package otherwise it overwrites the current pkg
-                context.pop('package')
+                toolkit.get_action('package_update')(context, existing_package)
 
-                new_package = toolkit.get_action('package_create')(context, new_package)
-                package_to_add_id = new_package['id']
-            else:
-                package_to_add_id = data_dict['existing_package_id']
-                existing_package = toolkit.get_action('package_show')(context, {'id': package_to_add_id})
+            if search_results['count'] > 0:
+                return_dict['existing_resource'] = toolkit.get_action('resource_show')(context, {'id': search_results['results'][0]['id']})
+                if existing_package['private'] is False:
+                    return return_dict
 
-                # add subset creator if not already added
-                subset_creators = toolkit.get_action('package_contact_show')(context, {'package_id': package_to_add_id, 'search_param': 'role', 'search_value': 'Subset Creator'})
+        new_resource = toolkit.get_action('resource_create')(context, {'name': 'subset_' + resource['name'], 'url': correct_url, 'package_id': package_to_add_id, 'format': data_dict['format'], 'subset_of': resource['id']})
 
-                sc_added = False
+        toolkit.get_action('package_relationship_create')(context, {'subject': package_to_add_id, 'object': package['id'], 'type': 'child_of'})
 
-                for subset_creator in subset_creators:
-                    if subset_creator['mail'] == user['email']:
-                        sc_added = True
-                        break
+        return_dict['new_resource'] = new_resource
+    else:
+        # redirect to url if user doesn't want to create a package
+        return_dict['url'] = str(correct_url)
+    # return return_dict
 
-                if sc_added is False:
-                    subset_creator = dict()
-                    subset_creator['name'] = user['display_name']
-                    subset_creator['mail'] = user['email']
-                    subset_creator['role'] = "Subset Creator"
-                    subset_creator['department'] = ""
+    # sending of email after successful subset creation
+    body = 'Your subset is ready to download: ' + location
+    if 'new_resource' in return_dict:
+        p = toolkit.get_action('package_show')(context, {'id': return_dict['new_resource']['package_id']})
+        body += '\nThe resource "%s" was created in the package "%s"' % (return_dict['new_resource']['name'], p['title'])
+    if 'existing_resource' in return_dict:
+        body += '\nThe resource "%s" has the same query and is already public' % (return_dict['existing_resource']['name'])
 
-                    contacts = toolkit.get_action('package_contact_show')(context, {'package_id': package_to_add_id})
-                    contacts.append(subset_creator)
-                    existing_package['contact_info'] = json.dumps(contacts)
+    mail_dict = {
+        'recipient_email': config.get("ckanext.contact.mail_to", config.get('email_to')),
+        'recipient_name': config.get("ckanext.contact.recipient_name", config.get('ckan.site_title')),
+        'subject': config.get("ckanext.contact.subject", 'Your subset is ready to download'),
+        'body': body,
+        'headers': {'reply-to': 'k.sack97@gmail.com'}
+    }
+    print(body)
+    #
+    # # Allow other plugins to modify the mail_dict
+    # for plugin in p.PluginImplementations(IContact):
+    #     plugin.mail_alter(mail_dict, data_dict)
 
-                    toolkit.get_action('package_update')(context, existing_package)
-
-                if search_results['count'] > 0:
-                    return_dict['existing_resource'] = toolkit.get_action('resource_show')(context, {'id': search_results['results'][0]['id']})
-                    if existing_package['private'] is False:
-                        return return_dict
-
-            new_resource = toolkit.get_action('resource_create')(context, {'name': 'subset_' + resource['name'], 'url': url, 'package_id': package_to_add_id, 'format': data_dict['format'], 'subset_of': resource['id']})
-
-            toolkit.get_action('package_relationship_create')(context, {'subject': package_to_add_id, 'object': package['id'], 'type': 'child_of'})
-
-            return_dict['new_resource'] = new_resource
-        else:
-            # redirect to url if user doesn't want to create a package
-            return_dict['url'] = str(url)
-        return return_dict
+    # try:
+    #     mailer.mail_recipient(**mail_dict)
+    # except (mailer.MailerException, socket.error):
+    #     h.flash_error(_(u'Sorry, there was an error sending the email. Please try again later'))
