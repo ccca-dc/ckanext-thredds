@@ -382,9 +382,6 @@ def subset_create(context, data_dict):
 
 
 def subset_job(context, resource, data_dict, times_exist, user):
-    '''
-    Background job create subset.
-    '''
     context = json.loads(context)
 
     # start building URL params with var (required)
@@ -425,21 +422,24 @@ def subset_job(context, resource, data_dict, times_exist, user):
 
     r = requests.get('http://sandboxdc.ccca.ac.at/tds_proxy/ncss/88d350e9-5e91-4922-8d8c-8857553d5d2f', params=req_params, headers=headers)
 
+    # not working for point
     tree = ElementTree.fromstring(r.content)
     location = tree.get('location')
 
     # differ between bbox and point
-    lat_lon_box = tree.findall('LatLonBox')
-    params['north'] = float(lat_lon_box[0].find('north').text)
-    params['east'] = float(lat_lon_box[0].find('east').text)
-    params['south'] = float(lat_lon_box[0].find('south').text)
-    params['west'] = float(lat_lon_box[0].find('west').text)
+    if data_dict['point'] is False:
+        lat_lon_box = tree.findall('LatLonBox')
+        params['north'] = float(lat_lon_box[0].find('north').text)
+        params['east'] = float(lat_lon_box[0].find('east').text)
+        params['south'] = float(lat_lon_box[0].find('south').text)
+        params['west'] = float(lat_lon_box[0].find('west').text)
+    else:
+        print(tree)
+        return
 
     time_span = tree.findall('TimeSpan')
     params['time_start'] = time_span[0].find('begin').text
     params['time_end'] = time_span[0].find('begin').text
-
-    correct_url = ('%s/tds_proxy/ncss/%s?%s' % (ckan_url, resource['id'], urllib.urlencode(params)))
 
     package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
 
@@ -453,7 +453,7 @@ def subset_job(context, resource, data_dict, times_exist, user):
             abort(403, _('Unauthorized to show package'))
 
         # check if url already exists
-        search_results = toolkit.get_action('resource_search')(context, {'query': "url:" + correct_url})
+        # search_results = toolkit.get_action('resource_search')(context, {'query': "url:" + correct_url})
 
         # check if private is true or false otherwise set private = "True"
         if 'private' not in data_dict or data_dict['private'].lower() not in {'true', 'false'}:
@@ -461,10 +461,10 @@ def subset_job(context, resource, data_dict, times_exist, user):
 
         # creating new package from the current one with few changes
         if data_dict.get('type', 'download').lower() == 'new_package':
-            if search_results['count'] > 0:
-                return_dict['existing_resource'] = toolkit.get_action('resource_show')(context, {'id': search_results['results'][0]['id']})
-                if data_dict.get('private', 'True').lower() == 'false':
-                    return return_dict
+            # if search_results['count'] > 0:
+            #     return_dict['existing_resource'] = toolkit.get_action('resource_show')(context, {'id': search_results['results'][0]['id']})
+            #     if data_dict.get('private', 'True').lower() == 'false':
+            #         return return_dict
 
             new_package = package.copy()
             new_package.pop('id')
@@ -544,12 +544,14 @@ def subset_job(context, resource, data_dict, times_exist, user):
 
                 toolkit.get_action('package_update')(context, existing_package)
 
-            if search_results['count'] > 0:
-                return_dict['existing_resource'] = toolkit.get_action('resource_show')(context, {'id': search_results['results'][0]['id']})
-                if existing_package['private'] is False:
-                    return return_dict
+            # if search_results['count'] > 0:
+            #     return_dict['existing_resource'] = toolkit.get_action('resource_show')(context, {'id': search_results['results'][0]['id']})
+            #     if existing_package['private'] is False:
+            #         return return_dict
 
-        new_resource = toolkit.get_action('resource_create')(context, {'name': 'subset_' + resource['name'], 'url': correct_url, 'package_id': package_to_add_id, 'format': data_dict['format'], 'subset_of': resource['id']})
+        new_resource = toolkit.get_action('resource_create')(context, {'name': 'subset_' + resource['name'], 'url': 'url', 'package_id': package_to_add_id, 'format': data_dict['format'], 'subset_of': resource['id']})
+        correct_url = ('%s/subset/%s/download' % (ckan_url, resource['id']))
+        new_resource = toolkit.get_action('resource_update')(context, {'id': new_resource['id'], 'url': correct_url, 'new_version': False})
 
         toolkit.get_action('package_relationship_create')(context, {'subject': package_to_add_id, 'object': package['id'], 'type': 'child_of'})
 
@@ -562,8 +564,8 @@ def subset_job(context, resource, data_dict, times_exist, user):
     # sending of email after successful subset creation
     body = 'Your subset is ready to download: ' + location
     if 'new_resource' in return_dict:
-        p = toolkit.get_action('package_show')(context, {'id': return_dict['new_resource']['package_id']})
-        body += '\nThe resource "%s" was created in the package "%s"' % (return_dict['new_resource']['name'], p['title'])
+        pkg = toolkit.get_action('package_show')(context, {'id': return_dict['new_resource']['package_id']})
+        body += '\nThe resource "%s" was created in the package "%s"' % (return_dict['new_resource']['name'], pkg['title'])
     if 'existing_resource' in return_dict:
         body += '\nThe resource "%s" has the same query and is already public' % (return_dict['existing_resource']['name'])
 
@@ -571,8 +573,7 @@ def subset_job(context, resource, data_dict, times_exist, user):
         'recipient_email': config.get("ckanext.contact.mail_to", config.get('email_to')),
         'recipient_name': config.get("ckanext.contact.recipient_name", config.get('ckan.site_title')),
         'subject': config.get("ckanext.contact.subject", 'Your subset is ready to download'),
-        'body': body,
-        'headers': {'reply-to': 'k.sack97@gmail.com'}
+        'body': body
     }
     print(body)
     #

@@ -1,3 +1,4 @@
+import ckan
 import ckan.lib.helpers as h
 import ckan.lib.base as base
 from urlparse import urlparse, parse_qs
@@ -15,6 +16,10 @@ import ckan.lib.navl.dictization_functions as df
 from ckan.common import _
 import ast
 from dateutil.relativedelta import relativedelta
+from xml.etree import ElementTree
+import requests
+import json
+import urlparse
 
 get_action = logic.get_action
 parse_params = logic.parse_params
@@ -38,7 +43,7 @@ unflatten = df.unflatten
 
 class SubsetController(base.BaseController):
 
-    def create_subset(self, resource_id):
+    def subset_create(self, resource_id):
 
         """
         Return a contact form
@@ -156,3 +161,63 @@ class SubsetController(base.BaseController):
             error_summary = e.error_summary
 
         return data, errors, error_summary
+
+    def subset_download(self, resource_id):
+        print("inside subset download")
+        context = {'model': model, 'session': model.Session,
+                   'user': c.user}
+
+        resource = toolkit.get_action('resource_show')(context, {'id': resource_id})
+
+        # anonymous users are not allowed to download subset
+        if authz.auth_is_anon_user(context):
+            abort(401, _('Unauthorized to read resource %s') % resource_id)
+
+        try:
+            enqueue_job = toolkit.enqueue_job
+        except AttributeError:
+            from ckanext.rq.jobs import enqueue as enqueue_job
+            enqueue_job(subset_download_job, [resource_id])
+
+        h.flash_notice('Your subset is being created. This might take a while, you will receive an E-Mail when your subset is available')
+        redirect(h.url_for(controller='package', action='resource_read',
+                                 id=resource['package_id'], resource_id=resource['id']))
+
+
+def subset_download_job(resource_id):
+    context = {'model': model, 'session': model.Session,
+               'user': c.user}
+    resource = toolkit.get_action('resource_show')(context, {'id': resource_id})
+
+    # get params from metadata
+    params = dict()
+    params['north'] = '48.1533'
+    params['east'] = '17.1853'
+    params['south'] = '46.799'
+    params['west'] = '15.9207'
+    params['var'] = 'rsds'
+
+    params['response_file'] = "false"
+    headers = {"Authorization": ""}
+
+    r = requests.get('http://sandboxdc.ccca.ac.at/tds_proxy/ncss/88d350e9-5e91-4922-8d8c-8857553d5d2f', params=params, headers=headers)
+
+    # not working for point
+    tree = ElementTree.fromstring(r.content)
+    location = tree.get('location')
+
+    body = 'Your subset is ready to download: ' + location
+
+    mail_dict = {
+        'recipient_email': config.get("ckanext.contact.mail_to", config.get('email_to')),
+        'recipient_name': config.get("ckanext.contact.recipient_name", config.get('ckan.site_title')),
+        'subject': config.get("ckanext.contact.subject", 'Your subset is ready to download'),
+        'body': body
+    }
+
+    print(body)
+
+    # try:
+    #     mailer.mail_recipient(**mail_dict)
+    # except (mailer.MailerException, socket.error):
+    #     h.flash_error(_(u'Sorry, there was an error sending the email. Please try again later'))

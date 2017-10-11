@@ -6,7 +6,7 @@
     {% endif %}
     {% if pkg.private == False and (res.format|lower == 'netcdf' or res.format == 'application/x-netcdf') %}
         <li>
-            {% link_for _('Create Subset'), controller='ckanext.thredds.controllers.subset:SubsetController', action='create_subset', resource_id=res.id, class_='btn', icon='plus-sign-alt' %}
+            {% link_for _('Create Subset'), controller='ckanext.thredds.controllers.subset:SubsetController', action='subset_create', resource_id=res.id, class_='btn', icon='plus-sign-alt' %}
         </li>
     {% endif %}
     {% if res.url and h.is_url(res.url) %}
