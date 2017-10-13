@@ -163,7 +163,6 @@ class SubsetController(base.BaseController):
         return data, errors, error_summary
 
     def subset_download(self, resource_id):
-        print("inside subset download")
         context = {'model': model, 'session': model.Session,
                    'user': c.user}
 
@@ -177,7 +176,7 @@ class SubsetController(base.BaseController):
             enqueue_job = toolkit.enqueue_job
         except AttributeError:
             from ckanext.rq.jobs import enqueue as enqueue_job
-            enqueue_job(subset_download_job, [resource_id])
+        enqueue_job(subset_download_job, [resource_id])
 
         h.flash_notice('Your subset is being created. This might take a while, you will receive an E-Mail when your subset is available')
         redirect(h.url_for(controller='package', action='resource_read',
@@ -196,13 +195,18 @@ def subset_download_job(resource_id):
     params['south'] = '46.799'
     params['west'] = '15.9207'
     params['var'] = 'rsds'
+    # params['time_start']
+    # params['time_ends']
+
+    ckan_url = config.get('ckan.site_url', '')
+    ncss_location = config.get('ckanext.thredds.ncss_location')
 
     params['response_file'] = "false"
     headers = {"Authorization": ""}
 
     r = requests.get('http://sandboxdc.ccca.ac.at/tds_proxy/ncss/88d350e9-5e91-4922-8d8c-8857553d5d2f', params=params, headers=headers)
+    # r = requests.get(ckan_url + '/' + ncss_location + '/' + resource['id'], params=params)
 
-    # not working for point
     tree = ElementTree.fromstring(r.content)
     location = tree.get('location')
 

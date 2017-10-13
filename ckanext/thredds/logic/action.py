@@ -21,6 +21,7 @@ import ckan.plugins as p
 import socket
 import ckan.lib.mailer as mailer
 import time
+import ckan.model as model
 from xml.etree import ElementTree
 
 check_access = logic.check_access
@@ -33,6 +34,8 @@ NotAuthorized = logic.NotAuthorized
 NotFound = logic.NotFound
 Invalid = df.Invalid
 ValidationError = logic.ValidationError
+
+c = base.c
 
 
 @ckan.logic.side_effect_free
@@ -364,25 +367,18 @@ def subset_create(context, data_dict):
     if len(errors) > 0:
         raise ValidationError(errors)
     else:
-        user = toolkit.get_action('user_show')(context, {'id': context['auth_user_obj'].id})
-
-        site_user = toolkit.get_action('get_site_user')({'model': ckan.model, 'ignore_auth': True, 'defer_commit': True}, {})
-        context = json.dumps({
-            'username': user['name'],
-            'site_url': config.get('ckan.site_url_internally') or config.get('ckan.site_url'),
-            'apikey': user['apikey'],
-            'site_user_apikey': site_user['apikey']
-        })
-
         try:
             enqueue_job = toolkit.enqueue_job
         except AttributeError:
             from ckanext.rq.jobs import enqueue as enqueue_job
-            enqueue_job(subset_job, [context, resource, data_dict, times_exist, user])
+        enqueue_job(subset_create_job, [resource, data_dict, times_exist])
 
 
-def subset_job(context, resource, data_dict, times_exist, user):
-    context = json.loads(context)
+def subset_create_job(resource, data_dict, times_exist):
+    context = {'model': model, 'session': model.Session,
+               'user': c.user}
+
+    user = toolkit.get_action('user_show')(context, {'id': c.user})
 
     # start building URL params with var (required)
     if type(data_dict['layers']) is list:
@@ -414,48 +410,54 @@ def subset_job(context, resource, data_dict, times_exist, user):
             params['east'] = round(float(data_dict['east']), 4)
             params['west'] = round(float(data_dict['west']), 4)
 
+    params['response_file'] = "false"
+    # headers={'Authorization':user.apikey}
+
     ckan_url = config.get('ckan.site_url', '')
+    ncss_location = config.get('ckanext.thredds.ncss_location')
 
-    req_params = params.copy()
-    req_params['response_file'] = "false"
-    headers = {"Authorization": ""}
-
-    r = requests.get('http://sandboxdc.ccca.ac.at/tds_proxy/ncss/88d350e9-5e91-4922-8d8c-8857553d5d2f', params=req_params, headers=headers)
+    r = requests.get('http://sandboxdc.ccca.ac.at/' + ncss_location + '/88d350e9-5e91-4922-8d8c-8857553d5d2f', params=params, headers=headers)
+    # r = requests.get(ckan_url + '/' + ncss_location + '/' + resource['id'], params=params)
 
     # not working for point
     tree = ElementTree.fromstring(r.content)
     location = tree.get('location')
 
-    # differ between bbox and point
-    if data_dict['point'] is False:
-        lat_lon_box = tree.findall('LatLonBox')
-        params['north'] = float(lat_lon_box[0].find('north').text)
-        params['east'] = float(lat_lon_box[0].find('east').text)
-        params['south'] = float(lat_lon_box[0].find('south').text)
-        params['west'] = float(lat_lon_box[0].find('west').text)
-    else:
-        print(tree)
-        return
-
-    time_span = tree.findall('TimeSpan')
-    params['time_start'] = time_span[0].find('begin').text
-    params['time_end'] = time_span[0].find('begin').text
-
-    package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
-
     return_dict = dict()
 
     # create resource if requested from user
     if data_dict.get('type', 'download').lower() in {'new_package', 'existing_package'}:
-        try:
-            check_access('package_show', context, {'id': package['id']})
-        except NotAuthorized:
-            abort(403, _('Unauthorized to show package'))
+        new_resource = {'name': 'subset_' + resource['name'], 'url': 'subset', 'format': data_dict['format'], 'subset_of': resource['id']}
+
+        # add spatial to new resource
+        lat_lon_box = tree.findall('LatLonBox')
+        n = float(lat_lon_box[0].find('north').text)
+        e = float(lat_lon_box[0].find('east').text)
+        s = float(lat_lon_box[0].find('south').text)
+        w = float(lat_lon_box[0].find('west').text)
+        coordinates = [[w, s], [e, s], [e, n], [w, n], [w, s]]
+        new_resource['spatial'] = ('{"type": "MultiPolygon", "coordinates": [[' + str(coordinates) + ']]}')
+
+        # add time to new resource
+        time_span = tree.findall('TimeSpan')
+        new_resource['start_date'] = time_span[0].find('begin').text
+        if new_resource['start_date'] != time_span[0].find('end').text:
+            new_resource['end_date'] = time_span[0].find('end').text
+        else:
+            new_resource['end_date'] = None
+
+        package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
+
+        # is this check necessary?
+        # try:
+        #     check_access('package_show', context, {'id': package['id']})
+        # except NotAuthorized:
+        #     abort(403, _('Unauthorized to show package'))
 
         # check if url already exists
         # search_results = toolkit.get_action('resource_search')(context, {'query': "url:" + correct_url})
 
-        # check if private is true or false otherwise set private = "True"
+        # check if private is True or False otherwise set private to True
         if 'private' not in data_dict or data_dict['private'].lower() not in {'true', 'false'}:
             data_dict['private'] = 'True'
 
@@ -477,29 +479,6 @@ def subset_job(context, resource, data_dict, times_exist, user):
             new_package['name'] = data_dict['name']
             new_package['title'] = data_dict['title']
             new_package['private'] = data_dict['private']
-
-            # add bbox and spatial if added
-            if 'north' in params:
-                n = params['north']
-                s = params['south']
-                e = params['east']
-                w = params['west']
-
-                new_package['iso_northBL'] = n
-                new_package['iso_southBL'] = s
-                new_package['iso_eastBL'] = e
-                new_package['iso_westBL'] = w
-
-                coordinates = [[w, s], [e, s], [e, n], [w, n], [w, s]]
-                spatial = ('{"type": "MultiPolygon", "coordinates": [[' + str(coordinates) + ']]}')
-                print(spatial)
-
-                new_package['spatial'] = spatial
-
-            # add time if added
-            if times_exist is True:
-                new_package['iso_exTempStart'] = data_dict['time_start']
-                new_package['iso_exTempEnd'] = data_dict['time_end']
 
             # add subset creator
             subset_creator = dict()
@@ -525,7 +504,6 @@ def subset_job(context, resource, data_dict, times_exist, user):
             subset_creators = toolkit.get_action('package_contact_show')(context, {'package_id': package_to_add_id, 'search_param': 'role', 'search_value': 'Subset Creator'})
 
             sc_added = False
-
             for subset_creator in subset_creators:
                 if subset_creator['mail'] == user['email']:
                     sc_added = True
@@ -549,17 +527,17 @@ def subset_job(context, resource, data_dict, times_exist, user):
             #     if existing_package['private'] is False:
             #         return return_dict
 
-        new_resource = toolkit.get_action('resource_create')(context, {'name': 'subset_' + resource['name'], 'url': 'url', 'package_id': package_to_add_id, 'format': data_dict['format'], 'subset_of': resource['id']})
-        correct_url = ('%s/subset/%s/download' % (ckan_url, resource['id']))
+        new_resource['package_id'] = package_to_add_id
+        new_resource = toolkit.get_action('resource_create')(context, new_resource)
+
+        # url needs id of the resource
+        correct_url = ('%s/subset/%s/download' % (ckan_url, new_resource['id']))
         new_resource = toolkit.get_action('resource_update')(context, {'id': new_resource['id'], 'url': correct_url, 'new_version': False})
 
+        # relationship creation
         toolkit.get_action('package_relationship_create')(context, {'subject': package_to_add_id, 'object': package['id'], 'type': 'child_of'})
 
         return_dict['new_resource'] = new_resource
-    else:
-        # redirect to url if user doesn't want to create a package
-        return_dict['url'] = str(correct_url)
-    # return return_dict
 
     # sending of email after successful subset creation
     body = 'Your subset is ready to download: ' + location
