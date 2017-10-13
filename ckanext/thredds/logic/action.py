@@ -417,7 +417,7 @@ def subset_create_job(resource, data_dict, times_exist):
     ncss_location = config.get('ckanext.thredds.ncss_location')
 
     r = requests.get('http://sandboxdc.ccca.ac.at/' + ncss_location + '/88d350e9-5e91-4922-8d8c-8857553d5d2f', params=params, headers=headers)
-    # r = requests.get(ckan_url + '/' + ncss_location + '/' + resource['id'], params=params)
+    # r = requests.get(ckan_url + '/' + ncss_location + '/' + resource['id'], params=params, headers=headers)
 
     # not working for point
     tree = ElementTree.fromstring(r.content)
@@ -563,3 +563,49 @@ def subset_create_job(resource, data_dict, times_exist):
     #     mailer.mail_recipient(**mail_dict)
     # except (mailer.MailerException, socket.error):
     #     h.flash_error(_(u'Sorry, there was an error sending the email. Please try again later'))
+
+
+@ckan.logic.side_effect_free
+def thredds_get_metadata_info(context, data_dict):
+
+    # Resource ID
+    model = context['model']
+    user = context['auth_user_obj']
+
+    resource_id = tk.get_or_bust(data_dict, 'id')
+
+    ckan_url = config.get('ckan.site_url', '')
+
+    try:
+        headers={'Authorization': ''}
+        # headers={'Authorization':user.apikey}
+    except:
+        raise NotAuthorized
+
+    # NCML section
+    ncml_url = ckan_url + '/tds_proxy/ncml/' + resource_id
+
+    try:
+        # r = requests.get(ncml_url, headers=headers)
+        r = requests.get('http://sandboxdc.ccca.ac.at/' + 'tds_proxy/ncml/' + '/88d350e9-5e91-4922-8d8c-8857553d5d2f', headers=headers)
+    except Exception as e:
+        raise NotFound("Thredds Server can not provide layer details")
+
+    ncml_tree = ElementTree.fromstring(r.content)
+
+    comment = ncml_tree.find(".//*[@name='comment']")
+    comment = comment.attrib["value"]
+
+    references = ncml_tree.find(".//*[@name='references']")
+    references = references.attrib["value"]
+
+    # NCSS section
+    ncss_url = ckan_url + '/tds_proxy/ncss/' + resource_id + 'dataset.xml'
+
+    try:
+        # r = requests.get(ncss_url, headers=headers)
+        r = requests.get('http://sandboxdc.ccca.ac.at/' + 'tds_proxy/ncss/88d350e9-5e91-4922-8d8c-8857553d5d2f/dataset.xml', headers=headers)
+    except Exception as e:
+        raise NotFound("Thredds Server can not provide layer details")
+
+    ncss_tree = ElementTree.fromstring(r.content)
