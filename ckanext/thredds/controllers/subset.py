@@ -137,6 +137,11 @@ class SubsetController(base.BaseController):
         data['all_layers'] = ast.literal_eval(str(data['all_layers']))
         data['id'] = resource['id']
 
+        if data['type'] == "new_package":
+            data['resource_name'] = data['res_name_1']
+        elif data['type'] == "existing_package":
+            data['resource_name'] = data['res_name_2']
+
         errors = {}
         error_summary = {}
 
@@ -162,6 +167,13 @@ class SubsetController(base.BaseController):
         except ValidationError, e:
             errors = e.error_dict
             error_summary = e.error_summary
+
+            if 'resource_name' in errors:
+                if data['type'] == "new_package":
+                    errors['res_name_1'] = errors['resource_name']
+                elif data['type'] == "existing_package":
+                    errors['res_name_2'] = errors['resource_name']
+                errors.pop('resource_name')
 
         return data, errors, error_summary
 

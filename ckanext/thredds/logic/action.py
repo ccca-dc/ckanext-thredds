@@ -257,53 +257,56 @@ def subset_create(context, data_dict):
                 errors['east'] = [u'longitude is further west than bounding box of resource']
 
     # error resource creation section
-    if data_dict.get('type', 'download').lower() == 'new_package':
-        if data_dict.get('title', "") == '':
-            errors['title'] = [u'Missing Value']
-        if data_dict.get('name', "") == '':
-            errors['name'] = [u'Missing Value']
-        else:
-            model = context['model']
-            session = context['session']
-            result = session.query(model.Package).filter_by(name=data_dict['name']).first()
+    if data_dict.get('type', 'download').lower() in ('new_package', 'existing_package'):
+        if data_dict.get('resource_name', "") == '':
+            errors['resource_name'] = [u'Missing Value']
+        if data_dict.get('type', 'download').lower() == 'new_package':
+            if data_dict.get('title', "") == '':
+                errors['title'] = [u'Missing Value']
+            if data_dict.get('name', "") == '':
+                errors['name'] = [u'Missing Value']
+            else:
+                model = context['model']
+                session = context['session']
+                result = session.query(model.Package).filter_by(name=data_dict['name']).first()
 
-            if result:
-                errors['name'] = [u'That URL is already in use.']
-            elif len(data_dict['name']) < PACKAGE_NAME_MIN_LENGTH:
-                errors['name'] = [u'URL is shorter than minimum (' + str(PACKAGE_NAME_MIN_LENGTH) + u')']
-            elif len(data_dict['name']) > PACKAGE_NAME_MAX_LENGTH:
-                errors['name'] = [u'URL is longer than maximum (' + str(PACKAGE_NAME_MAX_LENGTH) + u')']
-        if data_dict.get('organization', "") == '':
-            errors['organization'] = [u'Missing Value']
-        else:
-            toolkit.get_action('organization_show')(context, {'id': data_dict['organization']})
-    elif data_dict.get('type', 'download').lower() == 'existing_package':
-        if data_dict.get('existing_package_id', "") == '':
-            errors['existing_package_id'] = [u'Missing Value']
-        else:
-            try:
-                package_exists = False
-                toolkit.get_action('package_show')(context, {'id': data_dict['existing_package_id']})
-                check_access('package_update', context, {'id': data_dict['existing_package_id']})
-                package_exists = True
+                if result:
+                    errors['name'] = [u'That URL is already in use.']
+                elif len(data_dict['name']) < PACKAGE_NAME_MIN_LENGTH:
+                    errors['name'] = [u'URL is shorter than minimum (' + str(PACKAGE_NAME_MIN_LENGTH) + u')']
+                elif len(data_dict['name']) > PACKAGE_NAME_MAX_LENGTH:
+                    errors['name'] = [u'URL is longer than maximum (' + str(PACKAGE_NAME_MAX_LENGTH) + u')']
+            if data_dict.get('organization', "") == '':
+                errors['organization'] = [u'Missing Value']
+            else:
+                toolkit.get_action('organization_show')(context, {'id': data_dict['organization']})
+        elif data_dict.get('type', 'download').lower() == 'existing_package':
+            if data_dict.get('existing_package_id', "") == '':
+                errors['existing_package_id'] = [u'Missing Value']
+            else:
+                try:
+                    package_exists = False
+                    toolkit.get_action('package_show')(context, {'id': data_dict['existing_package_id']})
+                    check_access('package_update', context, {'id': data_dict['existing_package_id']})
+                    package_exists = True
 
-                relationships = toolkit.get_action('package_relationships_list')(context, {'id': package['id'], 'rel': 'parent_of'})
+                    relationships = toolkit.get_action('package_relationships_list')(context, {'id': package['id'], 'rel': 'parent_of'})
 
-                is_child_of = False
-                for rel in relationships:
-                    if rel['object'] == data_dict['existing_package_id']:
-                        is_child_of = True
-                        break
+                    is_child_of = False
+                    for rel in relationships:
+                        if rel['object'] == data_dict['existing_package_id']:
+                            is_child_of = True
+                            break
 
-                if is_child_of is False:
-                    errors['existing_package_id'] = [u'Given package is not derived from original package']
-            except NotFound:
-                if not package_exists:
-                    errors['existing_package_id'] = [u'Package not found']
-                else:
-                    errors['existing_package_id'] = [u'There are no derived packages available to use; change type']
-            except NotAuthorized:
-                errors['existing_package_id'] = [u'Not authorized to add subset to this package']
+                    if is_child_of is False:
+                        errors['existing_package_id'] = [u'Given package is not derived from original package']
+                except NotFound:
+                    if not package_exists:
+                        errors['existing_package_id'] = [u'Package not found']
+                    else:
+                        errors['existing_package_id'] = [u'There are no derived packages available to use; change type']
+                except NotAuthorized:
+                    errors['existing_package_id'] = [u'Not authorized to add subset to this package']
 
     # error time section
     times_exist = False
@@ -432,7 +435,7 @@ def subset_create_job(resource, data_dict, times_exist):
     if data_dict.get('type', 'download').lower() in {'new_package', 'existing_package'}:
         package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
 
-        new_resource = {'name': 'subset_' + resource['name'], 'url': 'subset', 'format': data_dict['format'], 'subset_of': resource['id'], 'anonymous_download': 'False'}
+        new_resource = {'name': data_dict['resource_name'], 'url': 'subset', 'format': data_dict['format'], 'subset_of': resource['id'], 'anonymous_download': 'False'}
 
         # resource might not be created but params are needed anyway for search
         # add spatial to new resource

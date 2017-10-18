@@ -170,6 +170,8 @@
                   <input type="radio" name="type" value="new_package" {{ "checked " if data.type == "new_package" }} id="new_package"> <b>Yes</b> and create a new dataset as well <br><br>
 
                   <div class="well" id="new_package_well" style="display:none">
+                      {{ form.input('res_name_1', id='field-res-name-1', label=_('Resource Name'), value=data.res_name_1, error=errors.res_name_1, placeholder=_('eg. My Subset')) }}
+
                       {{ form.input('title', id='field-title', label=_('Dataset Title'), value=data.title, error=errors.title, placeholder=_('eg. A descriptive title'), attrs={'data-module': 'slug-preview-target'}) }}
 
                       {% set prefix = h.url_for(controller='package', action='read', id='') %}
@@ -190,6 +192,10 @@
                   <input type="radio" name="type" value="existing_package" {{ "checked " if data.type == "existing_package" }} id="existing_package"> <b>Yes</b>, in an existing dataset<br><br>
 
                   <div class="well" id="existing_package_well" style="display:none">
+                      <div id="left-well">
+                      {{ form.input('res_name_2', id='field-res-name-2', label=_('Resource Name'), value=data.res_name_2, error=errors.res_name_2, placeholder=_('eg. My Subset')) }}
+                      </div>
+                      <div id="right">
                       <label class="control-label" for="existing_package_id">Dataset</label>
                           <select name="existing_package_id">
                             {% for rel in data.relationships %}
@@ -197,6 +203,7 @@
                             {% endfor %}
                           </select>
                           {{ form.info(text="Only derived datasets of this dataset can be selected", inline=true) }}
+                      </div>
                   </div>
                   {% endif %}
               </div>

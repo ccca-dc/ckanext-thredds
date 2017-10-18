@@ -36,6 +36,10 @@ h5[name=dropdown_heading] {
     margin-right: 160px;
     display: inline-block;
 }
+#left-well {
+    float: left;
+    margin-right: 139px;
+}
 #right {
     display: inline-block;
 }
