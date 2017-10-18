@@ -131,3 +131,12 @@ def _get_params(resource):
         else:
             query[str(param)] = str(params.get(param, [""])[0])
     return query
+
+
+def coordinates_to_spatial(north, east, south, west):
+    n = float(north)
+    e = float(east)
+    s = float(south)
+    w = float(west)
+    coordinates = [[w, s], [e, s], [e, n], [w, n], [w, s]]
+    return ('{"type": "MultiPolygon", "coordinates": [[' + str(coordinates) + ']]}')

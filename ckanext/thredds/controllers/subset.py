@@ -94,6 +94,9 @@ class SubsetController(base.BaseController):
             for layer in layers[0]['children']:
                 data['all_layers'].append({'id': layer['id'], 'label': layer['label']})
 
+            # add instead of bbox above
+            # data['metadata_info'] = toolkit.get_action('thredds_get_metadata_info')(context, {'id': resource_id})
+
         # check if user is allowed to create package
         data['create_pkg'] = True
         try:
@@ -195,17 +198,20 @@ def subset_download_job(resource_id):
     params['south'] = '46.799'
     params['west'] = '15.9207'
     params['var'] = 'rsds'
-    # params['time_start']
-    # params['time_ends']
+    # extract coordinates from spatial
+    # params['var'] = resource['variables']
+    # params['time_start'] = resource['temporals'][0]['start_date']
+    # params['time_ends'] = resource['temporals'][0]['end_date']
 
     ckan_url = config.get('ckan.site_url', '')
-    ncss_location = config.get('ckanext.thredds.ncss_location')
+    thredds_location = config.get('ckanext.thredds.location')
 
     params['response_file'] = "false"
     headers = {"Authorization": ""}
+    # headers={'Authorization': user.apikey}
 
     r = requests.get('http://sandboxdc.ccca.ac.at/tds_proxy/ncss/88d350e9-5e91-4922-8d8c-8857553d5d2f', params=params, headers=headers)
-    # r = requests.get(ckan_url + '/' + ncss_location + '/' + resource['id'], params=params)
+    # r = requests.get(ckan_url + '/' + thredds_location + '/ncss/' + resource['id'], params=params, headers=headers)
 
     tree = ElementTree.fromstring(r.content)
     location = tree.get('location')

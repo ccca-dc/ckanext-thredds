@@ -23,6 +23,7 @@ import ckan.lib.mailer as mailer
 import time
 import ckan.model as model
 from xml.etree import ElementTree
+import ckanext.thredds.helpers as helpers
 
 check_access = logic.check_access
 
@@ -411,13 +412,13 @@ def subset_create_job(resource, data_dict, times_exist):
             params['west'] = round(float(data_dict['west']), 4)
 
     params['response_file'] = "false"
-    # headers={'Authorization':user.apikey}
+    # headers={'Authorization': user.apikey}
 
     ckan_url = config.get('ckan.site_url', '')
-    ncss_location = config.get('ckanext.thredds.ncss_location')
+    thredds_location = config.get('ckanext.thredds.location')
 
-    r = requests.get('http://sandboxdc.ccca.ac.at/' + ncss_location + '/88d350e9-5e91-4922-8d8c-8857553d5d2f', params=params, headers=headers)
-    # r = requests.get(ckan_url + '/' + ncss_location + '/' + resource['id'], params=params, headers=headers)
+    r = requests.get('http://sandboxdc.ccca.ac.at/' + thredds_location + '/ncss/88d350e9-5e91-4922-8d8c-8857553d5d2f', params=params, headers=headers)
+    # r = requests.get(ckan_url + '/' + thredds_location + '/ncss/' + resource['id'], params=params, headers=headers)
 
     # not working for point
     tree = ElementTree.fromstring(r.content)
@@ -425,28 +426,34 @@ def subset_create_job(resource, data_dict, times_exist):
 
     return_dict = dict()
 
+    print(r.url)
+
     # create resource if requested from user
     if data_dict.get('type', 'download').lower() in {'new_package', 'existing_package'}:
-        new_resource = {'name': 'subset_' + resource['name'], 'url': 'subset', 'format': data_dict['format'], 'subset_of': resource['id']}
+        package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
 
+        new_resource = {'name': 'subset_' + resource['name'], 'url': 'subset', 'format': data_dict['format'], 'subset_of': resource['id'], 'anonymous_download': 'False'}
+
+        # resource might not be created but params are needed anyway for search
         # add spatial to new resource
-        lat_lon_box = tree.findall('LatLonBox')
-        n = float(lat_lon_box[0].find('north').text)
-        e = float(lat_lon_box[0].find('east').text)
-        s = float(lat_lon_box[0].find('south').text)
-        w = float(lat_lon_box[0].find('west').text)
-        coordinates = [[w, s], [e, s], [e, n], [w, n], [w, s]]
-        new_resource['spatial'] = ('{"type": "MultiPolygon", "coordinates": [[' + str(coordinates) + ']]}')
+        lat_lon_box = tree.find('LatLonBox')
+        n = lat_lon_box.find('north').text
+        e = lat_lon_box.find('east').text
+        s = lat_lon_box.find('south').text
+        w = lat_lon_box.find('west').text
+        new_resource['spatial'] = helpers.coordinates_to_spatial(n, e, s, w)
 
         # add time to new resource
-        time_span = tree.findall('TimeSpan')
-        new_resource['start_date'] = time_span[0].find('begin').text
-        if new_resource['start_date'] != time_span[0].find('end').text:
-            new_resource['end_date'] = time_span[0].find('end').text
+        time_span = tree.find('TimeSpan')
+        new_resource['start_date'] = time_span.find('begin').text
+        if new_resource['start_date'] != time_span.find('end').text:
+            new_resource['end_date'] = time_span.find('end').text
         else:
             new_resource['end_date'] = None
 
-        package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
+        # add variables to new resource
+        # variables now might be list or string
+        new_resource['variables'] = data_dict['layers']
 
         # is this check necessary?
         # try:
@@ -455,7 +462,18 @@ def subset_create_job(resource, data_dict, times_exist):
         #     abort(403, _('Unauthorized to show package'))
 
         # check if url already exists
-        # search_results = toolkit.get_action('resource_search')(context, {'query': "url:" + correct_url})
+        # search_results = toolkit.get('resource_search')(context, {'query':
+        #                 ['format:%s' % (new_resource['format']) ,
+        #                 'subset_of:%s' % (new_resource['subset_of']),
+        #                 'start_date:%s' % (new_resource['start_date']),
+        #                 'end_date:%s' % (new_resource['end_date']),
+        #                 'spatial:%s' % (new_resource['spatial']),
+        #                 'variables:%s' % (new_resource['variables'])]})
+
+        # if search_results['count'] > 0:
+        #     return_dict['existing_resource'] = toolkit.get_action('resource_show')(context, {'id': search_results['results'][0]['id']})
+        #     if data_dict.get('private', 'True').lower() == 'false':
+        #         return return_dict
 
         # check if private is True or False otherwise set private to True
         if 'private' not in data_dict or data_dict['private'].lower() not in {'true', 'false'}:
@@ -463,11 +481,6 @@ def subset_create_job(resource, data_dict, times_exist):
 
         # creating new package from the current one with few changes
         if data_dict.get('type', 'download').lower() == 'new_package':
-            # if search_results['count'] > 0:
-            #     return_dict['existing_resource'] = toolkit.get_action('resource_show')(context, {'id': search_results['results'][0]['id']})
-            #     if data_dict.get('private', 'True').lower() == 'false':
-            #         return return_dict
-
             new_package = package.copy()
             new_package.pop('id')
             new_package.pop('resources')
@@ -522,11 +535,6 @@ def subset_create_job(resource, data_dict, times_exist):
 
                 toolkit.get_action('package_update')(context, existing_package)
 
-            # if search_results['count'] > 0:
-            #     return_dict['existing_resource'] = toolkit.get_action('resource_show')(context, {'id': search_results['results'][0]['id']})
-            #     if existing_package['private'] is False:
-            #         return return_dict
-
         new_resource['package_id'] = package_to_add_id
         new_resource = toolkit.get_action('resource_create')(context, new_resource)
 
@@ -572,18 +580,20 @@ def thredds_get_metadata_info(context, data_dict):
     model = context['model']
     user = context['auth_user_obj']
 
+    metadata = dict()
+
     resource_id = tk.get_or_bust(data_dict, 'id')
 
     ckan_url = config.get('ckan.site_url', '')
+    thredds_location = config.get('ckanext.thredds.location')
 
     try:
-        headers={'Authorization': ''}
-        # headers={'Authorization':user.apikey}
+        # headers={'Authorization': user.apikey}
     except:
         raise NotAuthorized
 
     # NCML section
-    ncml_url = ckan_url + '/tds_proxy/ncml/' + resource_id
+    ncml_url = '/'.join([ckan_url, thredds_location, 'ncml', resource_id])
 
     try:
         # r = requests.get(ncml_url, headers=headers)
@@ -593,14 +603,12 @@ def thredds_get_metadata_info(context, data_dict):
 
     ncml_tree = ElementTree.fromstring(r.content)
 
-    comment = ncml_tree.find(".//*[@name='comment']")
-    comment = comment.attrib["value"]
-
-    references = ncml_tree.find(".//*[@name='references']")
-    references = references.attrib["value"]
+    # get description and references
+    metadata['description'] = ncml_tree.find(".//*[@name='comment']").attrib["value"]
+    metadata['references'] = ncml_tree.find(".//*[@name='references']").attrib["value"]
 
     # NCSS section
-    ncss_url = ckan_url + '/tds_proxy/ncss/' + resource_id + 'dataset.xml'
+    ncss_url = '/'.join([ckan_url, thredds_location, 'ncss', resource_id, 'dataset.xml'])
 
     try:
         # r = requests.get(ncss_url, headers=headers)
@@ -609,3 +617,58 @@ def thredds_get_metadata_info(context, data_dict):
         raise NotFound("Thredds Server can not provide layer details")
 
     ncss_tree = ElementTree.fromstring(r.content)
+
+    # get coordinates
+    lat_lon_box = ncss_tree.find('LatLonBox')
+    n = lat_lon_box.find('north').text
+    e = lat_lon_box.find('east').text
+    s = lat_lon_box.find('south').text
+    w = lat_lon_box.find('west').text
+    metadata['spatial'] = helpers.coordinates_to_spatial(n, e, s, w)
+    metadata['coordinates'] = {'north': n, 'east': e, 'south': s, 'west': w}
+
+    # get time
+    metadata['temporals'] = []
+    time_spans = ncss_tree.findall('TimeSpan')
+
+    for time_span in time_spans:
+        t = dict()
+        t['start_date'] = time_span.find('begin').text
+        if t['start_date'] != time_span.find('end').text:
+            t['end_date'] = time_span.find('end').text
+        else:
+            t['end_date'] = None
+        metadata['temporals'].append(t)
+
+    # get dimensions
+    metadata['dimensions'] = []
+    dimensions = ncss_tree.findall('axis')
+    for dimension in dimensions:
+        d = dict()
+        d['name'] = dimension.attrib["name"]
+        d['units'] = dimension.find(".attribute/[@name='units']").attrib["value"]
+        d['description'] = dimension.find(".attribute/[@name='long_name']").attrib["value"]
+        d['start'] = dimension.find("values").attrib["start"]
+        d['shape'] = dimension.attrib["shape"]
+        d['increment'] = dimension.find("values").attrib["increment"]
+
+        metadata['dimensions'].append(d)
+
+    # get variables
+    metadata['variables'] = []
+    grids = ncss_tree.findall(".//grid")
+    for grid in grids:
+        axis_type = grid.find(".attribute/[@name='_CoordinateAxisType']")
+        if axis_type is None:
+            g = dict()
+            g['name'] = grid.attrib['name']
+            g['description'] = grid.attrib['desc']
+            g['standard_name'] = grid.find(".attribute/[@name='standard_name']").attrib["value"]
+            g['units'] = grid.find(".attribute/[@name='units']").attrib["value"]
+            g['shape'] = grid.attrib['shape'].split(" ")
+
+            metadata['variables'].append(g)
+
+    return metadata
+
+    # time information should be used for error and display section in subset_create
