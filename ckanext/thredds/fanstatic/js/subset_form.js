@@ -282,7 +282,7 @@ this.ckan.module('subset-form', function (jQuery, _) {
             }
         });
 
-        $("#subset-form :input").tooltip({ 'trigger': 'focus' });
+        $(".ttip").tooltip({ 'trigger': 'focus' });
     }
 
   }

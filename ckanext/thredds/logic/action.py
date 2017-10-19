@@ -165,10 +165,7 @@ def subset_create(context, data_dict):
     resource = toolkit.get_action('resource_show')(context, {'id': id})
     package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
 
-    layers = toolkit.get_action('thredds_get_layers')(context, {'id': resource['id']})
-    layer_details = toolkit.get_action('thredds_get_layerdetails')(context, {'id': resource['id'], 'layer': layers[0]['children'][0]['id']})
-
-    bbox = layer_details['bbox']
+    metadata = toolkit.get_action('thredds_get_metadata_info')(context, {'id': id})
 
     # error section
     # error coordinate section, checking if values are entered and floats
@@ -218,42 +215,42 @@ def subset_create(context, data_dict):
         northf = float(data_dict['north'])
         if data_dict.get('south', "") != "":
             southf = float(data_dict['south'])
-            if northf > float(bbox[3]) and southf > float(bbox[3]):
+            if northf > float(metadata['coordinates']['north']) and southf > float(metadata['coordinates']['north']):
                 errors['north'] = [u'coordinate is further north than bounding box of resource']
                 errors['south'] = [u'coordinate is further north than bounding box of resource']
-            elif northf < float(bbox[1]) and southf < float(bbox[1]):
+            elif northf < float(metadata['coordinates']['south']) and southf < float(metadata['coordinates']['south']):
                 errors['north'] = [u'coordinate is further south than bounding box of resource']
                 errors['south'] = [u'coordinate is further south than bounding box of resource']
             else:
-                if northf > float(bbox[3]):
-                    data_dict['north'] = bbox[3]
-                if southf < float(bbox[1]):
-                    data_dict['south'] = bbox[1]
+                if northf > float(metadata['coordinates']['north']):
+                    data_dict['north'] = metadata['coordinates']['north']
+                if southf < float(metadata['coordinates']['south']):
+                    data_dict['south'] = metadata['coordinates']['south']
         else:
-            if northf > float(bbox[3]):
+            if northf > float(metadata['coordinates']['north']):
                 errors['north'] = [u'latitude is further north than bounding box of resource']
-            if northf < float(bbox[1]):
+            if northf < float(metadata['coordinates']['south']):
                 errors['north'] = [u'latitude is further south than bounding box of resource']
 
     if eastWestOk is True:
         eastf = float(data_dict['east'])
         if data_dict.get('west', "") != "":
             westf = float(data_dict['west'])
-            if eastf > float(bbox[2]) and westf > float(bbox[2]):
+            if eastf > float(metadata['coordinates']['east']) and westf > float(metadata['coordinates']['east']):
                 errors['east'] = [u'coordinate is further east than bounding box of resource']
                 errors['west'] = [u'coordinate is further east than bounding box of resource']
-            elif eastf < float(bbox[0]) and westf < float(bbox[0]):
+            elif eastf < float(metadata['coordinates']['west']) and westf < float(metadata['coordinates']['west']):
                 errors['east'] = [u'coordinate is further west than bounding box of resource']
                 errors['west'] = [u'coordinate is further west than bounding box of resource']
             else:
-                if eastf > float(bbox[2]):
-                    data_dict['east'] = bbox[2]
-                if westf < float(bbox[0]):
-                    data_dict['west'] = bbox[0]
+                if eastf > float(metadata['coordinates']['east']):
+                    data_dict['east'] = metadata['coordinates']['east']
+                if westf < float(metadata['coordinates']['west']):
+                    data_dict['west'] = metadata['coordinates']['west']
         else:
-            if eastf > float(bbox[2]):
+            if eastf > float(metadata['coordinates']['east']):
                 errors['east'] = [u'longitude is further east than bounding box of resource']
-            if eastf < float(bbox[0]):
+            if eastf < float(metadata['coordinates']['west']):
                 errors['east'] = [u'longitude is further west than bounding box of resource']
 
     # error resource creation section
@@ -359,10 +356,10 @@ def subset_create(context, data_dict):
     if data_dict.get('layers', "") != "":
         if type(data_dict['layers']) is list:
             for l in data_dict['layers']:
-                if not any(child['id'] == l for child in layers[0]['children']):
+                if not any(var['name'] == l for var in metadata['variables']):
                     errors['layers'] = [u'layer "' + l + '" does not exist']
         else:
-            if not any(child['id'] == data_dict['layers'] for child in layers[0]['children']):
+            if not any(var['name'] == data_dict['layers'] for var in metadata['variables']):
                 errors['layers'] = [u'layer "' + data_dict['layers'] + '" does not exist']
     else:
         errors['layers'] = [u'Missing value']

@@ -18,8 +18,7 @@ import ast
 from dateutil.relativedelta import relativedelta
 from xml.etree import ElementTree
 import requests
-import json
-import urlparse
+import ast
 
 get_action = logic.get_action
 parse_params = logic.parse_params
@@ -79,23 +78,8 @@ class SubsetController(base.BaseController):
             # values are just returned in case of error(s)
             data, errors, error_summary = self._submit(context, resource, package)
         else:
-            data['all_layers'] = []
-
-            try:
-                layers = toolkit.get_action('thredds_get_layers')(context, {'id': resource['id']})
-                layer_details = toolkit.get_action('thredds_get_layerdetails')(context, {'id': resource['id'], 'layer': layers[0]['children'][0]['id']})
-            except Exception:
-                h.flash_error("This resource cannot create a subset")
-                redirect(h.url_for(controller='package', action='resource_read',
-                                   id=package['id'], resource_id=resource['id']))
-
-            data['bbox'] = layer_details['bbox']
-
-            for layer in layers[0]['children']:
-                data['all_layers'].append({'id': layer['id'], 'label': layer['label']})
-
-            # add instead of bbox above
-            # data['metadata_info'] = toolkit.get_action('thredds_get_metadata_info')(context, {'id': resource_id})
+            # get metadata from nclm and ncss
+            data['metadata'] = toolkit.get_action('thredds_get_metadata_info')(context, {'id': resource_id})
 
         # check if user is allowed to create package
         data['create_pkg'] = True
@@ -105,6 +89,7 @@ class SubsetController(base.BaseController):
             data['create_pkg'] = False
 
         data['pkg'] = package
+        data['res_name'] = resource['name']
 
         data['organizations'] = []
         for org in toolkit.get_action('organization_list_for_user')(context, {'permission': 'create_dataset'}):
@@ -126,6 +111,8 @@ class SubsetController(base.BaseController):
             except NotAuthorized:
                 pass
 
+        print(data['metadata'])
+        print(isinstance(data['metadata'], basestring))
         vars = {'data': data, 'errors': errors, 'error_summary': error_summary}
         return toolkit.render('subset_create.html', extra_vars=vars)
 
@@ -133,9 +120,8 @@ class SubsetController(base.BaseController):
     def _submit(context, resource, package):
         data = logic.clean_dict(unflatten(logic.tuplize_dict(logic.parse_params(request.params))))
 
-        data['bbox'] = [n[2:-1] for n in data['bbox'].replace('[', '').replace(']', '').split(", ")]
-        data['all_layers'] = ast.literal_eval(str(data['all_layers']))
         data['id'] = resource['id']
+        data['metadata'] = ast.literal_eval(data['metadata'])
 
         if data['type'] == "new_package":
             data['resource_name'] = data['res_name_1']
