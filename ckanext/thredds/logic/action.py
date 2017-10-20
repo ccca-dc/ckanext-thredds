@@ -254,56 +254,28 @@ def subset_create(context, data_dict):
                 errors['east'] = [u'longitude is further west than bounding box of resource']
 
     # error resource creation section
-    if data_dict.get('type', 'download').lower() in ('new_package', 'existing_package'):
+    if data_dict.get('type', 'download').lower() == "create_resource":
         if data_dict.get('resource_name', "") == '':
             errors['resource_name'] = [u'Missing Value']
-        if data_dict.get('type', 'download').lower() == 'new_package':
-            if data_dict.get('title', "") == '':
-                errors['title'] = [u'Missing Value']
-            if data_dict.get('name', "") == '':
-                errors['name'] = [u'Missing Value']
-            else:
-                model = context['model']
-                session = context['session']
-                result = session.query(model.Package).filter_by(name=data_dict['name']).first()
+        if data_dict.get('title', "") == '':
+            errors['title'] = [u'Missing Value']
+        if data_dict.get('name', "") == '':
+            errors['name'] = [u'Missing Value']
+        else:
+            model = context['model']
+            session = context['session']
+            result = session.query(model.Package).filter_by(name=data_dict['name']).first()
 
-                if result:
-                    errors['name'] = [u'That URL is already in use.']
-                elif len(data_dict['name']) < PACKAGE_NAME_MIN_LENGTH:
-                    errors['name'] = [u'URL is shorter than minimum (' + str(PACKAGE_NAME_MIN_LENGTH) + u')']
-                elif len(data_dict['name']) > PACKAGE_NAME_MAX_LENGTH:
-                    errors['name'] = [u'URL is longer than maximum (' + str(PACKAGE_NAME_MAX_LENGTH) + u')']
-            if data_dict.get('organization', "") == '':
-                errors['organization'] = [u'Missing Value']
-            else:
-                toolkit.get_action('organization_show')(context, {'id': data_dict['organization']})
-        elif data_dict.get('type', 'download').lower() == 'existing_package':
-            if data_dict.get('existing_package_id', "") == '':
-                errors['existing_package_id'] = [u'Missing Value']
-            else:
-                try:
-                    package_exists = False
-                    toolkit.get_action('package_show')(context, {'id': data_dict['existing_package_id']})
-                    check_access('package_update', context, {'id': data_dict['existing_package_id']})
-                    package_exists = True
-
-                    relationships = toolkit.get_action('package_relationships_list')(context, {'id': package['id'], 'rel': 'parent_of'})
-
-                    is_child_of = False
-                    for rel in relationships:
-                        if rel['object'] == data_dict['existing_package_id']:
-                            is_child_of = True
-                            break
-
-                    if is_child_of is False:
-                        errors['existing_package_id'] = [u'Given package is not derived from original package']
-                except NotFound:
-                    if not package_exists:
-                        errors['existing_package_id'] = [u'Package not found']
-                    else:
-                        errors['existing_package_id'] = [u'There are no derived packages available to use; change type']
-                except NotAuthorized:
-                    errors['existing_package_id'] = [u'Not authorized to add subset to this package']
+            if result:
+                errors['name'] = [u'That URL is already in use.']
+            elif len(data_dict['name']) < PACKAGE_NAME_MIN_LENGTH:
+                errors['name'] = [u'URL is shorter than minimum (' + str(PACKAGE_NAME_MIN_LENGTH) + u')']
+            elif len(data_dict['name']) > PACKAGE_NAME_MAX_LENGTH:
+                errors['name'] = [u'URL is longer than maximum (' + str(PACKAGE_NAME_MAX_LENGTH) + u')']
+        if data_dict.get('organization', "") == '':
+            errors['organization'] = [u'Missing Value']
+        else:
+            toolkit.get_action('organization_show')(context, {'id': data_dict['organization']})
 
     # error time section
     times_exist = False
@@ -372,10 +344,10 @@ def subset_create(context, data_dict):
             enqueue_job = toolkit.enqueue_job
         except AttributeError:
             from ckanext.rq.jobs import enqueue as enqueue_job
-        enqueue_job(subset_create_job, [resource, data_dict, times_exist])
+        enqueue_job(subset_create_job, [resource, data_dict, times_exist, metadata])
 
 
-def subset_create_job(resource, data_dict, times_exist):
+def subset_create_job(resource, data_dict, times_exist, metadata):
     context = {'model': model, 'session': model.Session,
                'user': c.user}
 
@@ -426,34 +398,36 @@ def subset_create_job(resource, data_dict, times_exist):
 
     return_dict = dict()
 
-    print(r.url)
-
     # create resource if requested from user
-    if data_dict.get('type', 'download').lower() in {'new_package', 'existing_package'}:
+    if data_dict.get('type', 'download').lower() == "create_resource":
         package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
 
-        new_resource = {'name': data_dict['resource_name'], 'url': 'subset', 'format': data_dict['format'], 'subset_of': resource['id'], 'anonymous_download': 'False'}
-
         # resource might not be created but params are needed anyway for search
+        package_params = dict()
         # add spatial to new resource
         lat_lon_box = tree.find('LatLonBox')
         n = lat_lon_box.find('north').text
         e = lat_lon_box.find('east').text
         s = lat_lon_box.find('south').text
         w = lat_lon_box.find('west').text
-        new_resource['spatial'] = helpers.coordinates_to_spatial(n, e, s, w)
+        package_params['spatial'] = helpers.coordinates_to_spatial(n, e, s, w)
 
         # add time to new resource
         time_span = tree.find('TimeSpan')
-        new_resource['start_date'] = time_span.find('begin').text
-        if new_resource['start_date'] != time_span.find('end').text:
-            new_resource['end_date'] = time_span.find('end').text
+        package_params['start_date'] = time_span.find('begin').text
+        if package_params['start_date'] != time_span.find('end').text:
+            package_params['end_date'] = time_span.find('end').text
         else:
-            new_resource['end_date'] = None
+            package_params['end_date'] = None
 
         # add variables to new resource
-        # variables now might be list or string
-        new_resource['variables'] = data_dict['layers']
+        # variables must be changed to dict
+        package_params['variables'] = []
+        if type(data_dict['layers']) is list:
+            for layer in data_dict['layers']:
+                package_params['variables'].append((item for item in metadata['variables'] if item["name"] == layer).next())
+        else:
+            package_params['variables'].append((item for item in metadata['variables'] if item["name"] == data_dict['layers']).next())
 
         # is this check necessary?
         # try:
@@ -480,70 +454,44 @@ def subset_create_job(resource, data_dict, times_exist):
             data_dict['private'] = 'True'
 
         # creating new package from the current one with few changes
-        if data_dict.get('type', 'download').lower() == 'new_package':
-            new_package = package.copy()
-            new_package.pop('id')
-            new_package.pop('resources')
-            new_package.pop('groups')
-            new_package.pop('revision_id')
+        new_package = package.copy()
+        new_package.update(package_params)
+        new_package.pop('id')
+        new_package.pop('resources')
+        new_package.pop('groups')
+        new_package.pop('revision_id')
 
-            new_package['iso_mdDate'] = new_package['metadata_created'] = new_package['metadata_modified'] = datetime.datetime.now()
-            new_package['owner_org'] = data_dict['organization']
-            new_package['name'] = data_dict['name']
-            new_package['title'] = data_dict['title']
-            new_package['private'] = data_dict['private']
+        new_package['iso_mdDate'] = new_package['metadata_created'] = new_package['metadata_modified'] = datetime.datetime.now()
+        new_package['owner_org'] = data_dict['organization']
+        new_package['name'] = data_dict['name']
+        new_package['title'] = data_dict['title']
+        new_package['private'] = data_dict['private']
 
-            # add subset creator
-            subset_creator = dict()
-            subset_creator['name'] = user['display_name']
-            subset_creator['mail'] = user['email']
-            subset_creator['role'] = "Subset Creator"
-            subset_creator['department'] = ""
+        # add subset creator
+        subset_creator = dict()
+        subset_creator['name'] = user['display_name']
+        subset_creator['mail'] = user['email']
+        subset_creator['role'] = "Subset Creator"
+        subset_creator['department'] = ""
 
-            contacts = toolkit.get_action('package_contact_show')(context, {'package_id': package['id']})
-            contacts.append(subset_creator)
-            new_package['contact_info'] = json.dumps(contacts)
+        contacts = toolkit.get_action('package_contact_show')(context, {'package_id': package['id']})
+        contacts.append(subset_creator)
+        new_package['contact_info'] = json.dumps(contacts)
 
-            # need to pop package otherwise it overwrites the current pkg
-            context.pop('package')
+        # need to pop package otherwise it overwrites the current pkg
+        context.pop('package')
 
-            new_package = toolkit.get_action('package_create')(context, new_package)
-            package_to_add_id = new_package['id']
-        else:
-            package_to_add_id = data_dict['existing_package_id']
-            existing_package = toolkit.get_action('package_show')(context, {'id': package_to_add_id})
-
-            # add subset creator if not already added
-            subset_creators = toolkit.get_action('package_contact_show')(context, {'package_id': package_to_add_id, 'search_param': 'role', 'search_value': 'Subset Creator'})
-
-            sc_added = False
-            for subset_creator in subset_creators:
-                if subset_creator['mail'] == user['email']:
-                    sc_added = True
-                    break
-
-            if sc_added is False:
-                subset_creator = dict()
-                subset_creator['name'] = user['display_name']
-                subset_creator['mail'] = user['email']
-                subset_creator['role'] = "Subset Creator"
-                subset_creator['department'] = ""
-
-                contacts = toolkit.get_action('package_contact_show')(context, {'package_id': package_to_add_id})
-                contacts.append(subset_creator)
-                existing_package['contact_info'] = json.dumps(contacts)
-
-                toolkit.get_action('package_update')(context, existing_package)
-
-        new_resource['package_id'] = package_to_add_id
+        new_package = toolkit.get_action('package_create')(context, new_package)
+        new_resource = {'name': data_dict['resource_name'], 'url': 'subset', 'format': data_dict['format'], 'subset_of': resource['id'], 'anonymous_download': 'False'}
+        new_resource['package_id'] = new_package['id']
         new_resource = toolkit.get_action('resource_create')(context, new_resource)
 
         # url needs id of the resource
-        correct_url = ('%s/subset/%s/download' % (ckan_url, new_resource['id']))
-        new_resource = toolkit.get_action('resource_update')(context, {'id': new_resource['id'], 'url': correct_url, 'new_version': False})
+        new_resource['url'] = ('%s/subset/%s/download' % (ckan_url, new_resource['id']))
+        new_resource = toolkit.get_action('resource_update')(context, new_resource)
 
         # relationship creation
-        toolkit.get_action('package_relationship_create')(context, {'subject': package_to_add_id, 'object': package['id'], 'type': 'child_of'})
+        toolkit.get_action('package_relationship_create')(context, {'subject': new_package['id'], 'object': package['id'], 'type': 'child_of'})
 
         return_dict['new_resource'] = new_resource
 

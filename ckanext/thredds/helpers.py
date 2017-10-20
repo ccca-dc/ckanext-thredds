@@ -5,6 +5,7 @@ import ckan.model as model
 import ckan.logic as logic
 import ckan.lib.helpers as h
 import urlparse
+import json
 
 
 def get_parent_dataset(package_id):
@@ -140,3 +141,15 @@ def coordinates_to_spatial(north, east, south, west):
     w = float(west)
     coordinates = [[w, s], [e, s], [e, n], [w, n], [w, s]]
     return ('{"type": "MultiPolygon", "coordinates": [[' + str(coordinates) + ']]}')
+
+
+def spatial_to_coordinates(spatial):
+    spatial = json.loads(spatial)
+
+    coordinates = dict()
+    coordinates['north'] = spatial['coordinates'][0][0][2][1]
+    coordinates['east'] = spatial['coordinates'][0][0][1][0]
+    coordinates['south'] = spatial['coordinates'][0][0][0][1]
+    coordinates['west'] = spatial['coordinates'][0][0][0][0]
+
+    return coordinates

@@ -148,23 +148,24 @@
                 <p class="info-text">If no time range is chosen, the nearest point in time is taken.</p>
             </div>
 
-            <div class="division">
-                <h3>Choose Format</h3>
-                <p>
-                <input type="radio" name="format" id="radio_netcdf" value="netCDF" {{ "checked " if data.format|lower == "netcdf" or data.format is not defined }}> netCDF &emsp;
-                <input type="radio" name="format" id="radio_csv" value="CSV" {{ "checked " if data.format|lower == "csv" }} {{ "disabled" if data.point == False or data.point is not defined }}> CSV &emsp;
-                <input type="radio" name="format" id="radio_xml" value="XML" {{ "checked " if data.format|lower == "xml" }} {{ "disabled" if data.point == False or data.point is not defined }}> XML
-                </p>
-                <p class="info-text">XML and CSV can only be chosen if the subset coordinates were drawn as a point.</p>
-            </div>
-
             {% if data.create_pkg == True %}
               <div class="division">
                   <h3>Would you like to create a new resource within the CCCA data portal?</h3>
-                  <input type="radio" name="type" value="download" {{ "checked " if data.type == "download" or data.res_create is not defined  }} id="download"> <b>No</b>, just download the subset <br><br>
-                  <input type="radio" name="type" value="new_package" {{ "checked " if data.type == "new_package" }} id="new_package"> <b>Yes</b> and create a new datapackage as well <br><br>
+                  <input type="radio" name="type" value="download" {{ "checked " if data.type == "download" or data.type is not defined }} id="download"> <b>No</b>, just download the subset <br><br>
 
-                  <div class="well" id="new_package_well" style="display:none">
+                  <div class="well" id="download_well" style="display:none">
+                      <label class="control-label">Format</label>
+                      <p>
+                      <input type="radio" name="format" id="radio_netcdf" value="netCDF" {{ "checked " if data.format|lower == "netcdf" or data.format is not defined }}> netCDF &emsp;
+                      <input type="radio" name="format" id="radio_csv" value="CSV" {{ "checked " if data.format|lower == "csv" }} {{ "disabled" if data.point == False or data.point is not defined }}> CSV &emsp;
+                      <input type="radio" name="format" id="radio_xml" value="XML" {{ "checked " if data.format|lower == "xml" }} {{ "disabled" if data.point == False or data.point is not defined }}> XML
+                      </p>
+                      <p class="info-text">XML and CSV can only be chosen if the subset coordinates were drawn as a point.</p>
+                  </div>
+
+                  <input type="radio" name="type" value="create_resource" {{ "checked " if data.type == "create_resource" }} id="create_resource"> <b>Yes</b> <br><br>
+
+                  <div class="well" id="create_resource_well" style="display:none">
                       <div class="left-well">
                           {{ form.input('title', id='field-title', label=_('Datapackage Title'), value=data.title, error=errors.title, placeholder=_('eg. A descriptive title'), attrs={'data-module': 'slug-preview-target'}) }}
 
@@ -178,31 +179,12 @@
                           {{ form.select('organization', label=_('Organization'), options=data.organizations, selected=data.organization) }}
                       </div>
                       <div class="right">
-                          {{ form.input('res_name_1', id='field-res-name-1', label=_('Resource Name'), value=data.res_name_1 if data.res_name_1 is defined else 'subset_' + data.res_name, error=errors.res_name_1) }}
+                          {{ form.input('resource_name', id='field-res-name-1', label=_('Resource Name'), value=data.resource_name if data.resource_name is defined else 'subset_' + data.res_name, error=errors.resource_name) }}
                       </div>
                       <h4> Should the resource be quotable? (datapackage becomes public and cannot be set private again) </h4>
                       <input type="radio" name="private" value="False" {{ "checked " if data.private == "False" }}> Yes &emsp;
                       <input type="radio" name="private" value="True" {{ "checked " if data.private == "True" or data.private is not defined }}> No, maybe at a later point
                   </div>
-
-                  {% if data.relationships|length > 0 %}
-                  <input type="radio" name="type" value="existing_package" {{ "checked " if data.type == "existing_package" }} id="existing_package"> <b>Yes</b>, in an existing datapackage<br><br>
-
-                  <div class="well" id="existing_package_well" style="display:none">
-                      <div class="left-well">
-                          {{ form.input('res_name_2', id='field-res-name-2', label=_('Resource Name'), value=data.res_name_2 if data.res_name_2 is defined else 'subset_' + data.res_name, error=errors.res_name_2) }}
-                      </div>
-                      <div class="right">
-                          <label class="control-label" for="existing_package_id">Datapackage</label>
-                          <select name="existing_package_id">
-                            {% for rel in data.relationships %}
-                                <option value="{{ rel.name }}" {{ "selected" if data.existing_package_id == rel.name }}>{{ rel.title }}</option>
-                            {% endfor %}
-                          </select>
-                          {{ form.info(text="Only derived datapackages of this datapackage can be selected", inline=true) }}
-                      </div>
-                  </div>
-                  {% endif %}
               </div>
             {% endif %}
 

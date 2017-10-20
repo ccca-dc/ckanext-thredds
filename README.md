@@ -34,13 +34,16 @@ to do so.
 * **format** (string) - format of the subset (NetCDF, XML or CSV)
 * **type** (string) - (optional, default: download)
   * **download** - if subset should just be downloaded
-  * **new_package** - if subset should be created as resource in a new package
-  * **existing_package** - if subset should be created as resource in an existing package
+  * **create_resource** - if subset should be created as resource in a new package
 * **private** (bool) - the visibility of the package (optional, default: True)
-* **organization** (string) - id or name of the organization, which is owner of the
-dataset (required if res_create = True)
-* **name** (string) - name of the created dataset (required if res_create = True)
-* **title** (string) - title of the created dataset (required if res_create = True)
+* **organization** (string) - id or name of the organization, which is owner of
+the dataset (required if type = create_resource)
+* **package_name** (string) - name of the dataset to be created (required if type =
+    create_resource)
+* **package_title** (string) - title of the dataset to be created (required if type =
+    create_resource)
+* **resource_name** (string) - name of the resource (required if type =
+    create_resource)
 * **north** (float) - northern degree if bbox or latitude if point (optional)
 * **east** (float) - eastern degree if bbox or longitude if point (optional)
 * **south** (float) - southern degree if bbox (optional)

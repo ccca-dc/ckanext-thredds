@@ -19,6 +19,7 @@ from dateutil.relativedelta import relativedelta
 from xml.etree import ElementTree
 import requests
 import ast
+import ckanext.thredds.helpers as helpers
 
 get_action = logic.get_action
 parse_params = logic.parse_params
@@ -95,6 +96,7 @@ class SubsetController(base.BaseController):
         for org in toolkit.get_action('organization_list_for_user')(context, {'permission': 'create_dataset'}):
             data['organizations'].append({'value': org['id'], 'text': org['display_name']})
 
+        # remove relationship section?
         data['relationships'] = []
 
         try:
@@ -111,8 +113,6 @@ class SubsetController(base.BaseController):
             except NotAuthorized:
                 pass
 
-        print(data['metadata'])
-        print(isinstance(data['metadata'], basestring))
         vars = {'data': data, 'errors': errors, 'error_summary': error_summary}
         return toolkit.render('subset_create.html', extra_vars=vars)
 
@@ -123,43 +123,18 @@ class SubsetController(base.BaseController):
         data['id'] = resource['id']
         data['metadata'] = ast.literal_eval(data['metadata'])
 
-        if data['type'] == "new_package":
-            data['resource_name'] = data['res_name_1']
-        elif data['type'] == "existing_package":
-            data['resource_name'] = data['res_name_2']
-
         errors = {}
         error_summary = {}
 
         try:
             toolkit.get_action('subset_create')(context, data)
-            # if 'new_resource' in data:
-            #     if 'existing_resource' in data:
-            #         public_res_url = h.url_for(controller='package', action='resource_read',
-            #                            id=data['existing_resource']['package_id'], resource_id=data['existing_resource']['id'])
-            #         h.flash_notice('This dataset cannot be set public, because another <strong><a href="' + public_res_url + '" class="alert-link">subset</a></strong> with this query is already public.', allow_html=True)
-            #
-            #     redirect(h.url_for(controller='package', action='resource_read',
-            #                         id=data['new_resource']['package_id'], resource_id=data['new_resource']['id']))
-            # elif 'new_resource' not in data and 'existing_resource' in data:
-            #     h.flash_notice('This subset already exists. Please use this subset for citation.')
-            #     redirect(h.url_for(controller='package', action='resource_read',
-            #                         id=data['existing_resource']['package_id'], resource_id=data['existing_resource']['id']))
-            # elif 'url' in data:
-            #     h.redirect_to(data['url'])
+
             h.flash_notice('Your subset is being created. This might take a while, you will receive an E-Mail when your subset is available')
             redirect(h.url_for(controller='package', action='resource_read',
                                      id=package['id'], resource_id=resource['id']))
         except ValidationError, e:
             errors = e.error_dict
             error_summary = e.error_summary
-
-            if 'resource_name' in errors:
-                if data['type'] == "new_package":
-                    errors['res_name_1'] = errors['resource_name']
-                elif data['type'] == "existing_package":
-                    errors['res_name_2'] = errors['resource_name']
-                errors.pop('resource_name')
 
         return data, errors, error_summary
 
@@ -188,16 +163,15 @@ def subset_download_job(resource_id):
     context = {'model': model, 'session': model.Session,
                'user': c.user}
     resource = toolkit.get_action('resource_show')(context, {'id': resource_id})
+    package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
 
     # get params from metadata
     params = dict()
-    params['north'] = '48.1533'
-    params['east'] = '17.1853'
-    params['south'] = '46.799'
-    params['west'] = '15.9207'
     params['var'] = 'rsds'
-    # extract coordinates from spatial
-    # params['var'] = resource['variables']
+    # add variables
+    # params['var'] = ','.join([var['name'] for var in resource['variables']])
+    # add coordinates to params
+    params.update(helpers.spatial_to_coordinates(resource['spatial']))
     # params['time_start'] = resource['temporals'][0]['start_date']
     # params['time_ends'] = resource['temporals'][0]['end_date']
 
@@ -207,9 +181,10 @@ def subset_download_job(resource_id):
     params['response_file'] = "false"
     headers = {"Authorization": ""}
     # headers={'Authorization': user.apikey}
+    # ncss_url = '/'.join([ckan_url, thredds_location, 'ncss', resource['subset_of'])
 
     r = requests.get('http://sandboxdc.ccca.ac.at/tds_proxy/ncss/88d350e9-5e91-4922-8d8c-8857553d5d2f', params=params, headers=headers)
-    # r = requests.get(ckan_url + '/' + thredds_location + '/ncss/' + resource['id'], params=params, headers=headers)
+    # r = requests.get(ncss_url, params=params, headers=headers)
 
     tree = ElementTree.fromstring(r.content)
     location = tree.get('location')
