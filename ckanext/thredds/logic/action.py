@@ -16,7 +16,6 @@ import urllib
 import ckan.lib.base as base
 from pylons import config
 import datetime
-from ckan.lib.celery_app import celery
 import ckan.plugins as p
 import socket
 import ckan.lib.mailer as mailer
@@ -305,11 +304,6 @@ def subset_create(context, data_dict):
                     data_dict['time_end'] = str(package_end)
                 if given_start < package_start:
                     data_dict['time_start'] = str(package_start)
-
-            # currently only 5 year ranges are permitted
-            if abs(relativedelta(given_end, given_start).years) > 5:
-                errors['time_start'] = [u'Currently we only support time ranges lower than 6 years']
-                errors['time_end'] = [u'Currently we only support time ranges lower than 6 years']
     elif data_dict.get('time_start', "") != "" and data_dict.get('time_end', "") == "":
         errors['time_end'] = [u'Missing value']
     elif data_dict.get('time_start', "") == "" and data_dict.get('time_end', "") != "":
@@ -345,6 +339,7 @@ def subset_create(context, data_dict):
         except AttributeError:
             from ckanext.rq.jobs import enqueue as enqueue_job
         enqueue_job(subset_create_job, [resource, data_dict, times_exist, metadata])
+    return "Your subset is being created. This might take a while, you will receive an E-Mail when your subset is available."
 
 
 def subset_create_job(resource, data_dict, times_exist, metadata):
@@ -413,6 +408,7 @@ def subset_create_job(resource, data_dict, times_exist, metadata):
         package_params['spatial'] = helpers.coordinates_to_spatial(n, e, s, w)
 
         # add time to new resource
+        # change to temporals in package
         time_span = tree.find('TimeSpan')
         package_params['start_date'] = time_span.find('begin').text
         if package_params['start_date'] != time_span.find('end').text:
@@ -429,6 +425,9 @@ def subset_create_job(resource, data_dict, times_exist, metadata):
         else:
             package_params['variables'].append((item for item in metadata['variables'] if item["name"] == data_dict['layers']).next())
 
+        # needs to be removed with new mdedit
+        package_params.pop('variables')
+
         # is this check necessary?
         # try:
         #     check_access('package_show', context, {'id': package['id']})
@@ -436,18 +435,20 @@ def subset_create_job(resource, data_dict, times_exist, metadata):
         #     abort(403, _('Unauthorized to show package'))
 
         # check if url already exists
-        # search_results = toolkit.get('resource_search')(context, {'query':
-        #                 ['format:%s' % (new_resource['format']) ,
-        #                 'subset_of:%s' % (new_resource['subset_of']),
-        #                 'start_date:%s' % (new_resource['start_date']),
-        #                 'end_date:%s' % (new_resource['end_date']),
-        #                 'spatial:%s' % (new_resource['spatial']),
-        #                 'variables:%s' % (new_resource['variables'])]})
-
-        # if search_results['count'] > 0:
-        #     return_dict['existing_resource'] = toolkit.get_action('resource_show')(context, {'id': search_results['results'][0]['id']})
-        #     if data_dict.get('private', 'True').lower() == 'false':
-        #         return return_dict
+        # search_results = toolkit.get_action('package_search')(context, {'q':
+        #                 'spatial:"%s", temporals:"%s", variables:"%s"' %
+        #                 (package_params['spatial'],
+        #                 package_params['temporals'],
+        #                 package_params['variables'])})
+        #
+        # children = toolkit.get_action('package_relationships_list')(context, {'id': package['id'], 'rel': 'parent_of'})
+        #
+        # for sr in search_results['results']:
+        #     if any(child['object'] == sr['name'] for child in children):
+        #         return_dict['existing_package'] = sr
+        #         if data_dict.get('private', 'True').lower() == 'false':
+        #             return return_dict
+        #         break
 
         # check if private is True or False otherwise set private to True
         if 'private' not in data_dict or data_dict['private'].lower() not in {'true', 'false'}:
@@ -493,15 +494,14 @@ def subset_create_job(resource, data_dict, times_exist, metadata):
         # relationship creation
         toolkit.get_action('package_relationship_create')(context, {'subject': new_package['id'], 'object': package['id'], 'type': 'child_of'})
 
-        return_dict['new_resource'] = new_resource
+        return_dict['new_package'] = new_package
 
     # sending of email after successful subset creation
     body = 'Your subset is ready to download: ' + location
-    if 'new_resource' in return_dict:
-        pkg = toolkit.get_action('package_show')(context, {'id': return_dict['new_resource']['package_id']})
-        body += '\nThe resource "%s" was created in the package "%s"' % (return_dict['new_resource']['name'], pkg['title'])
-    if 'existing_resource' in return_dict:
-        body += '\nThe resource "%s" has the same query and is already public' % (return_dict['existing_resource']['name'])
+    if 'new_package' in return_dict:
+        body += '\nThe package "%s" was created' % (return_dict['new_package']['name']])
+    if 'existing_package' in return_dict:
+        body += '\nThe package "%s" has the same query and is already public' % (return_dict['existing_package']['name'])
 
     mail_dict = {
         'recipient_email': config.get("ckanext.contact.mail_to", config.get('email_to')),

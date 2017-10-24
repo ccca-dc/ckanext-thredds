@@ -51,23 +51,6 @@ the dataset (required if type = create_resource)
 * **time_start** (iso date string) - start of time (optional)
 * **time_end** (iso date string) - end of time (optional)
 
-**Returns:**
-
-* the created URL if res_create = False
-* the newly created resource if type = new_package or existing_package as
-new_resource
-* the existing resource if type = new_package or existing_package and a public
-resource with this query already exists as existing_resource
-
-*Hint: If you want to create a new public resource with the same query as another
-public resource, you just get existing_resource returned and no resource is
-being created. If you want to create a private resource and another public
-resource with the same query exists, you get both the new_resource and the
-existing_resource returned, but you are not allowed to set your private dataset
-public.*
-
-**Return type:** dictionary
-
 ------------
 Requirements
 ------------

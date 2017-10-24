@@ -165,7 +165,7 @@
 
                   <input type="radio" name="type" value="create_resource" {{ "checked " if data.type == "create_resource" }} id="create_resource"> <b>Yes</b> <br><br>
 
-                  <div class="well" id="create_resource_well" style="display:none">
+                  <div class="well" id="create_resource_well" style="display:none;overflow: hidden;">
                       <div class="left-well">
                           {{ form.input('title', id='field-title', label=_('Datapackage Title'), value=data.title, error=errors.title, placeholder=_('eg. A descriptive title'), attrs={'data-module': 'slug-preview-target'}) }}
 
@@ -180,10 +180,11 @@
                       </div>
                       <div class="right">
                           {{ form.input('resource_name', id='field-res-name-1', label=_('Resource Name'), value=data.resource_name if data.resource_name is defined else 'subset_' + data.res_name, error=errors.resource_name) }}
-                      </div>
+
                       <h4> Should the resource be quotable? (datapackage becomes public and cannot be set private again) </h4>
                       <input type="radio" name="private" value="False" {{ "checked " if data.private == "False" }}> Yes &emsp;
                       <input type="radio" name="private" value="True" {{ "checked " if data.private == "True" or data.private is not defined }}> No, maybe at a later point
+                      </div>
                   </div>
               </div>
             {% endif %}

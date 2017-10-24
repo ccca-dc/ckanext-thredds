@@ -38,10 +38,12 @@ h5[name=dropdown_heading] {
 }
 .left-well {
     float: left;
-    margin-right: 139px;
+    width: 50%;
+    min-width: 300px;
 }
 .right {
     display: inline-block;
+    width: 50%;
 }
 #southWest {
     float:left;

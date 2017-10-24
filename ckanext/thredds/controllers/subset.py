@@ -96,23 +96,6 @@ class SubsetController(base.BaseController):
         for org in toolkit.get_action('organization_list_for_user')(context, {'permission': 'create_dataset'}):
             data['organizations'].append({'value': org['id'], 'text': org['display_name']})
 
-        # remove relationship section?
-        data['relationships'] = []
-
-        try:
-            relationships = toolkit.get_action('package_relationships_list')(context, {'id': package['id'], 'rel': 'parent_of'})
-        except:
-            relationships = []
-
-        for rel in relationships:
-            try:
-                child = toolkit.get_action('package_show')(context, {'id': rel['object']})
-                if child['state'] != 'deleted':
-                        check_access('resource_update', context, {'id': child['id']})
-                        data['relationships'].append(child)
-            except NotAuthorized:
-                pass
-
         vars = {'data': data, 'errors': errors, 'error_summary': error_summary}
         return toolkit.render('subset_create.html', extra_vars=vars)
 
@@ -127,9 +110,9 @@ class SubsetController(base.BaseController):
         error_summary = {}
 
         try:
-            toolkit.get_action('subset_create')(context, data)
+            message = toolkit.get_action('subset_create')(context, data)
 
-            h.flash_notice('Your subset is being created. This might take a while, you will receive an E-Mail when your subset is available')
+            h.flash_notice(message)
             redirect(h.url_for(controller='package', action='resource_read',
                                      id=package['id'], resource_id=resource['id']))
         except ValidationError, e:
@@ -169,9 +152,10 @@ def subset_download_job(resource_id):
     params = dict()
     params['var'] = 'rsds'
     # add variables
-    # params['var'] = ','.join([var['name'] for var in resource['variables']])
+    # params['var'] = ','.join([var['name'] for var in package['variables']])
     # add coordinates to params
-    params.update(helpers.spatial_to_coordinates(resource['spatial']))
+    if package.get('spatial', '') != '':
+        params.update(helpers.spatial_to_coordinates(package['spatial']))
     # params['time_start'] = resource['temporals'][0]['start_date']
     # params['time_ends'] = resource['temporals'][0]['end_date']
 
@@ -185,7 +169,7 @@ def subset_download_job(resource_id):
 
     r = requests.get('http://sandboxdc.ccca.ac.at/tds_proxy/ncss/88d350e9-5e91-4922-8d8c-8857553d5d2f', params=params, headers=headers)
     # r = requests.get(ncss_url, params=params, headers=headers)
-
+    print(r.url)
     tree = ElementTree.fromstring(r.content)
     location = tree.get('location')
 
