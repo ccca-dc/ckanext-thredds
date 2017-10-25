@@ -150,14 +150,18 @@ def subset_download_job(resource_id):
 
     # get params from metadata
     params = dict()
-    params['var'] = 'rsds'
     # add variables
-    # params['var'] = ','.join([var['name'] for var in package['variables']])
+    params['var'] = ','.join([var['name'] for var in package['variables']])
     # add coordinates to params
     if package.get('spatial', '') != '':
         params.update(helpers.spatial_to_coordinates(package['spatial']))
-    # params['time_start'] = resource['temporals'][0]['start_date']
-    # params['time_ends'] = resource['temporals'][0]['end_date']
+    params['time_start'] = package['temporals'][0]['start_date']
+    params['time_end'] = package['temporals'][0]['end_date']
+    if params['time_end'] is None:
+        params['time_end'] = params['time_start']
+    params['accept'] = resource['format']
+
+    print(params)
 
     ckan_url = config.get('ckan.site_url', '')
     thredds_location = config.get('ckanext.thredds.location')

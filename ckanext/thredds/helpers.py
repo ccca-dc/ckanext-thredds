@@ -8,18 +8,13 @@ import urlparse
 import json
 
 
-def get_parent_dataset(package_id):
-    ctx = {'model': model}
-
-    try:
-        relationships = tk.get_action('package_relationships_list')(ctx, {'id': package_id, 'rel': 'child_of'})
-
-        parent_id = relationships[0]['object']
-        parent = tk.get_action('package_show')(ctx, {'id': parent_id})
-        if parent['state'] != 'deleted':
-            return parent
-    except:
-        return None
+# def get_public_children_datasets(package_id):
+#     ctx = {'model': model}
+#     d = {'relation': 'is_part_of', 'id': package_id}
+#     d = dict((k.decode('utf8'), v.decode('utf8')) for k, v in d.items())
+#     search_results = tk.get_action('package_search')(ctx, {'fq': "relations:*%s*" % (str(d))})
+#     print(search_results)
+#     return search_results['results']
 
 
 def get_public_children_datasets(package_id):
@@ -44,13 +39,15 @@ def get_public_children_datasets(package_id):
     return children
 
 
-def get_parent_resource(resource):
+def get_parent_dataset(package_id):
     ctx = {'model': model}
 
-    try:
-        parent_resource = tk.get_action('resource_show')(ctx, {'id': resource['subset_of']})
+    package = tk.get_action('package_show')(ctx, {'id': package_id})
 
-        return parent_resource
+    try:
+        parent_id = [element['id'] for element in package['relations'] if element['relation'] == 'is_part_of']
+        parent_package = tk.get_action('package_show')(ctx, {'id': parent_id})
+        return parent_package
     except:
         return None
 

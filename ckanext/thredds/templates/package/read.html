@@ -10,7 +10,7 @@
     {% if parent != None %}
         <h3>Relationship</h3>
         {% set url=h.url_for(controller='package', action='read', id=parent.name) %}
-        <p> This dataset is derived from <a href="{{ url }}">{{ parent.title }}</a></p>
+        <p> This dataset is a subset of <a href="{{ url }}">{{ parent.title }}</a></p>
     {% endif %}
 
     {% if children|length > 0 %}

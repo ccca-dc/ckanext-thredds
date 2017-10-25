@@ -275,6 +275,15 @@ def subset_create(context, data_dict):
             errors['organization'] = [u'Missing Value']
         else:
             toolkit.get_action('organization_show')(context, {'id': data_dict['organization']})
+    else:
+        # error format section
+        if data_dict.get('format', "") != "":
+            if data_dict['point'] is True and data_dict['format'].lower() not in {'netcdf', 'csv', 'xml'}:
+                errors['format'] = [u'Wrong format']
+            elif data_dict['point'] is False and data_dict['format'].lower() != 'netcdf':
+                errors['format'] = [u'Wrong format']
+        else:
+            errors['format'] = [u'Missing value']
 
     # error time section
     times_exist = False
@@ -309,15 +318,6 @@ def subset_create(context, data_dict):
     elif data_dict.get('time_start', "") == "" and data_dict.get('time_end', "") != "":
         errors['time_start'] = [u'Missing value']
 
-    # error format section
-    if data_dict.get('format', "") != "":
-        if data_dict['point'] is True and data_dict['format'].lower() not in {'netcdf', 'csv', 'xml'}:
-            errors['format'] = [u'Wrong format']
-        elif data_dict['point'] is False and data_dict['format'].lower() != 'netcdf':
-            errors['format'] = [u'Wrong format']
-    else:
-        errors['format'] = [u'Missing value']
-
     # error layer section
     if data_dict.get('layers', "") != "":
         if type(data_dict['layers']) is list:
@@ -338,15 +338,15 @@ def subset_create(context, data_dict):
             enqueue_job = toolkit.enqueue_job
         except AttributeError:
             from ckanext.rq.jobs import enqueue as enqueue_job
-        enqueue_job(subset_create_job, [resource, data_dict, times_exist, metadata])
+        enqueue_job(subset_create_job, [c.user, resource, data_dict, times_exist, metadata])
     return "Your subset is being created. This might take a while, you will receive an E-Mail when your subset is available."
 
 
-def subset_create_job(resource, data_dict, times_exist, metadata):
+def subset_create_job(user, resource, data_dict, times_exist, metadata):
     context = {'model': model, 'session': model.Session,
-               'user': c.user}
+               'user': user}
 
-    user = toolkit.get_action('user_show')(context, {'id': c.user})
+    user = toolkit.get_action('user_show')(context, {'id': user})
 
     # start building URL params with var (required)
     if type(data_dict['layers']) is list:
@@ -355,7 +355,8 @@ def subset_create_job(resource, data_dict, times_exist, metadata):
         params = {'var': data_dict['layers']}
 
     # adding format
-    params['accept'] = data_dict['format'].lower()
+    if data_dict.get('format', ''):
+        params['accept'] = data_dict['format'].lower()
 
     # adding time
     if times_exist is True:
@@ -410,11 +411,12 @@ def subset_create_job(resource, data_dict, times_exist, metadata):
         # add time to new resource
         # change to temporals in package
         time_span = tree.find('TimeSpan')
-        package_params['start_date'] = time_span.find('begin').text
-        if package_params['start_date'] != time_span.find('end').text:
-            package_params['end_date'] = time_span.find('end').text
+        package_params['temporals'] = []
+        package_params['temporals'].append({'start_date': time_span.find('begin').text})
+        if package_params['temporals'][0]['start_date'] != time_span.find('end').text:
+            package_params['temporals'][0]['end_date'] = time_span.find('end').text
         else:
-            package_params['end_date'] = None
+            package_params['temporals'][0]['end_date'] = None
 
         # add variables to new resource
         # variables must be changed to dict
@@ -425,8 +427,7 @@ def subset_create_job(resource, data_dict, times_exist, metadata):
         else:
             package_params['variables'].append((item for item in metadata['variables'] if item["name"] == data_dict['layers']).next())
 
-        # needs to be removed with new mdedit
-        package_params.pop('variables')
+        package_params['dimensions'] = metadata['dimensions']
 
         # is this check necessary?
         # try:
@@ -435,20 +436,20 @@ def subset_create_job(resource, data_dict, times_exist, metadata):
         #     abort(403, _('Unauthorized to show package'))
 
         # check if url already exists
-        # search_results = toolkit.get_action('package_search')(context, {'q':
-        #                 'spatial:"%s", temporals:"%s", variables:"%s"' %
-        #                 (package_params['spatial'],
-        #                 package_params['temporals'],
-        #                 package_params['variables'])})
-        #
-        # children = toolkit.get_action('package_relationships_list')(context, {'id': package['id'], 'rel': 'parent_of'})
-        #
-        # for sr in search_results['results']:
-        #     if any(child['object'] == sr['name'] for child in children):
-        #         return_dict['existing_package'] = sr
-        #         if data_dict.get('private', 'True').lower() == 'false':
-        #             return return_dict
-        #         break
+        search_results = toolkit.get_action('package_search')(context, {'q':
+                        'spatial:"%s", temporals:"%s", variables:"%s"' %
+                        (package_params['spatial'],
+                        package_params['temporals'],
+                        package_params['variables'])})
+
+        children = toolkit.get_action('package_relationships_list')(context, {'id': package['id'], 'rel': 'parent_of'})
+
+        for sr in search_results['results']:
+            if any(child['object'] == sr['name'] for child in children):
+                return_dict['existing_package'] = sr
+                if data_dict.get('private', 'True').lower() == 'false':
+                    return return_dict
+                break
 
         # check if private is True or False otherwise set private to True
         if 'private' not in data_dict or data_dict['private'].lower() not in {'true', 'false'}:
@@ -468,6 +469,8 @@ def subset_create_job(resource, data_dict, times_exist, metadata):
         new_package['title'] = data_dict['title']
         new_package['private'] = data_dict['private']
 
+        new_package['relations'] = [{'relation': 'is_part_of', 'id': package['id']}]
+
         # add subset creator
         subset_creator = dict()
         subset_creator['name'] = user['display_name']
@@ -477,21 +480,31 @@ def subset_create_job(resource, data_dict, times_exist, metadata):
 
         contacts = toolkit.get_action('package_contact_show')(context, {'package_id': package['id']})
         contacts.append(subset_creator)
-        new_package['contact_info'] = json.dumps(contacts)
+        # TODO
+        # new_package['contact_info'] = json.dumps(contacts)
 
         # need to pop package otherwise it overwrites the current pkg
         context.pop('package')
 
         new_package = toolkit.get_action('package_create')(context, new_package)
-        new_resource = {'name': data_dict['resource_name'], 'url': 'subset', 'format': data_dict['format'], 'subset_of': resource['id'], 'anonymous_download': 'False'}
-        new_resource['package_id'] = new_package['id']
-        new_resource = toolkit.get_action('resource_create')(context, new_resource)
 
-        # url needs id of the resource
-        new_resource['url'] = ('%s/subset/%s/download' % (ckan_url, new_resource['id']))
-        new_resource = toolkit.get_action('resource_update')(context, new_resource)
+        # add resource in all formats
+        subset_formats = ['NetCDF']
+        if data_dict['point'] is True:
+            subset_formats.extend(['xml', 'csv'])
+
+        for subset_format in subset_formats:
+            new_resource = {'name': data_dict['resource_name'], 'url': 'subset', 'format': subset_format, 'subset_of': resource['id'], 'anonymous_download': 'False'}
+            new_resource['package_id'] = new_package['id']
+            new_resource = toolkit.get_action('resource_create')(context, new_resource)
+
+            # url needs id of the resource
+            new_resource['url'] = ('%s/subset/%s/download' % (ckan_url, new_resource['id']))
+            new_resource = toolkit.get_action('resource_update')(context, new_resource)
 
         # relationship creation
+        # change to relations
+
         toolkit.get_action('package_relationship_create')(context, {'subject': new_package['id'], 'object': package['id'], 'type': 'child_of'})
 
         return_dict['new_package'] = new_package
@@ -499,7 +512,7 @@ def subset_create_job(resource, data_dict, times_exist, metadata):
     # sending of email after successful subset creation
     body = 'Your subset is ready to download: ' + location
     if 'new_package' in return_dict:
-        body += '\nThe package "%s" was created' % (return_dict['new_package']['name']])
+        body += '\nThe package "%s" was created' % (return_dict['new_package']['name'])
     if 'existing_package' in return_dict:
         body += '\nThe package "%s" has the same query and is already public' % (return_dict['existing_package']['name'])
 
@@ -552,7 +565,7 @@ def thredds_get_metadata_info(context, data_dict):
     ncml_tree = ElementTree.fromstring(r.content)
 
     # get description and references
-    metadata['description'] = ncml_tree.find(".//*[@name='comment']").attrib["value"]
+    metadata['notes'] = ncml_tree.find(".//*[@name='comment']").attrib["value"]
     metadata['references'] = ncml_tree.find(".//*[@name='references']").attrib["value"]
 
     # NCSS section
