@@ -475,13 +475,10 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
         subset_creator = dict()
         subset_creator['name'] = user['display_name']
         subset_creator['mail'] = user['email']
-        subset_creator['role'] = "Subset Creator"
-        subset_creator['department'] = ""
-
-        contacts = toolkit.get_action('package_contact_show')(context, {'package_id': package['id']})
-        contacts.append(subset_creator)
-        # TODO
-        # new_package['contact_info'] = json.dumps(contacts)
+        subset_creator['role'] = "subset creator"
+        # TODO: remove
+        new_package['contact_points'] = []
+        new_package['contact_points'].append(subset_creator)
 
         # need to pop package otherwise it overwrites the current pkg
         context.pop('package')
