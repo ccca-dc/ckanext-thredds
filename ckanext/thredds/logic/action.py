@@ -499,11 +499,6 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
             new_resource['url'] = ('%s/subset/%s/download' % (ckan_url, new_resource['id']))
             new_resource = toolkit.get_action('resource_update')(context, new_resource)
 
-        # relationship creation
-        # change to relations
-
-        toolkit.get_action('package_relationship_create')(context, {'subject': new_package['id'], 'object': package['id'], 'type': 'child_of'})
-
         return_dict['new_package'] = new_package
 
     # sending of email after successful subset creation

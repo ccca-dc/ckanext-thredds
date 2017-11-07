@@ -8,35 +8,13 @@ import urlparse
 import json
 
 
-# def get_public_children_datasets(package_id):
-#     ctx = {'model': model}
-#     d = {'relation': 'is_part_of', 'id': package_id}
-#     d = dict((k.decode('utf8'), v.decode('utf8')) for k, v in d.items())
-#     search_results = tk.get_action('package_search')(ctx, {'fq': "relations:*%s*" % (str(d))})
-#     print(search_results)
-#     return search_results['results']
-
-
 def get_public_children_datasets(package_id):
     ctx = {'model': model}
-
-    children = []
-
-    try:
-        relationships = tk.get_action('package_relationships_list')(ctx, {'id': package_id, 'rel': 'parent_of'})
-
-        for r in relationships:
-            try:
-                child = tk.get_action('package_show')(ctx, {'id': r['object']})
-                if child['state'] == 'active':
-                    children.append(child)
-            except logic.NotAuthorized:
-                # resources should not be returned if not authorized
-                pass
-    except:
-        pass
-
-    return children
+    d = {'relation': 'is_part_of', 'id': package_id}
+    d = dict((k.decode('utf8'), v.decode('utf8')) for k, v in d.items())
+    # add include_private to newer CKAN version
+    search_results = tk.get_action('package_search')(ctx, {'fq': "relations:*%s*" % (json.dumps(str(d)))})
+    return search_results['results']
 
 
 def get_parent_dataset(package_id):
