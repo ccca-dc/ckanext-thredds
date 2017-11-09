@@ -442,10 +442,13 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
                         package_params['temporals'],
                         package_params['variables'])})
 
-        children = toolkit.get_action('package_relationships_list')(context, {'id': package['id'], 'rel': 'parent_of'})
+        children = helpers.get_public_children_datasets(package['id'])
+
+        print("inside children search")
+        print(children)
 
         for sr in search_results['results']:
-            if any(child['object'] == sr['name'] for child in children):
+            if any(child['id'] == sr['id'] for child in children):
                 return_dict['existing_package'] = sr
                 if data_dict.get('private', 'True').lower() == 'false':
                     return return_dict
@@ -469,13 +472,16 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
         new_package['title'] = data_dict['title']
         new_package['private'] = data_dict['private']
 
+        # TODO change this to append to relations
         new_package['relations'] = [{'relation': 'is_part_of', 'id': package['id']}]
 
         # add subset creator
         subset_creator = dict()
         subset_creator['name'] = user['display_name']
         subset_creator['mail'] = user['email']
-        subset_creator['role'] = "subset creator"
+        # TODO change to subset creator
+        # subset_creator['role'] = "subset creator"
+        subset_creator['role'] = "author"
         # TODO: remove
         new_package['contact_points'] = []
         new_package['contact_points'].append(subset_creator)

@@ -4,14 +4,12 @@ import ckan.lib.base as base
 import ckan.model as model
 import ckan.logic as logic
 import ckan.lib.helpers as h
-import urlparse
 import json
 
 
 def get_public_children_datasets(package_id):
     ctx = {'model': model}
-    d = {'relation': 'is_part_of', 'id': package_id}
-    d = dict((k.decode('utf8'), v.decode('utf8')) for k, v in d.items())
+    d = {'relation': 'is_part_of', 'id': str(package_id)}
     # add include_private to newer CKAN version
     search_results = tk.get_action('package_search')(ctx, {'fq': "relations:*%s*" % (json.dumps(str(d)))})
     return search_results['results']
@@ -23,14 +21,17 @@ def get_parent_dataset(package_id):
     package = tk.get_action('package_show')(ctx, {'id': package_id})
 
     try:
-        parent_id = [element['id'] for element in package['relations'] if element['relation'] == 'is_part_of']
-        parent_package = tk.get_action('package_show')(ctx, {'id': parent_id})
-        return parent_package
+        parent_ids = [element['id'] for element in package['relations'] if element['relation'] == 'is_part_of']
+        if len(parent_ids) > 0:
+            parent_package = tk.get_action('package_show')(ctx, {'id': parent_ids[0]})
+            return parent_package
+        return None
     except:
         return None
 
 
 def check_subset_uniqueness(package_id):
+    # TODO write for packages
     ctx = {'model': model}
 
     package = tk.get_action('package_show')(ctx, {'id': package_id})
@@ -57,55 +58,53 @@ def get_queries_from_user(user_id):
     # CKAN 2.7. has include_private in package_search, lower versions not
     # user_packages = tk.get_action('package_search')(ctx, {'q': 'creator_user_id:"' + user_id + '"', 'include_private': 'True'})
     user_packages = tk.get_action('user_show')(ctx, {'id': user_id, 'include_datasets': 'True'})
-    all_packages = tk.get_action('package_search')(ctx, {'rows': '10000'})
+    all_packages = tk.get_action('package_search')(ctx, {'rows': '10000', 'fq': "relations:*%s*" % ('is_part_of')})
 
     user_queries = []
 
     for package in user_packages['datasets']:
-        try:
-            tk.get_action('package_relationships_list')(ctx, {'id': package['id'], 'rel': 'child_of'})
+        if 'relations' in package and type(package['relations']) == list and type(package['relations'][0]) == dict:
+            children = [package for element in package['relations'] if element['relation'] == 'is_part_of']
 
-            for resource in package['resources']:
-                if resource.get('subset_of', "") != "":
-                    query = _get_params(resource)
-                    if query not in user_queries:
-                        user_queries.append(query)
-        except:
-            pass
+            if len(children) > 0:
+                query = get_query_params(package)
+                query['query_name'] = str(package['name'])
+                query['created'] = str(package['metadata_created'])
+
+                if query not in user_queries:
+                    user_queries.append(query)
 
     all_queries = []
     for package in all_packages['results']:
         # private check only necessary in older CKAN versions
-        if package not in user_packages['datasets'] and package['private'] is False:
+        if package['private'] is False and package not in user_packages['datasets']:
             try:
-                # lower CKAN versions have a problem with package_relationships_list
-                # if the user does not have an own dataset
-                if len(user_packages['datasets']) > 0:
-                    tk.get_action('package_relationships_list')(ctx, {'id': package['id'], 'rel': 'child_of'})
+                query = get_query_params(package)
+                query['query_name'] = str(package['name'])
+                query['created'] = str(package['metadata_created'])
 
-                for resource in package['resources']:
-                    if resource.get('subset_of', "") != "":
-                        query = _get_params(resource)
-                        if query not in all_queries:
-                            all_queries.append(query)
+                if query not in all_queries:
+                    all_queries.append(query)
             except:
                 pass
 
+    print(all_queries)
     return user_queries, all_queries
 
 
-def _get_params(resource):
+def get_query_params(package):
+    # get query params from metadata
     query = dict()
-    # don't call it just name, otherwise problem in template
-    query['query_name'] = str(resource['name'])
-    query['created'] = str(resource['created'])
-    parsed = urlparse.urlparse(resource['url'])
-    params = urlparse.parse_qs(parsed.query)
-    for param in params:
-        if param == "accept":
-            query['format'] = str(params[param][0])
-        else:
-            query[str(param)] = str(params.get(param, [""])[0])
+    # add variables
+    query['var'] = str(','.join([var['name'] for var in package['variables']]))
+    # add coordinates to params
+    if package.get('spatial', '') != '':
+        query.update(spatial_to_coordinates(package['spatial']))
+    query['time_start'] = str(package['temporals'][0]['start_date'])
+    query['time_end'] = str(package['temporals'][0]['end_date'])
+    if query['time_end'] == "None":
+        query['time_end'] = str(query['time_start'])
+
     return query
 
 

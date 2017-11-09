@@ -1,7 +1,7 @@
 {% ckan_extends %}
 
 {% block resource_actions_inner %}
-    {% if h.check_access('package_update', {'id':pkg.id }) %}
+    {% if h.check_access('package_update', {'id':pkg.id }) and (h.get_parent_dataset(pkg.id) == None or c.userobj.sysadmin) %}
       <li>{% link_for _('Manage'), controller='package', action='resource_edit', id=pkg.name, resource_id=res.id, class_='btn', icon='wrench' %}</li>
     {% endif %}
     {% if pkg.private == False and (res.format|lower == 'netcdf' or res.format == 'application/x-netcdf') %}

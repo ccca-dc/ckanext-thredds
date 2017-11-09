@@ -49,15 +49,14 @@
                           <div value="{{ q }}">
                               <h5>{{ q.query_name }}
                               <br><small>
-                               {{ q.format }}
-                               {%- if q.north -%}, {{ q.north }}/{% endif %}
+                               {%- if q.north -%}{{ q.north }}/{% endif %}
                                {%- if q.east -%}{{ q.east }}/{% endif %}
                                {%- if q.south -%}{{ q.south }}/{% endif %}
                                {%- if q.west -%}{{ q.west }}{% endif %}
                                {%- if q.latitude -%}, {{ q.latitude }}/{% endif %}
                                {%- if q.longitude -%}{{ q.longitude }}{% endif %}
-                               {%- if q.time_start -%}, {{ h.date_str_to_datetime(q.time_start) }} {% endif %}
-                               {%- if q.time_end -%}- {{ h.date_str_to_datetime(q.time_end) }}{% endif %}
+                               {%- if q.time_start -%}, {{ h.date_str_to_datetime(q.time_start[:-1]) }} {% endif %}
+                               {%- if q.time_end -%}- {{ h.date_str_to_datetime(q.time_end[:-1]) }}{% endif %}
                                <br>
                                <span class="badge">
                                created: {{ h.date_str_to_datetime(q.created).strftime('%Y-%m-%d %H:%M:%S') }}
@@ -73,7 +72,7 @@
                      </ul>
                     </div>
                     <p class="info-text">
-                        Use <b>spatial</b>, <b>time</b> and <b>format</b> arguments from queries that were stored as a resource or skip that point and fill them out by yourself.
+                        Use <b>spatial</b> and <b>time</b> arguments from queries that were stored as a resource or skip that point and fill them out by yourself.
                     </p>
                 </div>
 

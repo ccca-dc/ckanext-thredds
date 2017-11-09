@@ -149,16 +149,7 @@ def subset_download_job(resource_id):
     package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
 
     # get params from metadata
-    params = dict()
-    # add variables
-    params['var'] = ','.join([var['name'] for var in package['variables']])
-    # add coordinates to params
-    if package.get('spatial', '') != '':
-        params.update(helpers.spatial_to_coordinates(package['spatial']))
-    params['time_start'] = package['temporals'][0]['start_date']
-    params['time_end'] = package['temporals'][0]['end_date']
-    if params['time_end'] is None:
-        params['time_end'] = params['time_start']
+    params = helpers.get_query_params(package)
     params['accept'] = resource['format']
 
     print(params)
