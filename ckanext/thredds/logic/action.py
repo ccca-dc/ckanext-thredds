@@ -23,6 +23,8 @@ import time
 import ckan.model as model
 from xml.etree import ElementTree
 import ckanext.thredds.helpers as helpers
+import ckanext.resourceversions.helpers
+import copy
 
 check_access = logic.check_access
 
@@ -263,7 +265,7 @@ def subset_create(context, data_dict):
         else:
             model = context['model']
             session = context['session']
-            result = session.query(model.Package).filter_by(name=data_dict['name']).first()
+            result = session.query(model.Package).filter(model.Package.name.like(data_dict['name']+ "-v%")).first()
 
             if result:
                 errors['name'] = [u'That URL is already in use.']
@@ -436,16 +438,29 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
         #     abort(403, _('Unauthorized to show package'))
 
         # check if url already exists
-        search_results = toolkit.get_action('package_search')(context, {'q':
-                        'spatial:"%s", temporals:"%s", variables:"%s"' %
-                        (package_params['spatial'],
-                        package_params['temporals'],
-                        package_params['variables'])})
+        # TODO not working with spatial
+        temporals_search_params = _change_list_of_dicts_for_search(copy.deepcopy(package_params['temporals']))
+        variables_search_params = _change_list_of_dicts_for_search(copy.deepcopy(package_params['variables']))
+
+        print("****before search")
+        print(temporals_search_params)
+        print(variables_search_params)
+        print(package_params['spatial'])
+
+        print(type(temporals_search_params))
+        print(type(variables_search_params))
+        print(type(package_params['spatial']))
+
+        search_results = toolkit.get_action('package_search')(context, {'rows': 1000, 'fq':
+                        'spatial:%s AND temporals:*%s* AND variables:*%s*' %
+                        (json.dumps(package_params['spatial']),
+                        json.dumps(str(temporals_search_params)),
+                        json.dumps(str(variables_search_params)))})
+
+        print("*********search results")
+        print(search_results)
 
         children = helpers.get_public_children_datasets(package['id'])
-
-        print("inside children search")
-        print(children)
 
         for sr in search_results['results']:
             if any(child['id'] == sr['id'] for child in children):
@@ -468,7 +483,7 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
 
         new_package['iso_mdDate'] = new_package['metadata_created'] = new_package['metadata_modified'] = datetime.datetime.now()
         new_package['owner_org'] = data_dict['organization']
-        new_package['name'] = data_dict['name']
+        new_package['name'] = data_dict['name']+ "-v" + str(ckanext.resourceversions.helpers.get_version_number(package['id'])).zfill(2)
         new_package['title'] = data_dict['title']
         new_package['private'] = data_dict['private']
 
@@ -530,6 +545,24 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
     #     mailer.mail_recipient(**mail_dict)
     # except (mailer.MailerException, socket.error):
     #     h.flash_error(_(u'Sorry, there was an error sending the email. Please try again later'))
+
+
+def _change_list_of_dicts_for_search(list_of_dicts):
+    for index, t in enumerate(list_of_dicts):
+        new_dict = dict([(str(k), v) for k, v in t.items()])
+        for k, val in new_dict.items():
+            if val is None:
+                new_dict[k] = "null"
+            elif isinstance(val, unicode):
+                new_dict[k] = str(val)
+            elif type(val) is list:
+                list_elements = []
+                for list_element in val:
+                    list_elements.append(str(list_element))
+                new_dict[k] = list_elements
+        t.update(new_dict)
+        list_of_dicts[index] = dict([(str(k), v) for k, v in t.items()])
+    return list_of_dicts
 
 
 @ckan.logic.side_effect_free
