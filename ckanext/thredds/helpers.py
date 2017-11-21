@@ -9,9 +9,9 @@ import json
 
 def get_public_children_datasets(package_id):
     ctx = {'model': model}
-    d = {'relation': 'is_part_of', 'id': str(package_id)}
+    rel = {'relation': 'is_part_of', 'id': str(package_id)}
     # add include_private to newer CKAN version
-    search_results = tk.get_action('package_search')(ctx, {'fq': "relations:*%s*" % (json.dumps(str(d)))})
+    search_results = tk.get_action('package_search')(ctx, {'rows': 10000, 'fq': "extras_relations:%s" % (json.dumps('%s' % rel))})
     return search_results['results']
 
 
@@ -58,12 +58,12 @@ def get_queries_from_user(user_id):
     # CKAN 2.7. has include_private in package_search, lower versions not
     # user_packages = tk.get_action('package_search')(ctx, {'q': 'creator_user_id:"' + user_id + '"', 'include_private': 'True'})
     user_packages = tk.get_action('user_show')(ctx, {'id': user_id, 'include_datasets': 'True'})
-    all_packages = tk.get_action('package_search')(ctx, {'rows': '10000', 'fq': "relations:*%s*" % ('is_part_of')})
+    all_packages = tk.get_action('package_search')(ctx, {'rows': 10000, 'fq': "extras_relations:*%s*" % ('is_part_of')})
 
     user_queries = []
 
     for package in user_packages['datasets']:
-        if 'relations' in package and type(package['relations']) == list and type(package['relations'][0]) == dict:
+        if 'relations' in package and type(package['relations']) == list and len(package['relations']) > 0 and type(package['relations'][0]) == dict:
             children = [package for element in package['relations'] if element['relation'] == 'is_part_of']
 
             if len(children) > 0:

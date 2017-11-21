@@ -390,9 +390,20 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
     r = requests.get('http://sandboxdc.ccca.ac.at/' + thredds_location + '/ncss/88d350e9-5e91-4922-8d8c-8857553d5d2f', params=params, headers=headers)
     # r = requests.get(ckan_url + '/' + thredds_location + '/ncss/' + resource['id'], params=params, headers=headers)
 
-    # not working for point
+    # TODO not working for point
     tree = ElementTree.fromstring(r.content)
     location = tree.get('location')
+
+    subset_hash = None
+    # TODO add if not local
+    # import hashlib
+    # hasher = hashlib.md5()
+    #
+    # with open(location, 'rb') as f:
+    #     for chunk in iter(lambda: f.read(128*hasher.block_size), b''):
+    #         hasher.update(chunk)
+    # subset_hash = hasher.hexdigest()
+    # print(subset_hash)
 
     return_dict = dict()
 
@@ -442,92 +453,81 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
         temporals_search_params = _change_list_of_dicts_for_search(copy.deepcopy(package_params['temporals']))
         variables_search_params = _change_list_of_dicts_for_search(copy.deepcopy(package_params['variables']))
 
-        print("****before search")
-        print(temporals_search_params)
-        print(variables_search_params)
-        print(package_params['spatial'])
+        if subset_hash is not None:
+            rel = {'relation': 'is_part_of', 'id': str(package['id'])}
+            search_results = toolkit.get_action('package_search')(context, {'rows': 10000, 'fq':
+                            'res_hash:%s AND extras_relations:%s' % (subset_hash, json.dumps('%s' % rel))})
 
-        print(type(temporals_search_params))
-        print(type(variables_search_params))
-        print(type(package_params['spatial']))
+            if search_results['count'] > 0:
+                return_dict['existing_package'] = search_results['results'][0]
 
-        search_results = toolkit.get_action('package_search')(context, {'rows': 1000, 'fq':
-                        'spatial:%s AND temporals:*%s* AND variables:*%s*' %
-                        (json.dumps(package_params['spatial']),
-                        json.dumps(str(temporals_search_params)),
-                        json.dumps(str(variables_search_params)))})
+        if 'existing_package' not in return_dict or data_dict.get('private', 'True').lower() == 'true':
+            # check if private is True or False otherwise set private to True
+            if 'private' not in data_dict or data_dict['private'].lower() not in {'true', 'false'}:
+                data_dict['private'] = 'True'
 
-        print("*********search results")
-        print(search_results)
+            # creating new package from the current one with few changes
+            new_package = package.copy()
+            new_package.update(package_params)
+            new_package.pop('id')
+            new_package.pop('resources')
+            new_package.pop('groups')
+            new_package.pop('revision_id')
 
-        children = helpers.get_public_children_datasets(package['id'])
+            new_package['iso_mdDate'] = new_package['metadata_created'] = new_package['metadata_modified'] = datetime.datetime.now()
+            new_package['owner_org'] = data_dict['organization']
+            new_package['name'] = data_dict['name']+ "-v" + str(ckanext.resourceversions.helpers.get_version_number(package['id'])).zfill(2)
+            new_package['title'] = data_dict['title']
+            new_package['private'] = data_dict['private']
 
-        for sr in search_results['results']:
-            if any(child['id'] == sr['id'] for child in children):
-                return_dict['existing_package'] = sr
-                if data_dict.get('private', 'True').lower() == 'false':
-                    return return_dict
-                break
+            # TODO change this to append to relations
+            new_package['relations'] = [{'relation': 'is_part_of', 'id': package['id']}]
 
-        # check if private is True or False otherwise set private to True
-        if 'private' not in data_dict or data_dict['private'].lower() not in {'true', 'false'}:
-            data_dict['private'] = 'True'
+            # add subset creator
+            subset_creator = dict()
+            subset_creator['name'] = user['display_name']
+            subset_creator['mail'] = user['email']
+            # TODO change to subset creator
+            # subset_creator['role'] = "subset creator"
+            subset_creator['role'] = "subset creator"
+            # TODO: remove
+            new_package['contact_points'] = []
+            new_package['contact_points'].append(subset_creator)
+            # subset_creator['role'] = "maintainer"
+            # new_package['contact_points'].append(subset_creator)
 
-        # creating new package from the current one with few changes
-        new_package = package.copy()
-        new_package.update(package_params)
-        new_package.pop('id')
-        new_package.pop('resources')
-        new_package.pop('groups')
-        new_package.pop('revision_id')
+            if subset_hash is not None:
+                new_package['hash'] = subset_hash
 
-        new_package['iso_mdDate'] = new_package['metadata_created'] = new_package['metadata_modified'] = datetime.datetime.now()
-        new_package['owner_org'] = data_dict['organization']
-        new_package['name'] = data_dict['name']+ "-v" + str(ckanext.resourceversions.helpers.get_version_number(package['id'])).zfill(2)
-        new_package['title'] = data_dict['title']
-        new_package['private'] = data_dict['private']
+            # need to pop package otherwise it overwrites the current pkg
+            context.pop('package')
 
-        # TODO change this to append to relations
-        new_package['relations'] = [{'relation': 'is_part_of', 'id': package['id']}]
+            print(new_package)
+            new_package = toolkit.get_action('package_create')(context, new_package)
 
-        # add subset creator
-        subset_creator = dict()
-        subset_creator['name'] = user['display_name']
-        subset_creator['mail'] = user['email']
-        # TODO change to subset creator
-        # subset_creator['role'] = "subset creator"
-        subset_creator['role'] = "author"
-        # TODO: remove
-        new_package['contact_points'] = []
-        new_package['contact_points'].append(subset_creator)
+            # add resource in all formats
+            subset_formats = ['NetCDF']
+            if data_dict['point'] is True:
+                subset_formats.extend(['xml', 'csv'])
 
-        # need to pop package otherwise it overwrites the current pkg
-        context.pop('package')
+            for subset_format in subset_formats:
+                new_resource = {'name': data_dict['resource_name'], 'url': 'subset', 'format': subset_format, 'subset_of': resource['id'], 'anonymous_download': 'False'}
+                new_resource['package_id'] = new_package['id']
+                new_resource = toolkit.get_action('resource_create')(context, new_resource)
 
-        new_package = toolkit.get_action('package_create')(context, new_package)
+                # url needs id of the resource
+                new_resource['url'] = ('%s/subset/%s/download' % (ckan_url, new_resource['id']))
+                context['create_version'] = False
+                new_resource = toolkit.get_action('resource_update')(context, new_resource)
 
-        # add resource in all formats
-        subset_formats = ['NetCDF']
-        if data_dict['point'] is True:
-            subset_formats.extend(['xml', 'csv'])
-
-        for subset_format in subset_formats:
-            new_resource = {'name': data_dict['resource_name'], 'url': 'subset', 'format': subset_format, 'subset_of': resource['id'], 'anonymous_download': 'False'}
-            new_resource['package_id'] = new_package['id']
-            new_resource = toolkit.get_action('resource_create')(context, new_resource)
-
-            # url needs id of the resource
-            new_resource['url'] = ('%s/subset/%s/download' % (ckan_url, new_resource['id']))
-            new_resource = toolkit.get_action('resource_update')(context, new_resource)
-
-        return_dict['new_package'] = new_package
+            return_dict['new_package'] = new_package
 
     # sending of email after successful subset creation
     body = 'Your subset is ready to download: ' + location
     if 'new_package' in return_dict:
         body += '\nThe package "%s" was created' % (return_dict['new_package']['name'])
     if 'existing_package' in return_dict:
-        body += '\nThe package "%s" has the same query and is already public' % (return_dict['existing_package']['name'])
+        body += '\n Your package was not created, because the package "%s" has the same query and is already public.' % (return_dict['existing_package']['name'])
 
     mail_dict = {
         'recipient_email': config.get("ckanext.contact.mail_to", config.get('email_to')),
