@@ -381,18 +381,10 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
             params['east'] = round(float(data_dict['east']), 4)
             params['west'] = round(float(data_dict['west']), 4)
 
-    params['response_file'] = "false"
-    # headers={'Authorization': user.apikey}
-
-    ckan_url = config.get('ckan.site_url', '')
-    thredds_location = config.get('ckanext.thredds.location')
-
-    r = requests.get('http://sandboxdc.ccca.ac.at/' + thredds_location + '/ncss/88d350e9-5e91-4922-8d8c-8857553d5d2f', params=params, headers=headers)
-    # r = requests.get(ckan_url + '/' + thredds_location + '/ncss/' + resource['id'], params=params, headers=headers)
-
-    # TODO not working for point
-    tree = ElementTree.fromstring(r.content)
-    location = tree.get('location')
+    only_location = False
+    if data_dict.get('type', 'download').lower() == "download":
+        only_location = True
+    corrected_params = get_ncss_subset_params(resource['id'], params, only_location, metadata)
 
     subset_hash = None
     # TODO add if not local
@@ -411,37 +403,6 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
     if data_dict.get('type', 'download').lower() == "create_resource":
         package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
 
-        # resource might not be created but params are needed anyway for search
-        package_params = dict()
-        # add spatial to new resource
-        lat_lon_box = tree.find('LatLonBox')
-        n = lat_lon_box.find('north').text
-        e = lat_lon_box.find('east').text
-        s = lat_lon_box.find('south').text
-        w = lat_lon_box.find('west').text
-        package_params['spatial'] = helpers.coordinates_to_spatial(n, e, s, w)
-
-        # add time to new resource
-        # change to temporals in package
-        time_span = tree.find('TimeSpan')
-        package_params['temporals'] = []
-        package_params['temporals'].append({'start_date': time_span.find('begin').text})
-        if package_params['temporals'][0]['start_date'] != time_span.find('end').text:
-            package_params['temporals'][0]['end_date'] = time_span.find('end').text
-        else:
-            package_params['temporals'][0]['end_date'] = None
-
-        # add variables to new resource
-        # variables must be changed to dict
-        package_params['variables'] = []
-        if type(data_dict['layers']) is list:
-            for layer in data_dict['layers']:
-                package_params['variables'].append((item for item in metadata['variables'] if item["name"] == layer).next())
-        else:
-            package_params['variables'].append((item for item in metadata['variables'] if item["name"] == data_dict['layers']).next())
-
-        package_params['dimensions'] = metadata['dimensions']
-
         # is this check necessary?
         # try:
         #     check_access('package_show', context, {'id': package['id']})
@@ -449,10 +410,6 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
         #     abort(403, _('Unauthorized to show package'))
 
         # check if url already exists
-        # TODO not working with spatial
-        temporals_search_params = _change_list_of_dicts_for_search(copy.deepcopy(package_params['temporals']))
-        variables_search_params = _change_list_of_dicts_for_search(copy.deepcopy(package_params['variables']))
-
         if subset_hash is not None:
             rel = {'relation': 'is_part_of', 'id': str(package['id'])}
             search_results = toolkit.get_action('package_search')(context, {'rows': 10000, 'fq':
@@ -468,7 +425,7 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
 
             # creating new package from the current one with few changes
             new_package = package.copy()
-            new_package.update(package_params)
+            new_package.update(corrected_params)
             new_package.pop('id')
             new_package.pop('resources')
             new_package.pop('groups')
@@ -480,21 +437,14 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
             new_package['title'] = data_dict['title']
             new_package['private'] = data_dict['private']
 
-            # TODO change this to append to relations
             new_package['relations'] = [{'relation': 'is_part_of', 'id': package['id']}]
 
             # add subset creator
             subset_creator = dict()
             subset_creator['name'] = user['display_name']
             subset_creator['mail'] = user['email']
-            # TODO change to subset creator
-            # subset_creator['role'] = "subset creator"
             subset_creator['role'] = "subset creator"
-            # TODO: remove
-            new_package['contact_points'] = []
             new_package['contact_points'].append(subset_creator)
-            # subset_creator['role'] = "maintainer"
-            # new_package['contact_points'].append(subset_creator)
 
             if subset_hash is not None:
                 new_package['hash'] = subset_hash
@@ -502,7 +452,6 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
             # need to pop package otherwise it overwrites the current pkg
             context.pop('package')
 
-            print(new_package)
             new_package = toolkit.get_action('package_create')(context, new_package)
 
             # add resource in all formats
@@ -516,6 +465,8 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
                 new_resource = toolkit.get_action('resource_create')(context, new_resource)
 
                 # url needs id of the resource
+                # TODO ckan_url in both methods
+                ckan_url = config.get('ckan.site_url', '')
                 new_resource['url'] = ('%s/subset/%s/download' % (ckan_url, new_resource['id']))
                 context['create_version'] = False
                 new_resource = toolkit.get_action('resource_update')(context, new_resource)
@@ -523,7 +474,7 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
             return_dict['new_package'] = new_package
 
     # sending of email after successful subset creation
-    body = 'Your subset is ready to download: ' + location
+    body = 'Your subset is ready to download: ' + corrected_params['location']
     if 'new_package' in return_dict:
         body += '\nThe package "%s" was created' % (return_dict['new_package']['name'])
     if 'existing_package' in return_dict:
@@ -545,6 +496,56 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
     #     mailer.mail_recipient(**mail_dict)
     # except (mailer.MailerException, socket.error):
     #     h.flash_error(_(u'Sorry, there was an error sending the email. Please try again later'))
+
+def get_ncss_subset_params(resource_id, params, only_location, orig_metadata):
+    params['response_file'] = "false"
+    headers={'Authorization': user.apikey}
+
+    ckan_url = config.get('ckan.site_url', '')
+    thredds_location = config.get('ckanext.thredds.location')
+
+    r = requests.get('http://sandboxdc.ccca.ac.at/' + thredds_location + '/ncss/88d350e9-5e91-4922-8d8c-8857553d5d2f', params=params, headers=headers)
+    # r = requests.get(ckan_url + '/' + thredds_location + '/ncss/' + resource['id'], params=params, headers=headers)
+    print(r.url)
+
+    if r.status_code == 200:
+        # TODO not working for point
+        tree = ElementTree.fromstring(r.content)
+
+        corrected_params = dict()
+        corrected_params['location'] = tree.get('location')
+
+        if not only_location:
+            # add spatial to new resource
+            lat_lon_box = tree.find('LatLonBox')
+            n = lat_lon_box.find('north').text
+            e = lat_lon_box.find('east').text
+            s = lat_lon_box.find('south').text
+            w = lat_lon_box.find('west').text
+            corrected_params['spatial'] = helpers.coordinates_to_spatial(n, e, s, w)
+
+            # add time to new resource
+            # change to temporals in package
+            time_span = tree.find('TimeSpan')
+            corrected_params['temporals'] = []
+            corrected_params['temporals'].append({'start_date': time_span.find('begin').text})
+            if corrected_params['temporals'][0]['start_date'] != time_span.find('end').text:
+                corrected_params['temporals'][0]['end_date'] = time_span.find('end').text
+            else:
+                corrected_params['temporals'][0]['end_date'] = None
+
+            # add variables to new resource
+            # variables must be changed to dict
+            corrected_params['variables'] = []
+            layers = params['var'].split(",")
+            for layer in layers:
+                corrected_params['variables'].append((item for item in orig_metadata['variables'] if item["name"] == layer).next())
+
+            corrected_params['dimensions'] = orig_metadata['dimensions']
+    else:
+        corrected_params['error'] = r.content
+
+    return corrected_params
 
 
 def _change_list_of_dicts_for_search(list_of_dicts):
