@@ -384,23 +384,12 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
     only_location = False
     if data_dict.get('type', 'download').lower() == "download":
         only_location = True
-    corrected_params = get_ncss_subset_params(resource['id'], params, only_location, metadata)
-
-    subset_hash = None
-    # TODO add if not local
-    # import hashlib
-    # hasher = hashlib.md5()
-    #
-    # with open(location, 'rb') as f:
-    #     for chunk in iter(lambda: f.read(128*hasher.block_size), b''):
-    #         hasher.update(chunk)
-    # subset_hash = hasher.hexdigest()
-    # print(subset_hash)
+    corrected_params, subset_hash = get_ncss_subset_params(resource['id'], params, only_location, metadata)
 
     return_dict = dict()
 
     # create resource if requested from user
-    if data_dict.get('type', 'download').lower() == "create_resource":
+    if data_dict.get('type', 'download').lower() == "create_resource" and "error" not in corrected_params:
         package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
 
         # is this check necessary?
@@ -411,9 +400,8 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
 
         # check if url already exists
         if subset_hash is not None:
-            rel = {'relation': 'is_part_of', 'id': str(package['id'])}
             search_results = toolkit.get_action('package_search')(context, {'rows': 10000, 'fq':
-                            'res_hash:%s AND extras_relations:%s' % (subset_hash, json.dumps('%s' % rel))})
+                            'res_hash:%s' % (subset_hash)})
 
             if search_results['count'] > 0:
                 return_dict['existing_package'] = search_results['results'][0]
@@ -442,7 +430,7 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
             # add subset creator
             subset_creator = dict()
             subset_creator['name'] = user['display_name']
-            subset_creator['mail'] = user['email']
+            subset_creator['email'] = user['email']
             subset_creator['role'] = "subset creator"
             new_package['contact_points'].append(subset_creator)
 
@@ -473,12 +461,26 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
 
             return_dict['new_package'] = new_package
 
+    location = corrected_params['location']
+    error = corrected_params.get('error', None)
+    new_package = return_dict.get('new_package', None)
+    existing_package = return_dict.get('existing_package', None)
+
+    send_email(location, error, new_package, existing_package)
+
+
+def send_email(location, error, new_package, existing_package):
     # sending of email after successful subset creation
-    body = 'Your subset is ready to download: ' + corrected_params['location']
-    if 'new_package' in return_dict:
-        body += '\nThe package "%s" was created' % (return_dict['new_package']['name'])
-    if 'existing_package' in return_dict:
-        body += '\n Your package was not created, because the package "%s" has the same query and is already public.' % (return_dict['existing_package']['name'])
+    body = 'Your subset is ready to download: ' + location
+    if error is not None:
+        body += '\nThe subset couldn\'t be created due to the following error: %s' % (error)
+    else:
+        if new_package is not None:
+            body += '\nThe package "%s" was created' % (new_package['name'])
+            if existing_package is not None:
+                body += '\n You cannot set your package public as another package ("%s") has the same query and is already public.' % (existing_package['name'])
+        elif existing_package is not None:
+            body += '\n Your package was not created, because the package "%s" has the same query and is already public.' % (existing_package['name'])
 
     mail_dict = {
         'recipient_email': config.get("ckanext.contact.mail_to", config.get('email_to')),
@@ -497,6 +499,7 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
     # except (mailer.MailerException, socket.error):
     #     h.flash_error(_(u'Sorry, there was an error sending the email. Please try again later'))
 
+
 def get_ncss_subset_params(resource_id, params, only_location, orig_metadata):
     params['response_file'] = "false"
     headers={'Authorization': user.apikey}
@@ -508,12 +511,24 @@ def get_ncss_subset_params(resource_id, params, only_location, orig_metadata):
     # r = requests.get(ckan_url + '/' + thredds_location + '/ncss/' + resource['id'], params=params, headers=headers)
     print(r.url)
 
+    corrected_params = dict()
+    subset_hash = None
+
     if r.status_code == 200:
         # TODO not working for point
         tree = ElementTree.fromstring(r.content)
 
-        corrected_params = dict()
         corrected_params['location'] = tree.get('location')
+
+        # TODO add if not local
+        # import hashlib
+        # hasher = hashlib.md5()
+        #
+        # with open(location, 'rb') as f:
+        #     for chunk in iter(lambda: f.read(128*hasher.block_size), b''):
+        #         hasher.update(chunk)
+        # subset_hash = hasher.hexdigest()
+        # print(subset_hash)
 
         if not only_location:
             # add spatial to new resource
@@ -545,7 +560,7 @@ def get_ncss_subset_params(resource_id, params, only_location, orig_metadata):
     else:
         corrected_params['error'] = r.content
 
-    return corrected_params
+    return corrected_params, subset_hash
 
 
 def _change_list_of_dicts_for_search(list_of_dicts):
