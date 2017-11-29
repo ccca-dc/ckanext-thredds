@@ -58,7 +58,7 @@ def get_queries_from_user(user_id):
     # CKAN 2.7. has include_private in package_search, lower versions not
     # user_packages = tk.get_action('package_search')(ctx, {'q': 'creator_user_id:"' + user_id + '"', 'include_private': 'True'})
     user_packages = tk.get_action('user_show')(ctx, {'id': user_id, 'include_datasets': 'True'})
-    all_packages = tk.get_action('package_search')(ctx, {'rows': 10000, 'fq': "extras_relations:*%s*" % ('is_part_of')})
+    all_packages = tk.get_action('package_search')(ctx, {'rows': 10000, 'fq': "relations:*%s*" % ('is_part_of')})
 
     user_queries = []
 
@@ -100,8 +100,8 @@ def get_query_params(package):
     # add coordinates to params
     if package.get('spatial', '') != '':
         query.update(spatial_to_coordinates(package['spatial']))
-    query['time_start'] = str(package['temporals'][0]['start_date'])
-    query['time_end'] = str(package['temporals'][0]['end_date'])
+    query['time_start'] = str(package.get('temporal_start', ''))
+    query['time_end'] = str(package.get('temporal_end', ''))
     if query['time_end'] == "None":
         query['time_end'] = str(query['time_start'])
 

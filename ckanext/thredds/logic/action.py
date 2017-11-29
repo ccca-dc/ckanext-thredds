@@ -540,14 +540,13 @@ def get_ncss_subset_params(resource_id, params, only_location, orig_metadata):
             corrected_params['spatial'] = helpers.coordinates_to_spatial(n, e, s, w)
 
             # add time to new resource
-            # change to temporals in package
             time_span = tree.find('TimeSpan')
-            corrected_params['temporals'] = []
-            corrected_params['temporals'].append({'start_date': time_span.find('begin').text})
-            if corrected_params['temporals'][0]['start_date'] != time_span.find('end').text:
-                corrected_params['temporals'][0]['end_date'] = time_span.find('end').text
+            corrected_params['temporal_start'] = time_span.find('begin').text
+
+            if corrected_params['temporal_start'] != time_span.find('end').text:
+                corrected_params['temporal_end'] = time_span.find('end').text
             else:
-                corrected_params['temporals'][0]['end_date'] = None
+                corrected_params['temporal_end'] = None
 
             # add variables to new resource
             # variables must be changed to dict
@@ -636,17 +635,13 @@ def thredds_get_metadata_info(context, data_dict):
     metadata['coordinates'] = {'north': n, 'east': e, 'south': s, 'west': w}
 
     # get time
-    metadata['temporals'] = []
-    time_spans = ncss_tree.findall('TimeSpan')
+    time_span = ncss_tree.find('TimeSpan')
 
-    for time_span in time_spans:
-        t = dict()
-        t['start_date'] = time_span.find('begin').text
-        if t['start_date'] != time_span.find('end').text:
-            t['end_date'] = time_span.find('end').text
-        else:
-            t['end_date'] = None
-        metadata['temporals'].append(t)
+    metadata['temporal_start'] = time_span.find('begin').text
+    if metadata['temporal_start'] != time_span.find('end').text:
+        metadata['temporal_end'] = time_span.find('end').text
+    else:
+        metadata['temporal_start'] = None
 
     # get dimensions
     metadata['dimensions'] = []

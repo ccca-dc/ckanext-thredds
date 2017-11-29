@@ -136,8 +136,8 @@
 
             <div class="division">
                 <h3>Choose Time Range</h3>
-                {% set start = h.date_str_to_datetime(data.metadata.temporals[0].start_date[:-1]) %}
-                {% set end = h.date_str_to_datetime(data.metadata.temporals[0].end_date[:-1]) %}
+                {% set start = h.date_str_to_datetime(data.metadata.temporal_start[:-1]) %}
+                {% set end = h.date_str_to_datetime(data.metadata.temporal_end[:-1]) %}
                 <div class="left">
                     {{ input('time_start', title='min: ' + start|string, id='time_start', label=_('From'), value=data.time_start, error=errors.time_start, attrs={'data-module': 'subset_datepicker','data-module-year_start': start.year, 'data-module-year_end': end.year, 'data-placement': 'right'}) }}
                 </div>
