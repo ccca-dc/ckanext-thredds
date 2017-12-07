@@ -33,11 +33,8 @@
                 <div class="alert alert-info">
                     <button type="button" class="close" data-dismiss="alert">&times;</button>
                     This dataset cannot be set public, because a
-                    <strong><a href="{{ subset_uniqueness[0]['public_resource'] }}">subset</a></strong>
-                    with the same query as your
-                    <strong><a href="{{ subset_uniqueness[0]['private_resource'] }}" class="alert-link">subset</a></strong>
-                    is already public and should be used for citation.
-                    <strong>Hint!</strong> You can delete your subset and then set the dataset public.
+                    <strong><a href="{{ subset_uniqueness[0] }}">subset</a></strong>
+                    with the same query as your package is already public and should be used for citation.
                 </div>
             {% else %}
                 <select id="field-private" name="private">

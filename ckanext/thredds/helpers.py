@@ -11,7 +11,7 @@ def get_public_children_datasets(package_id):
     ctx = {'model': model}
     rel = {'relation': 'is_part_of', 'id': str(package_id)}
     # add include_private to newer CKAN version
-    search_results = tk.get_action('package_search')(ctx, {'rows': 10000, 'fq': "extras_relations:%s" % (json.dumps('%s' % rel))})
+    search_results = tk.get_action('package_search')(ctx, {'rows': 10000, 'fq': "extras_relations:%s" % (json.dumps('%s' % rel)), 'include_versions': True})
     return search_results['results']
 
 
@@ -31,7 +31,6 @@ def get_parent_dataset(package_id):
 
 
 def check_subset_uniqueness(package_id):
-    # TODO write for packages
     ctx = {'model': model}
 
     package = tk.get_action('package_show')(ctx, {'id': package_id})
@@ -39,15 +38,14 @@ def check_subset_uniqueness(package_id):
     uniqueness_problems = []
 
     for resource in package['resources']:
-        if resource.get('subset_of', '') != '':
-            search_results = tk.get_action('resource_search')(ctx, {'query': "url:" + resource['url']})
+        if resource.get('hash', '') != '':
+            search_results = tk.get_action('package_search')(ctx, {'rows': 10000, 'fq':
+                                'res_hash:%s' % (resource['hash']), 'include_versions': True})
 
             if search_results['count'] > 0:
-                private_res_url = h.url_for(controller='package', action='resource_read',
-                                   id=resource['package_id'], resource_id=resource['id'])
-                public_res_url = h.url_for(controller='package', action='resource_read',
+                public_package = h.url_for(controller='package', action='resource_read',
                                   id=search_results['results'][0]['package_id'], resource_id=search_results['results'][0]['id'])
-                uniqueness_problems.append({'private_resource': private_res_url, 'public_resource': public_res_url})
+                uniqueness_problems.append(public_package)
 
     return uniqueness_problems
 
@@ -102,7 +100,7 @@ def get_query_params(package):
         query.update(spatial_to_coordinates(package['spatial']))
     query['time_start'] = str(package.get('temporal_start', ''))
     query['time_end'] = str(package.get('temporal_end', ''))
-    if query['time_end'] == "None":
+    if query['time_end'] == '':
         query['time_end'] = str(query['time_start'])
 
     return query

@@ -55,8 +55,8 @@
                                {%- if q.west -%}{{ q.west }}{% endif %}
                                {%- if q.latitude -%}, {{ q.latitude }}/{% endif %}
                                {%- if q.longitude -%}{{ q.longitude }}{% endif %}
-                               {%- if q.time_start -%}, {{ h.date_str_to_datetime(q.time_start[:-1]) }} {% endif %}
-                               {%- if q.time_end -%}- {{ h.date_str_to_datetime(q.time_end[:-1]) }}{% endif %}
+                               {%- if q.time_start -%}, {{ h.date_str_to_datetime(q.time_start) }} {% endif %}
+                               {%- if q.time_end -%}- {{ h.date_str_to_datetime(q.time_end) }}{% endif %}
                                <br>
                                <span class="badge">
                                created: {{ h.date_str_to_datetime(q.created).strftime('%Y-%m-%d %H:%M:%S') }}

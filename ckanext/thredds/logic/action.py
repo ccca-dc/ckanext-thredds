@@ -421,7 +421,7 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
 
             new_package['iso_mdDate'] = new_package['metadata_created'] = new_package['metadata_modified'] = datetime.datetime.now()
             new_package['owner_org'] = data_dict['organization']
-            new_package['name'] = data_dict['name']+ "-v" + str(ckanext.resourceversions.helpers.get_version_number(package['id'])).zfill(2)
+            new_package['name'] = data_dict['name']
             new_package['title'] = data_dict['title']
             new_package['private'] = data_dict['private']
 
@@ -471,10 +471,10 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
 
 def send_email(location, error, new_package, existing_package):
     # sending of email after successful subset creation
-    body = 'Your subset is ready to download: ' + location
     if error is not None:
-        body += '\nThe subset couldn\'t be created due to the following error: %s' % (error)
+        body = '\nThe subset couldn\'t be created due to the following error: %s' % (error)
     else:
+        body = 'Your subset is ready to download: ' + location
         if new_package is not None:
             body += '\nThe package "%s" was created' % (new_package['name'])
             if existing_package is not None:
@@ -541,10 +541,10 @@ def get_ncss_subset_params(resource_id, params, only_location, orig_metadata):
 
             # add time to new resource
             time_span = tree.find('TimeSpan')
-            corrected_params['temporal_start'] = time_span.find('begin').text
+            corrected_params['temporal_start'] = h.date_str_to_datetime(time_span.find('begin').text[:-1])
 
-            if corrected_params['temporal_start'] != time_span.find('end').text:
-                corrected_params['temporal_end'] = time_span.find('end').text
+            if time_span.find('begin').text != time_span.find('end').text:
+                corrected_params['temporal_end'] = h.date_str_to_datetime(time_span.find('end').text[:-1])
             else:
                 corrected_params['temporal_end'] = None
 
@@ -641,7 +641,7 @@ def thredds_get_metadata_info(context, data_dict):
     if metadata['temporal_start'] != time_span.find('end').text:
         metadata['temporal_end'] = time_span.find('end').text
     else:
-        metadata['temporal_start'] = None
+        metadata['temporal_end'] = None
 
     # get dimensions
     metadata['dimensions'] = []
