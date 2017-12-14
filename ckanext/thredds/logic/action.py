@@ -5,26 +5,21 @@ import ckan.logic
 from owslib.wms import WebMapService
 import requests
 import json
-import ckan.plugins.toolkit as toolkit
 import ckan.lib.helpers as h
 import ckan.logic as logic
 from ckan.model import (PACKAGE_NAME_MIN_LENGTH, PACKAGE_NAME_MAX_LENGTH)
 from dateutil.relativedelta import relativedelta
 from ckan.common import _
 import ckan.lib.navl.dictization_functions as df
-import urllib
 import ckan.lib.base as base
 from pylons import config
 import datetime
 import ckan.plugins as p
-import socket
 import ckan.lib.mailer as mailer
-import time
 import ckan.model as model
 from xml.etree import ElementTree
 import ckanext.thredds.helpers as helpers
 import ckanext.resourceversions.helpers
-import copy
 
 check_access = logic.check_access
 
@@ -55,7 +50,7 @@ def thredds_get_layers(context, data_dict):
     user = context['auth_user_obj']
 
     resource_id = tk.get_or_bust(data_dict,'id')
-    resource = toolkit.get_action('resource_show')(context, {'id': resource_id})
+    resource = tk.get_action('resource_show')(context, {'id': resource_id})
 
     # Get URL for WMS Proxy
     ckan_url = config.get('ckan.site_url', '')
@@ -163,10 +158,10 @@ def subset_create(context, data_dict):
     errors = {}
 
     id = _get_or_bust(data_dict, 'id')
-    resource = toolkit.get_action('resource_show')(context, {'id': id})
-    package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
+    resource = tk.get_action('resource_show')(context, {'id': id})
+    package = tk.get_action('package_show')(context, {'id': resource['package_id']})
 
-    metadata = toolkit.get_action('thredds_get_metadata_info')(context, {'id': id})
+    metadata = tk.get_action('thredds_get_metadata_info')(context, {'id': id})
 
     # error section
     # error coordinate section, checking if values are entered and floats
@@ -276,7 +271,7 @@ def subset_create(context, data_dict):
         if data_dict.get('organization', "") == '':
             errors['organization'] = [u'Missing Value']
         else:
-            toolkit.get_action('organization_show')(context, {'id': data_dict['organization']})
+            tk.get_action('organization_show')(context, {'id': data_dict['organization']})
     else:
         # error format section
         if data_dict.get('format', "") != "":
@@ -337,7 +332,7 @@ def subset_create(context, data_dict):
         raise ValidationError(errors)
     else:
         try:
-            enqueue_job = toolkit.enqueue_job
+            enqueue_job = tk.enqueue_job
         except AttributeError:
             from ckanext.rq.jobs import enqueue as enqueue_job
         enqueue_job(subset_create_job, [c.user, resource, data_dict, times_exist, metadata])
@@ -348,7 +343,7 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
     context = {'model': model, 'session': model.Session,
                'user': user}
 
-    user = toolkit.get_action('user_show')(context, {'id': user})
+    user = tk.get_action('user_show')(context, {'id': user})
 
     # start building URL params with var (required)
     if type(data_dict['layers']) is list:
@@ -384,84 +379,100 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
     only_location = False
     if data_dict.get('type', 'download').lower() == "download":
         only_location = True
-    corrected_params, subset_hash = get_ncss_subset_params(resource['id'], params, only_location, metadata)
+    corrected_params, subset_netcdf_hash = get_ncss_subset_params(resource['id'], params, only_location, metadata)
 
     return_dict = dict()
 
-    # create resource if requested from user
-    if data_dict.get('type', 'download').lower() == "create_resource" and "error" not in corrected_params:
-        package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
+    location = None
 
-        # is this check necessary?
-        # try:
-        #     check_access('package_show', context, {'id': package['id']})
-        # except NotAuthorized:
-        #     abort(403, _('Unauthorized to show package'))
+    if "error" not in corrected_params:
+        location = [corrected_params['location']]
 
-        # check if url already exists
-        if subset_hash is not None:
-            search_results = toolkit.get_action('package_search')(context, {'rows': 10000, 'fq':
-                            'res_hash:%s' % (subset_hash)})
+        # create resource if requested from user
+        if data_dict.get('type', 'download').lower() == "create_resource":
+            package = tk.get_action('package_show')(context, {'id': resource['package_id']})
 
-            if search_results['count'] > 0:
-                return_dict['existing_package'] = search_results['results'][0]
+            # is this check necessary?
+            # try:
+            #     check_access('package_show', context, {'id': package['id']})
+            # except NotAuthorized:
+            #     abort(403, _('Unauthorized to show package'))
 
-        if 'existing_package' not in return_dict or data_dict.get('private', 'True').lower() == 'true':
-            # check if private is True or False otherwise set private to True
-            if 'private' not in data_dict or data_dict['private'].lower() not in {'true', 'false'}:
-                data_dict['private'] = 'True'
+            # check if url already exists
+            if subset_netcdf_hash is not None:
+                search_results = tk.get_action('package_search')(context, {'rows': 10000, 'fq':
+                                'res_hash:%s' % (subset_netcdf_hash)})
 
-            # creating new package from the current one with few changes
-            new_package = package.copy()
-            new_package.update(corrected_params)
-            new_package.pop('id')
-            new_package.pop('resources')
-            new_package.pop('groups')
-            new_package.pop('revision_id')
+                if search_results['count'] > 0:
+                    return_dict['existing_package'] = search_results['results'][0]
 
-            new_package['iso_mdDate'] = new_package['metadata_created'] = new_package['metadata_modified'] = datetime.datetime.now()
-            new_package['owner_org'] = data_dict['organization']
-            new_package['name'] = data_dict['name']
-            new_package['title'] = data_dict['title']
-            new_package['private'] = data_dict['private']
+            if 'existing_package' not in return_dict or data_dict.get('private', 'True').lower() == 'true':
+                # check if private is True or False otherwise set private to True
+                if 'private' not in data_dict or data_dict['private'].lower() not in {'true', 'false'}:
+                    data_dict['private'] = 'True'
 
-            new_package['relations'] = [{'relation': 'is_part_of', 'id': package['id']}]
+                # creating new package from the current one with few changes
+                new_package = package.copy()
+                new_package.update(corrected_params)
+                new_package.pop('id')
+                new_package.pop('resources')
+                new_package.pop('groups')
+                new_package.pop('revision_id')
 
-            # add subset creator
-            subset_creator = dict()
-            subset_creator['name'] = user['display_name']
-            subset_creator['email'] = user['email']
-            subset_creator['role'] = "subset creator"
-            new_package['contact_points'].append(subset_creator)
+                new_package['iso_mdDate'] = new_package['metadata_created'] = new_package['metadata_modified'] = datetime.datetime.now()
+                new_package['owner_org'] = data_dict['organization']
+                new_package['name'] = data_dict['name']
+                new_package['title'] = data_dict['title']
+                new_package['private'] = data_dict['private']
 
-            if subset_hash is not None:
-                new_package['hash'] = subset_hash
+                new_package['relations'] = [{'relation': 'is_part_of', 'id': package['id']}]
 
-            # need to pop package otherwise it overwrites the current pkg
-            context.pop('package')
+                # add subset creator
+                subset_creator = dict()
+                subset_creator['name'] = user['display_name']
+                subset_creator['email'] = user['email']
+                subset_creator['role'] = "subset creator"
+                new_package['contact_points'].append(subset_creator)
 
-            new_package = toolkit.get_action('package_create')(context, new_package)
+                # need to pop package otherwise it overwrites the current pkg
+                context.pop('package')
 
-            # add resource in all formats
-            subset_formats = ['NetCDF']
-            if data_dict['point'] is True:
-                subset_formats.extend(['xml', 'csv'])
+                print("new_package:*****************")
+                print(new_package)
 
-            for subset_format in subset_formats:
-                new_resource = {'name': data_dict['resource_name'], 'url': 'subset', 'format': subset_format, 'subset_of': resource['id'], 'anonymous_download': 'False'}
-                new_resource['package_id'] = new_package['id']
-                new_resource = toolkit.get_action('resource_create')(context, new_resource)
+                new_package = tk.get_action('package_create')(context, new_package)
 
-                # url needs id of the resource
-                # TODO ckan_url in both methods
-                ckan_url = config.get('ckan.site_url', '')
-                new_resource['url'] = ('%s/subset/%s/download' % (ckan_url, new_resource['id']))
-                context['create_version'] = False
-                new_resource = toolkit.get_action('resource_update')(context, new_resource)
+                # add resource in all formats
+                subset_formats = ['NetCDF']
+                if data_dict['point'] is True:
+                    subset_formats.extend(['xml', 'csv'])
 
-            return_dict['new_package'] = new_package
+                for subset_format in subset_formats:
+                    new_resource = {'name': data_dict['resource_name'], 'url': 'subset', 'format': subset_format, 'anonymous_download': 'False', 'package_id': new_package['id']}
+                    if subset_format.lower() == 'netcdf':
+                        if subset_netcdf_hash is not None:
+                            new_resource['hash'] = subset_netcdf_hash
+                    else:
+                        params['format'] = subset_format
+                        corrected_params_new_res, subset_hash_new_res = get_ncss_subset_params(resource['id'], params, True, metadata)
 
-    location = corrected_params['location']
+                        if "error" not in corrected_params_new_res:
+                            location.append(corrected_params_new_res['location'])
+
+                            if subset_hash_new_res is not None:
+                                new_resource['hash'] = subset_hash_new_res
+
+                    new_resource = tk.get_action('resource_create')(context, new_resource)
+
+                    # url needs id of the resource
+                    # TODO ckan_url in both methods
+                    ckan_url = config.get('ckan.site_url', '')
+                    new_resource['url'] = ('%s/subset/%s/download' % (ckan_url, new_resource['id']))
+                    context['create_version'] = False
+                    new_resource = tk.get_action('resource_update')(context, new_resource)
+
+                return_dict['new_package'] = new_package
+
     error = corrected_params.get('error', None)
     new_package = return_dict.get('new_package', None)
     existing_package = return_dict.get('existing_package', None)
@@ -474,7 +485,7 @@ def send_email(location, error, new_package, existing_package):
     if error is not None:
         body = '\nThe subset couldn\'t be created due to the following error: %s' % (error)
     else:
-        body = 'Your subset is ready to download: ' + location
+        body = 'Your subset is ready to download: %s' % ", ".join(location)
         if new_package is not None:
             body += '\nThe package "%s" was created' % (new_package['name'])
             if existing_package is not None:

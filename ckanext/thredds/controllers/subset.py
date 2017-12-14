@@ -17,9 +17,9 @@ from ckan.common import _
 import ast
 from dateutil.relativedelta import relativedelta
 from xml.etree import ElementTree
-import requests
-import ast
 import ckanext.thredds.helpers as helpers
+from ckanext.thredds.logic.action import get_ncss_subset_params
+from ckanext.thredds.logic.action import send_email
 
 get_action = logic.get_action
 parse_params = logic.parse_params
@@ -126,6 +126,14 @@ class SubsetController(base.BaseController):
                    'user': c.user}
 
         resource = toolkit.get_action('resource_show')(context, {'id': resource_id})
+        package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
+
+        try:
+            variables = str(','.join([var['name'] for var in package['variables']]))
+        except:
+            h.flash_error('Download was not possible as the variables of the package are not defined correctly.')
+            redirect(h.url_for(controller='package', action='resource_read',
+                                     id=resource['package_id'], resource_id=resource['id']))
 
         # anonymous users are not allowed to download subset
         if authz.auth_is_anon_user(context):
@@ -135,14 +143,14 @@ class SubsetController(base.BaseController):
             enqueue_job = toolkit.enqueue_job
         except AttributeError:
             from ckanext.rq.jobs import enqueue as enqueue_job
-        enqueue_job(subset_download_job, [resource_id])
+        enqueue_job(subset_download_job, [resource_id, variables])
 
         h.flash_notice('Your subset is being created. This might take a while, you will receive an E-Mail when your subset is available')
         redirect(h.url_for(controller='package', action='resource_read',
                                  id=resource['package_id'], resource_id=resource['id']))
 
 
-def subset_download_job(resource_id):
+def subset_download_job(resource_id, variables):
     context = {'model': model, 'session': model.Session,
                'user': c.user}
     resource = toolkit.get_action('resource_show')(context, {'id': resource_id})
@@ -150,36 +158,12 @@ def subset_download_job(resource_id):
 
     # get params from metadata
     params = helpers.get_query_params(package)
+    params['var'] = variables
     params['accept'] = resource['format']
 
-    print(params)
+    corrected_params, subset_netcdf_hash = get_ncss_subset_params(resource['id'], params, True, None)
 
-    ckan_url = config.get('ckan.site_url', '')
-    thredds_location = config.get('ckanext.thredds.location')
+    location = [corrected_params.get('location', None)]
+    error = corrected_params.get('error', None)
 
-    params['response_file'] = "false"
-    headers = {"Authorization": ""}
-    # headers={'Authorization': user.apikey}
-    # ncss_url = '/'.join([ckan_url, thredds_location, 'ncss', resource['subset_of'])
-
-    r = requests.get('http://sandboxdc.ccca.ac.at/tds_proxy/ncss/88d350e9-5e91-4922-8d8c-8857553d5d2f', params=params, headers=headers)
-    # r = requests.get(ncss_url, params=params, headers=headers)
-    print(r.url)
-    tree = ElementTree.fromstring(r.content)
-    location = tree.get('location')
-
-    body = 'Your subset is ready to download: ' + location
-
-    mail_dict = {
-        'recipient_email': config.get("ckanext.contact.mail_to", config.get('email_to')),
-        'recipient_name': config.get("ckanext.contact.recipient_name", config.get('ckan.site_title')),
-        'subject': config.get("ckanext.contact.subject", 'Your subset is ready to download'),
-        'body': body
-    }
-
-    print(body)
-
-    # try:
-    #     mailer.mail_recipient(**mail_dict)
-    # except (mailer.MailerException, socket.error):
-    #     h.flash_error(_(u'Sorry, there was an error sending the email. Please try again later'))
+    send_email(location, error, None, None)

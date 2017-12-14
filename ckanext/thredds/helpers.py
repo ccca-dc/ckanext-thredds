@@ -93,11 +93,10 @@ def get_queries_from_user(user_id):
 def get_query_params(package):
     # get query params from metadata
     query = dict()
-    # add variables
-    query['var'] = str(','.join([var['name'] for var in package['variables']]))
     # add coordinates to params
     if package.get('spatial', '') != '':
         query.update(spatial_to_coordinates(package['spatial']))
+
     query['time_start'] = str(package.get('temporal_start', ''))
     query['time_end'] = str(package.get('temporal_end', ''))
     if query['time_end'] == '':
