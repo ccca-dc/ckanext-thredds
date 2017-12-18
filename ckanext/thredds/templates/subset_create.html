@@ -166,14 +166,14 @@
 
                   <div class="well" id="create_resource_well" style="display:none;overflow: hidden;">
                       <div class="left-well">
-                          {{ form.input('title', id='field-title', label=_('Datapackage Title'), value=data.title, error=errors.title, placeholder=_('eg. A descriptive title'), attrs={'data-module': 'slug-preview-target'}) }}
+                          {{ form.input('package_title', id='field-title', label=_('Datapackage Title'), value=data.package_title, error=errors.package_title, placeholder=_('eg. A descriptive title'), attrs={'data-module': 'slug-preview-target'}) }}
 
                           {% set prefix = h.url_for(controller='package', action='read', id='') %}
                           {% set domain = h.url_for(controller='package', action='read', id='', qualified=true) %}
                           {% set domain = domain|replace("http://", "")|replace("https://", "") %}
                           {% set attrs = {'data-module': 'slug-preview-slug', 'data-module-prefix': domain, 'data-module-placeholder': '<datapackage>'} %}
 
-                          {{ form.prepend('name', id='field-name', label=_('URL'), value=data.name, error=errors.name, prepend=prefix, placeholder=_('eg. my-datapackage'), attrs=attrs, is_required=true) }}
+                          {{ form.prepend('package_name', id='field-name', label=_('URL'), value=data.package_name, error=errors.package_name, prepend=prefix, placeholder=_('eg. my-datapackage'), attrs=attrs, is_required=true) }}
 
                           {{ form.select('organization', label=_('Organization'), options=data.organizations, selected=data.organization) }}
                       </div>

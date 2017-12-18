@@ -253,21 +253,21 @@ def subset_create(context, data_dict):
     if data_dict.get('type', 'download').lower() == "create_resource":
         if data_dict.get('resource_name', "") == '':
             errors['resource_name'] = [u'Missing Value']
-        if data_dict.get('title', "") == '':
-            errors['title'] = [u'Missing Value']
-        if data_dict.get('name', "") == '':
-            errors['name'] = [u'Missing Value']
+        if data_dict.get('package_title', "") == '':
+            errors['package_title'] = [u'Missing Value']
+        if data_dict.get('package_name', "") == '':
+            errors['package_name'] = [u'Missing Value']
         else:
             model = context['model']
             session = context['session']
-            result = session.query(model.Package).filter(model.Package.name.like(data_dict['name']+ "-v%")).first()
+            result = session.query(model.Package).filter(model.Package.name.like(data_dict['package_name']+ "-v%")).first()
 
             if result:
-                errors['name'] = [u'That URL is already in use.']
-            elif len(data_dict['name']) < PACKAGE_NAME_MIN_LENGTH:
-                errors['name'] = [u'URL is shorter than minimum (' + str(PACKAGE_NAME_MIN_LENGTH) + u')']
-            elif len(data_dict['name']) > PACKAGE_NAME_MAX_LENGTH:
-                errors['name'] = [u'URL is longer than maximum (' + str(PACKAGE_NAME_MAX_LENGTH) + u')']
+                errors['package_name'] = [u'That URL is already in use.']
+            elif len(data_dict['package_name']) < PACKAGE_NAME_MIN_LENGTH:
+                errors['package_name'] = [u'URL is shorter than minimum (' + str(PACKAGE_NAME_MIN_LENGTH) + u')']
+            elif len(data_dict['package_name']) > PACKAGE_NAME_MAX_LENGTH:
+                errors['package_name'] = [u'URL is longer than maximum (' + str(PACKAGE_NAME_MAX_LENGTH) + u')']
         if data_dict.get('organization', "") == '':
             errors['organization'] = [u'Missing Value']
         else:
@@ -406,9 +406,9 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
                 if search_results['count'] > 0:
                     return_dict['existing_package'] = search_results['results'][0]
 
-            if 'existing_package' not in return_dict or data_dict.get('private', 'True').lower() == 'true':
+            if 'existing_package' not in return_dict or str(data_dict.get('private', 'True')).lower() == 'true':
                 # check if private is True or False otherwise set private to True
-                if 'private' not in data_dict or data_dict['private'].lower() not in {'true', 'false'}:
+                if 'private' not in data_dict or str(data_dict['private']).lower() not in {'true', 'false'}:
                     data_dict['private'] = 'True'
 
                 # creating new package from the current one with few changes
@@ -421,8 +421,8 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
 
                 new_package['iso_mdDate'] = new_package['metadata_created'] = new_package['metadata_modified'] = datetime.datetime.now()
                 new_package['owner_org'] = data_dict['organization']
-                new_package['name'] = data_dict['name']
-                new_package['title'] = data_dict['title']
+                new_package['name'] = data_dict['package_name']
+                new_package['title'] = data_dict['package_title']
                 new_package['private'] = data_dict['private']
 
                 new_package['relations'] = [{'relation': 'is_part_of', 'id': package['id']}]
