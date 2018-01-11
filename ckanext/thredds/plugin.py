@@ -61,6 +61,9 @@ class ThreddsPlugin(plugins.SingletonPlugin):
         map.connect('tds_proxy', '/tds_proxy/{service}/{res_id}',
                     controller='ckanext.thredds.controllers.proxy:ThreddsProxyController',
                     action='tds_proxy')
+        map.connect('tds_proxy', '/tds_proxy/{service}/{res_id}/{extra}',
+                    controller='ckanext.thredds.controllers.proxy:ThreddsProxyController',
+                    action='tds_proxy')
         map.connect('subset_subset', '/subset/{resource_id}/create',
                     controller='ckanext.thredds.controllers.subset:SubsetController',
                     action='subset_create')
