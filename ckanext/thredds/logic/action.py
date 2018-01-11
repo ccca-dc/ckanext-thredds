@@ -95,7 +95,6 @@ def thredds_get_layerdetails(context, data_dict):
     '''
 
     # Resource ID
-    model = context['model']
     user = context['auth_user_obj']
 
     resource_id = tk.get_or_bust(data_dict,'id')
@@ -593,9 +592,14 @@ def _change_list_of_dicts_for_search(list_of_dicts):
 
 @ckan.logic.side_effect_free
 def thredds_get_metadata_info(context, data_dict):
+    """Extract the metadata from a file with thredds capabilities.
+       This only works for cf conformal netcdf files.
 
+    :param id: The id of the resource
+    :type id: string
+    :returns: dict with available metadata from resource
+    """
     # Resource ID
-    model = context['model']
     user = context['auth_user_obj']
 
     metadata = dict()
@@ -606,56 +610,61 @@ def thredds_get_metadata_info(context, data_dict):
     thredds_location = config.get('ckanext.thredds.location')
 
     try:
-        # headers={'Authorization': user.apikey}
+        headers={'Authorization': user.apikey}
     except:
         raise NotAuthorized
 
-    # NCML section
+    # Extract NCML metadata
     ncml_url = '/'.join([ckan_url, thredds_location, 'ncml', resource_id])
-
     try:
-        # r = requests.get(ncml_url, headers=headers)
-        r = requests.get('http://sandboxdc.ccca.ac.at/' + 'tds_proxy/ncml/' + '/88d350e9-5e91-4922-8d8c-8857553d5d2f', headers=headers)
+        r = requests.get(ncml_url, headers=headers)
     except Exception as e:
         raise NotFound("Thredds Server can not provide layer details")
 
     ncml_tree = ElementTree.fromstring(r.content)
+    _parse_ncml_metadata_info(ncml_tree, metadata)
 
-    # get description and references
-    metadata['notes'] = ncml_tree.find(".//*[@name='comment']").attrib["value"]
-    metadata['references'] = ncml_tree.find(".//*[@name='references']").attrib["value"]
-
-    # NCSS section
+    # Extract NCSS metadata
     ncss_url = '/'.join([ckan_url, thredds_location, 'ncss', resource_id, 'dataset.xml'])
-
     try:
-        # r = requests.get(ncss_url, headers=headers)
-        r = requests.get('http://sandboxdc.ccca.ac.at/' + 'tds_proxy/ncss/88d350e9-5e91-4922-8d8c-8857553d5d2f/dataset.xml', headers=headers)
+        r = requests.get(ncss_url, headers=headers)
     except Exception as e:
         raise NotFound("Thredds Server can not provide layer details")
 
     ncss_tree = ElementTree.fromstring(r.content)
+    _parse_ncss_metadata_info(ncss_tree, metadata)
 
+    return metadata
+
+    # time information should be used for error and display section in subset_create
+
+
+def _parse_ncml_metadata_info(ncml_tree, md_dict):
+    # get description and references
+    md_dict['notes'] = ncml_tree.find(".//*[@name='comment']").attrib.get("value", "")
+    md_dict['references'] = ncml_tree.find(".//*[@name='references']").attrib.get("value", "")
+
+def _parse_ncss_metadata_info(ncss_tree, md_dict):
+    # NCSS section
     # get coordinates
     lat_lon_box = ncss_tree.find('LatLonBox')
     n = lat_lon_box.find('north').text
     e = lat_lon_box.find('east').text
     s = lat_lon_box.find('south').text
     w = lat_lon_box.find('west').text
-    metadata['spatial'] = helpers.coordinates_to_spatial(n, e, s, w)
-    metadata['coordinates'] = {'north': n, 'east': e, 'south': s, 'west': w}
+    md_dict['spatial'] = helpers.coordinates_to_spatial(n, e, s, w)
+    #md_dict['coordinates'] = {'north': n, 'east': e, 'south': s, 'west': w}
 
     # get time
     time_span = ncss_tree.find('TimeSpan')
-
-    metadata['temporal_start'] = time_span.find('begin').text
-    if metadata['temporal_start'] != time_span.find('end').text:
-        metadata['temporal_end'] = time_span.find('end').text
+    md_dict['temporal_start'] = time_span.find('begin').text
+    if md_dict['temporal_start'] != time_span.find('end').text:
+        md_dict['temporal_end'] = time_span.find('end').text
     else:
-        metadata['temporal_end'] = None
+        md_dict['temporal_end'] = None
 
     # get dimensions
-    metadata['dimensions'] = []
+    md_dict['dimensions'] = []
     dimensions = ncss_tree.findall('axis')
     for dimension in dimensions:
         d = dict()
@@ -666,10 +675,10 @@ def thredds_get_metadata_info(context, data_dict):
         d['shape'] = dimension.attrib["shape"]
         d['increment'] = dimension.find("values").attrib["increment"]
 
-        metadata['dimensions'].append(d)
+        md_dict['dimensions'].append(d)
 
     # get variables
-    metadata['variables'] = []
+    md_dict['variables'] = []
     grids = ncss_tree.findall(".//grid")
     for grid in grids:
         axis_type = grid.find(".attribute/[@name='_CoordinateAxisType']")
@@ -681,8 +690,5 @@ def thredds_get_metadata_info(context, data_dict):
             g['units'] = grid.find(".attribute/[@name='units']").attrib["value"]
             g['shape'] = grid.attrib['shape'].split(" ")
 
-            metadata['variables'].append(g)
+            md_dict['variables'].append(g)
 
-    return metadata
-
-    # time information should be used for error and display section in subset_create
