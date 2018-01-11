@@ -641,8 +641,10 @@ def thredds_get_metadata_info(context, data_dict):
 
 def _parse_ncml_metadata_info(ncml_tree, md_dict):
     # get description and references
-    md_dict['notes'] = ncml_tree.find(".//*[@name='comment']").attrib.get("value", "")
-    md_dict['references'] = ncml_tree.find(".//*[@name='references']").attrib.get("value", "")
+    if ncml_tree.find(".//*[@name='comment']"):
+        md_dict['notes'] = ncml_tree.find(".//*[@name='comment']").attrib["value"]
+    if ncml_tree.find(".//*[@name='references']"):
+        md_dict['references'] = ncml_tree.find(".//*[@name='references']").attrib["value"]
 
 def _parse_ncss_metadata_info(ncss_tree, md_dict):
     # NCSS section
