@@ -156,12 +156,15 @@ def subset_download_job(resource_id, variables):
     resource = toolkit.get_action('resource_show')(context, {'id': resource_id})
     package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
 
+    user = toolkit.get_action('user_show')(context, {'id':context['user']})
+
     # get params from metadata
     params = helpers.get_query_params(package)
     params['var'] = variables
     params['accept'] = resource['format']
 
-    corrected_params, subset_netcdf_hash = get_ncss_subset_params(resource['id'], params, True, None)
+    is_part_of = [d for d in package['relations'] if d['relation'] == 'is_part_of']
+    corrected_params, subset_netcdf_hash = get_ncss_subset_params(is_part_of[0]['id'], params, user, True, None)
 
     location = [corrected_params.get('location', None)]
     error = corrected_params.get('error', None)

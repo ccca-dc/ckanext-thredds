@@ -378,7 +378,7 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
     only_location = False
     if data_dict.get('type', 'download').lower() == "download":
         only_location = True
-    corrected_params, subset_netcdf_hash = get_ncss_subset_params(resource['id'], params, only_location, metadata)
+    corrected_params, subset_netcdf_hash = get_ncss_subset_params(resource['id'], params, user, only_location, metadata)
 
     return_dict = dict()
 
@@ -431,6 +431,8 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
                 subset_creator['name'] = user['display_name']
                 subset_creator['email'] = user['email']
                 subset_creator['role'] = "subset creator"
+                if 'contact_points' not in new_package:
+                    new_package['contact_points'] = []
                 new_package['contact_points'].append(subset_creator)
 
                 # need to pop package otherwise it overwrites the current pkg
@@ -453,7 +455,7 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
                             new_resource['hash'] = subset_netcdf_hash
                     else:
                         params['format'] = subset_format
-                        corrected_params_new_res, subset_hash_new_res = get_ncss_subset_params(resource['id'], params, True, metadata)
+                        corrected_params_new_res, subset_hash_new_res = get_ncss_subset_params(resource['id'], params, user, True, metadata)
 
                         if "error" not in corrected_params_new_res:
                             location.append(corrected_params_new_res['location'])
@@ -510,15 +512,14 @@ def send_email(location, error, new_package, existing_package):
     #     h.flash_error(_(u'Sorry, there was an error sending the email. Please try again later'))
 
 
-def get_ncss_subset_params(resource_id, params, only_location, orig_metadata):
+def get_ncss_subset_params(resource_id, params, user, only_location, orig_metadata):
     params['response_file'] = "false"
-    headers={'Authorization': user.apikey}
+    headers={'Authorization': user.get('apikey')}
 
     ckan_url = config.get('ckan.site_url', '')
     thredds_location = config.get('ckanext.thredds.location')
 
-    r = requests.get('http://sandboxdc.ccca.ac.at/' + thredds_location + '/ncss/88d350e9-5e91-4922-8d8c-8857553d5d2f', params=params, headers=headers)
-    # r = requests.get(ckan_url + '/' + thredds_location + '/ncss/' + resource['id'], params=params, headers=headers)
+    r = requests.get(ckan_url + '/' + thredds_location + '/ncss/' + resource_id, params=params, headers=headers)
     print(r.url)
 
     corrected_params = dict()
@@ -655,7 +656,7 @@ def _parse_ncss_metadata_info(ncss_tree, md_dict):
     s = lat_lon_box.find('south').text
     w = lat_lon_box.find('west').text
     md_dict['spatial'] = helpers.coordinates_to_spatial(n, e, s, w)
-    #md_dict['coordinates'] = {'north': n, 'east': e, 'south': s, 'west': w}
+    md_dict['coordinates'] = {'north': n, 'east': e, 'south': s, 'west': w}
 
     # get time
     time_span = ncss_tree.find('TimeSpan')
