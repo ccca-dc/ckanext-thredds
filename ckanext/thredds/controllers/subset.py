@@ -163,8 +163,14 @@ def subset_download_job(resource_id, variables):
     params['var'] = variables
     params['accept'] = resource['format']
 
-    is_part_of = [d for d in package['relations'] if d['relation'] == 'is_part_of']
-    corrected_params, subset_netcdf_hash = get_ncss_subset_params(is_part_of[0]['id'], params, user, True, None)
+    # get parent of subset
+    is_part_of_id = [d for d in package['relations'] if d['relation'] == 'is_part_of']
+    is_part_of_pkg = toolkit.get_action('package_show')(context, {'id': is_part_of_id[0]['id']})
+
+    # get netcdf resource id from parent
+    netcdf_resource = [res['id'] for res in is_part_of_pkg['resources'] if res['format'].lower() == 'netcdf']
+
+    corrected_params, subset_netcdf_hash = get_ncss_subset_params(netcdf_resource[0], params, user, True, None)
 
     location = [corrected_params.get('location', None)]
     error = corrected_params.get('error', None)
