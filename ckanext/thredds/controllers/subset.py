@@ -13,8 +13,10 @@ import ckan.lib.uploader as uploader
 import ckan.lib.navl.dictization_functions as dict_fns
 import ckan.authz as authz
 import ckan.lib.navl.dictization_functions as df
-from ckan.common import _
+from ckan.common import _, response
 import ast
+import os
+import mimetypes
 from dateutil.relativedelta import relativedelta
 from xml.etree import ElementTree
 import ckanext.thredds.helpers as helpers
@@ -149,6 +151,32 @@ class SubsetController(base.BaseController):
         redirect(h.url_for(controller='package', action='resource_read',
                                  id=resource['package_id'], resource_id=resource['id']))
 
+    def subset_get(self, resource_id):
+        # TODO use real location from subset creation process
+        # Check access not with resource id (can be faked)
+        context = {'model': model, 'session': model.Session,
+                   'user': c.user, 'auth_user_obj': c.userobj}
+
+        try:
+            rsc = get_action('resource_show')(context, {'id': resource_id})
+            get_action('package_show')(context, {'id': rsc['package_id']})
+        except (NotFound, NotAuthorized):
+            abort(404, _('Resource not found'))
+
+        if authz.auth_is_anon_user(context) and rsc.get('anonymous_download', 'false') == 'false':
+            abort(401, _('Unauthorized to read resource %s') % rsc['name'])
+        else:
+            # TODO use real location 
+            filepath = '/e/ckan/thredds/cache/ncss/114143850/3ea_50-3300-4796-b996-a8dfc21e2db1.nc'
+
+            response.headers['X-Accel-Redirect'] = "/files/{0}".format(os.path.relpath(filepath, start='/e/ckan/'))
+            response.headers["Content-Disposition"] = "attachment; filename={0}".format(rsc.get('url','').split('/')[-1])
+            content_type, content_enc = mimetypes.guess_type(
+                    rsc.get('url', ''))
+            if content_type:
+                response.headers['Content-Type'] = content_type
+            return response
+
 
 def subset_download_job(resource_id, variables):
     context = {'model': model, 'session': model.Session,
@@ -176,3 +204,4 @@ def subset_download_job(resource_id, variables):
     error = corrected_params.get('error', None)
 
     send_email(location, error, None, None)
+
