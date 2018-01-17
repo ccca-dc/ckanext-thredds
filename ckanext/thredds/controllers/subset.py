@@ -21,7 +21,6 @@ from dateutil.relativedelta import relativedelta
 from xml.etree import ElementTree
 import ckanext.thredds.helpers as helpers
 from ckanext.thredds.logic.action import get_ncss_subset_params
-from ckanext.thredds.logic.action import send_email
 
 get_action = logic.get_action
 parse_params = logic.parse_params
@@ -145,7 +144,7 @@ class SubsetController(base.BaseController):
             enqueue_job = toolkit.enqueue_job
         except AttributeError:
             from ckanext.rq.jobs import enqueue as enqueue_job
-        enqueue_job(subset_download_job, [resource_id, variables])
+        enqueue_job(subset_download_job, [resource_id, variables, context['user']])
 
         h.flash_notice('Your subset is being created. This might take a while, you will receive an E-Mail when your subset is available')
         redirect(h.url_for(controller='package', action='resource_read',
@@ -178,7 +177,7 @@ class SubsetController(base.BaseController):
             return response
 
 
-def subset_download_job(resource_id, variables):
+def subset_download_job(resource_id, variables, subset_user):
     context = {'model': model, 'session': model.Session,
                'user': c.user}
     resource = toolkit.get_action('resource_show')(context, {'id': resource_id})
@@ -203,5 +202,102 @@ def subset_download_job(resource_id, variables):
     location = [corrected_params.get('location', None)]
     error = corrected_params.get('error', None)
 
-    send_email(location, error, None, None)
+
+    user = toolkit.get_action('user_show')(context, {'id':subset_user})
+    _send_email(user, location, error, None, None)
+
+
+def _send_email(user, location, error, new_package, existing_package):
+    def _send_mail(recipient_name, recipient_email, sender_name, subject, body):
+        import smtplib
+        from email.mime.application import MIMEApplication
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+        from email.utils import COMMASPACE, formatdate
+        from email.header import Header
+        from os.path import basename
+        import paste.deploy.converters
+        
+        msg = MIMEMultipart()
+        mail_from = config.get('smtp.mail_from')
+        msg['From'] = _("%s <%s>") % (sender_name, mail_from)
+        recipient = u"%s <%s>" % (recipient_name, recipient_email)
+        msg['To'] = Header(recipient, 'utf-8')
+
+        msg['Date'] = formatdate(localtime=True)
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body.encode('utf-8'), 'plain', 'utf-8'))
+    
+        smtp_connection = smtplib.SMTP()
+        smtp_server = config.get('smtp.server')
+        smtp_starttls = paste.deploy.converters.asbool(
+                    config.get('smtp.starttls'))
+        smtp_user = config.get('smtp.user')
+        smtp_password = config.get('smtp.password')
+    
+       # smtp = smtplib.SMTP(config.get('smtp.server'))
+        smtp_connection.connect(smtp_server)
+        try:
+            #smtp_connection.set_debuglevel(True)
+    
+            # Identify ourselves and prompt the server for supported features.
+            smtp_connection.ehlo()
+    
+            # If 'smtp.starttls' is on in CKAN config, try to put the SMTP
+            # connection into TLS mode.
+            if smtp_starttls:
+                if smtp_connection.has_extn('STARTTLS'):
+                    smtp_connection.starttls()
+                    # Re-identify ourselves over TLS connection.
+                    smtp_connection.ehlo()
+                else:
+                    raise MailerException("SMTP server does not support STARTTLS")
+    
+            # If 'smtp.user' is in CKAN config, try to login to SMTP server.
+            if smtp_user:
+                assert smtp_password, ("If smtp.user is configured then "
+                        "smtp.password must be configured as well.")
+                smtp_connection.login(smtp_user, smtp_password)
+    
+            smtp_connection.sendmail(mail_from, recipient_email, msg.as_string())
+            #log.info("Sent email to {0}".format(send_to))
+    
+        except smtplib.SMTPException, e:
+            msg = '%r' % e
+            log.exception(msg)
+            raise MailerException(msg)
+        finally:
+            smtp_connection.quit()
+
+    # sending of email after successful subset creation
+    if error is not None:
+        body = '\nThe subset couldn\'t be created due to the following error: %s' % (error)
+    else:
+        body = 'Your subset is ready to download: %s' % ", ".join(location)
+        if new_package is not None:
+            body += '\nThe package "%s" was created' % (new_package['name'])
+            if existing_package is not None:
+                body += '\n You cannot set your package public as another package ("%s") has the same query and is already public.' % (existing_package['name'])
+        elif existing_package is not None:
+            body += '\n Your package was not created, because the package "%s" has the same query and is already public.' % (existing_package['name'])
+
+    mail_dict = {
+        'recipient_email': config.get("ckanext.contact.mail_to", config.get('email_to')),
+        'recipient_name': config.get("ckanext.contact.recipient_name", config.get('ckan.site_title')),
+        'subject': config.get("ckanext.contact.subject", 'Your subset is ready to download'),
+        'body': body
+    }
+
+    _send_mail(user.get('display_name',''), 
+               user.get('email',''),
+               "CCCA Datenzentrum", 
+               "Your subset is ready to download",
+               body)
+
+#    mailer.mail_recipient(
+#         "Georg Seyerl", "georg.seyerl@ccca.ac.at", "Test", body)
+#        config.get("ckanext.contact.recipient_name", config.get('ckan.site_title')), 
+#        config.get("ckanext.contact.mail_to", config.get('email_to')), 
+#        config.get("ckanext.contact.subject", 'Your subset is ready to download'), 
+#        body)
 
