@@ -29,7 +29,11 @@
                 <table class="versiontable">
                     <tr>
                         <td style="width:100px">Version {{ versions|length - versions.index(version) }}</td>
+                        {% if 'issued' in version and version['issued'] %}
+                        <td><b>Release Date:</b> {{ h.date_str_to_datetime(version['issued']) }}</td>
+                        {% else %}
                         <td><b>Release Date:</b> {{ h.date_str_to_datetime(version['metadata_created']) }}</td>
+                        {% endif %}
                     </tr>
                 </table>
             {% endif %}
@@ -41,7 +45,11 @@
         <table class="versiontable">
             <tr>
                 <td style="width:100px"><a href="{{ url }}">Version {{ versions|length }} </a></td>
+                {% if 'issued' in latest_version and latest_version['issued'] %}
+                <td><b>Release Date:</b> {{ h.date_str_to_datetime(latest_version['issued']) }}</td>
+                {% else %}
                 <td><b>Release Date:</b> {{ h.date_str_to_datetime(latest_version['metadata_created']) }}</td>
+                {% endif %}
             </tr>
         </table>
         <br>
@@ -55,7 +63,11 @@
                   {% set url=h.url_for(controller='package', action='read', id=version.name) %}
                   <tr>
                       <td style="width:100px"><a href="{{ url }}">Version {{ versions|length + 1 - loop.index }} </a></td>
+                      {% if 'issued' in version and version['issued'] %}
+                      <td><b>Release Date:</b> {{ h.date_str_to_datetime(version['issued']) }}</td>
+                      {% else %}
                       <td><b>Release Date:</b> {{ h.date_str_to_datetime(version['metadata_created']) }}</td>
+                      {% endif %}
                   </tr>
               {% endfor %}
             </table>
@@ -87,7 +99,11 @@
                               {% set url=h.url_for(controller='package', action='read', id=version.name) %}
                               <tr>
                                   <td><a href="{{ url }}">Version {{ orig_versions|length + 1 - loop.index }}</a></td>
-                                  <td>{{ h.date_str_to_datetime(version['metadata_created']) }}</td>
+                                  {% if 'issued' in version and version['issued'] %}
+                                  <td>{{ h.date_str_to_datetime(version['issued']) }}</td>
+                                  {% else %}
+                                  <td><b>Release Date:</b> {{ h.date_str_to_datetime(version['metadata_created']) }}</td>
+                                  {% endif %}
                                   {% set subset_version = h.version_has_subset(pkg.id, version['id']) %}
                                   {% if subset_version == None %}
                                     <td>{% link_for _('Create'), controller='ckanext.resourceversions.controllers.subset_version:SubsetVersionController', action='create_new_version_of_subset', subset_id=pkg.id, orig_id=version['id'], class_='btn' %}</td>
