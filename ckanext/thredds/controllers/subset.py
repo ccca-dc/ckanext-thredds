@@ -21,6 +21,7 @@ from dateutil.relativedelta import relativedelta
 from xml.etree import ElementTree
 import ckanext.thredds.helpers as helpers
 from ckanext.thredds.logic.action import get_ncss_subset_params
+from ckanext.thredds.logic.action import send_email
 
 get_action = logic.get_action
 parse_params = logic.parse_params
@@ -150,11 +151,13 @@ class SubsetController(base.BaseController):
         redirect(h.url_for(controller='package', action='resource_read',
                                  id=resource['package_id'], resource_id=resource['id']))
 
-    def subset_get(self, resource_id):
+    def subset_get(self, resource_id, location, file_name):
         # TODO use real location from subset creation process
         # Check access not with resource id (can be faked)
         context = {'model': model, 'session': model.Session,
                    'user': c.user, 'auth_user_obj': c.userobj}
+        print('*****************************')
+        print(location)
 
         try:
             rsc = get_action('resource_show')(context, {'id': resource_id})
@@ -166,9 +169,10 @@ class SubsetController(base.BaseController):
             abort(401, _('Unauthorized to read resource %s') % rsc['name'])
         else:
             # TODO use real location 
-            filepath = '/e/ckan/thredds/cache/ncss/114143850/3ea_50-3300-4796-b996-a8dfc21e2db1.nc'
+            #filepath = '338455735/350_e9-5e91-4922-8d8c-8857553d5d2f.nc'
 
-            response.headers['X-Accel-Redirect'] = "/files/{0}".format(os.path.relpath(filepath, start='/e/ckan/'))
+            response.headers['X-Accel-Redirect'] = "/files/thredds/cache/ncss/{0}/{1}".format(location, file_name)
+            #response.headers['X-Accel-Redirect'] = "/files/thredds/{0}".format(os.path.relpath(filepath, start='/e/ckan/'))
             response.headers["Content-Disposition"] = "attachment; filename={0}".format(rsc.get('url','').split('/')[-1])
             content_type, content_enc = mimetypes.guess_type(
                     rsc.get('url', ''))
@@ -199,105 +203,24 @@ def subset_download_job(resource_id, variables, subset_user):
 
     corrected_params, subset_netcdf_hash = get_ncss_subset_params(netcdf_resource[0], params, user, True, None)
 
-    location = [corrected_params.get('location', None)]
+    #location = corrected_params.get('location', None).split('/',2)[2:][0]
+    location = corrected_params.get('location', None)
+    if location:
+        location = location.split('/',2)[2:][0]
     error = corrected_params.get('error', None)
 
-
     user = toolkit.get_action('user_show')(context, {'id':subset_user})
-    _send_email(user, location, error, None, None)
+    # Resource ID from parent
+    send_email(netcdf_resource[0], user, location, error, None, None)
 
 
-def _send_email(user, location, error, new_package, existing_package):
-    def _send_mail(recipient_name, recipient_email, sender_name, subject, body):
-        import smtplib
-        from email.mime.application import MIMEApplication
-        from email.mime.multipart import MIMEMultipart
-        from email.mime.text import MIMEText
-        from email.utils import COMMASPACE, formatdate
-        from email.header import Header
-        from os.path import basename
-        import paste.deploy.converters
-        
-        msg = MIMEMultipart()
-        mail_from = config.get('smtp.mail_from')
-        msg['From'] = _("%s <%s>") % (sender_name, mail_from)
-        recipient = u"%s <%s>" % (recipient_name, recipient_email)
-        msg['To'] = Header(recipient, 'utf-8')
-
-        msg['Date'] = formatdate(localtime=True)
-        msg['Subject'] = subject
-        msg.attach(MIMEText(body.encode('utf-8'), 'plain', 'utf-8'))
+def _get_parent_resource(context, child_res_id):
+    child_res = toolkit.get_action('resource_show')(context, {'id':child_res_id})
+    child_pkg = toolkit.get_action('package_show')(context, {'id':child_res['package_id']})
+    parent_pkg_id = _get_id_relation(child_pkg, 'is_part_of')[0]
+    parent_res = [res for res in parent_pkg_id['resources'] if res['format'].lower == "netcdf"][0]
+    return parent_res
     
-        smtp_connection = smtplib.SMTP()
-        smtp_server = config.get('smtp.server')
-        smtp_starttls = paste.deploy.converters.asbool(
-                    config.get('smtp.starttls'))
-        smtp_user = config.get('smtp.user')
-        smtp_password = config.get('smtp.password')
     
-       # smtp = smtplib.SMTP(config.get('smtp.server'))
-        smtp_connection.connect(smtp_server)
-        try:
-            #smtp_connection.set_debuglevel(True)
-    
-            # Identify ourselves and prompt the server for supported features.
-            smtp_connection.ehlo()
-    
-            # If 'smtp.starttls' is on in CKAN config, try to put the SMTP
-            # connection into TLS mode.
-            if smtp_starttls:
-                if smtp_connection.has_extn('STARTTLS'):
-                    smtp_connection.starttls()
-                    # Re-identify ourselves over TLS connection.
-                    smtp_connection.ehlo()
-                else:
-                    raise MailerException("SMTP server does not support STARTTLS")
-    
-            # If 'smtp.user' is in CKAN config, try to login to SMTP server.
-            if smtp_user:
-                assert smtp_password, ("If smtp.user is configured then "
-                        "smtp.password must be configured as well.")
-                smtp_connection.login(smtp_user, smtp_password)
-    
-            smtp_connection.sendmail(mail_from, recipient_email, msg.as_string())
-            #log.info("Sent email to {0}".format(send_to))
-    
-        except smtplib.SMTPException, e:
-            msg = '%r' % e
-            log.exception(msg)
-            raise MailerException(msg)
-        finally:
-            smtp_connection.quit()
-
-    # sending of email after successful subset creation
-    if error is not None:
-        body = '\nThe subset couldn\'t be created due to the following error: %s' % (error)
-    else:
-        body = 'Your subset is ready to download: %s' % ", ".join(location)
-        if new_package is not None:
-            body += '\nThe package "%s" was created' % (new_package['name'])
-            if existing_package is not None:
-                body += '\n You cannot set your package public as another package ("%s") has the same query and is already public.' % (existing_package['name'])
-        elif existing_package is not None:
-            body += '\n Your package was not created, because the package "%s" has the same query and is already public.' % (existing_package['name'])
-
-    mail_dict = {
-        'recipient_email': config.get("ckanext.contact.mail_to", config.get('email_to')),
-        'recipient_name': config.get("ckanext.contact.recipient_name", config.get('ckan.site_title')),
-        'subject': config.get("ckanext.contact.subject", 'Your subset is ready to download'),
-        'body': body
-    }
-
-    _send_mail(user.get('display_name',''), 
-               user.get('email',''),
-               "CCCA Datenzentrum", 
-               "Your subset is ready to download",
-               body)
-
-#    mailer.mail_recipient(
-#         "Georg Seyerl", "georg.seyerl@ccca.ac.at", "Test", body)
-#        config.get("ckanext.contact.recipient_name", config.get('ckan.site_title')), 
-#        config.get("ckanext.contact.mail_to", config.get('email_to')), 
-#        config.get("ckanext.contact.subject", 'Your subset is ready to download'), 
-#        body)
-
+def _get_id_relation(pkg, relation):
+    return [rel['id'] for rel in pkg['relations'] if rel['relation'] == relation]

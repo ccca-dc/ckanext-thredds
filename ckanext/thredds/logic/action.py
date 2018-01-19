@@ -21,6 +21,9 @@ from xml.etree import ElementTree
 import ckanext.thredds.helpers as helpers
 import ckanext.resourceversions.helpers
 
+from ckanext.contact.interfaces import IContact
+import socket
+
 check_access = logic.check_access
 
 _get_or_bust = logic.get_or_bust
@@ -478,15 +481,16 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
     new_package = return_dict.get('new_package', None)
     existing_package = return_dict.get('existing_package', None)
 
-    send_email(location, error, new_package, existing_package)
+    # Resource ID from parent
+    send_email(resource['id'], user, location, error, new_package, existing_package)
 
 
-def send_email(location, error, new_package, existing_package):
+def send_email(res_id, user, location, error, new_package, existing_package):
     # sending of email after successful subset creation
     if error is not None:
         body = '\nThe subset couldn\'t be created due to the following error: %s' % (error)
     else:
-        body = 'Your subset is ready to download: %s' % ", ".join(location)
+        body = 'Your subset is ready to download: %s' % "/".join([config.get('ckan.site_url'), 'subset', res_id, 'get', location])
         if new_package is not None:
             body += '\nThe package "%s" was created' % (new_package['name'])
             if existing_package is not None:
@@ -494,22 +498,89 @@ def send_email(location, error, new_package, existing_package):
         elif existing_package is not None:
             body += '\n Your package was not created, because the package "%s" has the same query and is already public.' % (existing_package['name'])
 
-    mail_dict = {
-        'recipient_email': config.get("ckanext.contact.mail_to", config.get('email_to')),
-        'recipient_name': config.get("ckanext.contact.recipient_name", config.get('ckan.site_title')),
-        'subject': config.get("ckanext.contact.subject", 'Your subset is ready to download'),
-        'body': body
-    }
-    print(body)
-    #
-    # # Allow other plugins to modify the mail_dict
-    # for plugin in p.PluginImplementations(IContact):
-    #     plugin.mail_alter(mail_dict, data_dict)
+    # mail_dict = {
+    #     'recipient_email': user.get('display_name',''),
+    #     'recipient_name': user.get('email',''),
+    #     'subject': 'Your subset is ready to download',
+    #     'body': body
+    # }
 
-    # try:
-    #     mailer.mail_recipient(**mail_dict)
-    # except (mailer.MailerException, socket.error):
-    #     h.flash_error(_(u'Sorry, there was an error sending the email. Please try again later'))
+    _send_mail(
+        user.get('display_name',''),
+        user.get('email',''),
+        'CCCA Datenzentrum',
+        'Your subset is ready to download',
+         body
+    )
+    
+#    # Allow other plugins to modify the mail_dict
+#    for plugin in p.PluginImplementations(IContact):
+#        plugin.mail_alter(mail_dict, data_dict)
+#
+#    try:
+#        mailer.mail_recipient(**mail_dict)
+#    except (mailer.MailerException, socket.error):
+#        h.flash_error(_(u'Sorry, there was an error sending the email. Please try again later'))
+
+def _send_mail(recipient_name, recipient_email, sender_name, subject, body):
+    import smtplib
+    from email.mime.application import MIMEApplication
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    from email.utils import COMMASPACE, formatdate
+    from email.header import Header
+    from os.path import basename
+    import paste.deploy.converters
+    
+    msg = MIMEMultipart()
+    mail_from = config.get('smtp.mail_from')
+    msg['From'] = _("%s <%s>") % (sender_name, mail_from)
+    recipient = u"%s <%s>" % (recipient_name, recipient_email)
+    msg['To'] = Header(recipient, 'utf-8')
+
+    msg['Date'] = formatdate(localtime=True)
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body.encode('utf-8'), 'plain', 'utf-8'))
+
+    smtp_connection = smtplib.SMTP()
+    smtp_server = config.get('smtp.server')
+    smtp_starttls = paste.deploy.converters.asbool(
+                config.get('smtp.starttls'))
+    smtp_user = config.get('smtp.user')
+    smtp_password = config.get('smtp.password')
+
+   # smtp = smtplib.SMTP(config.get('smtp.server'))
+    smtp_connection.connect(smtp_server)
+    try:
+        #smtp_connection.set_debuglevel(True)
+
+        # Identify ourselves and prompt the server for supported features.
+        smtp_connection.ehlo()
+
+        # If 'smtp.starttls' is on in CKAN config, try to put the SMTP
+        # connection into TLS mode.
+        if smtp_starttls:
+            if smtp_connection.has_extn('STARTTLS'):
+                smtp_connection.starttls()
+                # Re-identify ourselves over TLS connection.
+                smtp_connection.ehlo()
+            else:
+                raise mailer.MailerException("SMTP server does not support STARTTLS")
+
+        # If 'smtp.user' is in CKAN config, try to login to SMTP server.
+        if smtp_user:
+            assert smtp_password, ("If smtp.user is configured then "
+                    "smtp.password must be configured as well.")
+            smtp_connection.login(smtp_user, smtp_password)
+
+        smtp_connection.sendmail(mail_from, recipient_email, msg.as_string())
+        #log.info("Sent email to {0}".format(send_to))
+
+    except smtplib.SMTPException, e:
+        msg = '%r' % e
+        raise mailer.MailerException(msg)
+    finally:
+        smtp_connection.quit()
 
 
 def get_ncss_subset_params(resource_id, params, user, only_location, orig_metadata):
@@ -694,4 +765,3 @@ def _parse_ncss_metadata_info(ncss_tree, md_dict):
             g['shape'] = grid.attrib['shape'].split(" ")
 
             md_dict['variables'].append(g)
-
