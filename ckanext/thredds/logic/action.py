@@ -23,6 +23,8 @@ import ckanext.resourceversions.helpers
 
 from ckanext.contact.interfaces import IContact
 import socket
+import hashlib
+import os
 
 check_access = logic.check_access
 
@@ -342,6 +344,19 @@ def subset_create(context, data_dict):
 
 
 def subset_create_job(user, resource, data_dict, times_exist, metadata):
+    '''The subset creation job (jobs are always executed as default user)
+
+    :param user: the user name or id
+    :type user: string
+    :param resource: the resource of which a subset is to be created
+    :type resource: dict
+    :param data_dict: all informations regarding the new subset
+    :type data_dict: dict
+    :param times_exist: TODO
+    :type times_exist: boolean
+    :param metadata: the thredds metadata for the parent resource
+    :type metadata: string
+    '''
     context = {'model': model, 'session': model.Session,
                'user': user}
 
@@ -441,9 +456,6 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
                 # need to pop package otherwise it overwrites the current pkg
                 context.pop('package')
 
-                print("new_package:*****************")
-                print(new_package)
-
                 new_package = tk.get_action('package_create')(context, new_package)
 
                 # add resource in all formats
@@ -482,10 +494,28 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
     existing_package = return_dict.get('existing_package', None)
 
     # Resource ID from parent
-    send_email(resource['id'], user, location, error, new_package, existing_package)
+    send_email(resource['id'], user, location[0], error, new_package, existing_package)
 
 
 def send_email(res_id, user, location, error, new_package, existing_package):
+    '''Send the subset response email
+
+    :param res_id: the id of the parent resource
+    :type res_id: string
+    :param user: the user name or id
+    :type user: string
+    :param location: the resource of which a subset is to be created
+    :type location: dict
+    :param new_package: metadata the new subset package
+    :type new_package: dict
+    :param existing_package: metadata of the existing subset package
+    :type existing_package: dict
+    '''
+
+    # If location is present, only take two last elements
+    if location:
+        location = location.split('/',2)[2:][0]
+
     # sending of email after successful subset creation
     if error is not None:
         body = '\nThe subset couldn\'t be created due to the following error: %s' % (error)
@@ -512,15 +542,15 @@ def send_email(res_id, user, location, error, new_package, existing_package):
         'Your subset is ready to download',
          body
     )
-    
-#    # Allow other plugins to modify the mail_dict
-#    for plugin in p.PluginImplementations(IContact):
-#        plugin.mail_alter(mail_dict, data_dict)
-#
-#    try:
-#        mailer.mail_recipient(**mail_dict)
-#    except (mailer.MailerException, socket.error):
-#        h.flash_error(_(u'Sorry, there was an error sending the email. Please try again later'))
+
+    # # Allow other plugins to modify the mail_dict
+    # for plugin in p.PluginImplementations(IContact):
+    #     plugin.mail_alter(mail_dict, data_dict)
+
+    # try:
+    #     mailer.mail_recipient(**mail_dict)
+    # except (mailer.MailerException, socket.error):
+    #     h.flash_error(_(u'Sorry, there was an error sending the email. Please try again later'))
 
 def _send_mail(recipient_name, recipient_email, sender_name, subject, body):
     import smtplib
@@ -531,7 +561,7 @@ def _send_mail(recipient_name, recipient_email, sender_name, subject, body):
     from email.header import Header
     from os.path import basename
     import paste.deploy.converters
-    
+
     msg = MIMEMultipart()
     mail_from = config.get('smtp.mail_from')
     msg['From'] = _("%s <%s>") % (sender_name, mail_from)
@@ -576,7 +606,7 @@ def _send_mail(recipient_name, recipient_email, sender_name, subject, body):
         smtp_connection.sendmail(mail_from, recipient_email, msg.as_string())
         #log.info("Sent email to {0}".format(send_to))
 
-    except smtplib.SMTPException, e:
+    except smtplib.SMTPException as e:
         msg = '%r' % e
         raise mailer.MailerException(msg)
     finally:
@@ -591,7 +621,6 @@ def get_ncss_subset_params(resource_id, params, user, only_location, orig_metada
     thredds_location = config.get('ckanext.thredds.location')
 
     r = requests.get(ckan_url + '/' + thredds_location + '/ncss/' + resource_id, params=params, headers=headers)
-    print(r.url)
 
     corrected_params = dict()
     subset_hash = None

@@ -156,8 +156,6 @@ class SubsetController(base.BaseController):
         # Check access not with resource id (can be faked)
         context = {'model': model, 'session': model.Session,
                    'user': c.user, 'auth_user_obj': c.userobj}
-        print('*****************************')
-        print(location)
 
         try:
             rsc = get_action('resource_show')(context, {'id': resource_id})
@@ -168,11 +166,7 @@ class SubsetController(base.BaseController):
         if authz.auth_is_anon_user(context) and rsc.get('anonymous_download', 'false') == 'false':
             abort(401, _('Unauthorized to read resource %s') % rsc['name'])
         else:
-            # TODO use real location 
-            #filepath = '338455735/350_e9-5e91-4922-8d8c-8857553d5d2f.nc'
-
             response.headers['X-Accel-Redirect'] = "/files/thredds/cache/ncss/{0}/{1}".format(location, file_name)
-            #response.headers['X-Accel-Redirect'] = "/files/thredds/{0}".format(os.path.relpath(filepath, start='/e/ckan/'))
             response.headers["Content-Disposition"] = "attachment; filename={0}".format(rsc.get('url','').split('/')[-1])
             content_type, content_enc = mimetypes.guess_type(
                     rsc.get('url', ''))
@@ -182,6 +176,15 @@ class SubsetController(base.BaseController):
 
 
 def subset_download_job(resource_id, variables, subset_user):
+    '''The subset download job (jobs are always executed as default user)
+
+    :param resource_id: the resource id of the parent
+    :type resource_id: string
+    :param variables: TODO
+    :type variables: string
+    :param subset_user: the user name or id
+    :type subset_user: string
+    '''
     context = {'model': model, 'session': model.Session,
                'user': c.user}
     resource = toolkit.get_action('resource_show')(context, {'id': resource_id})
@@ -203,10 +206,7 @@ def subset_download_job(resource_id, variables, subset_user):
 
     corrected_params, subset_netcdf_hash = get_ncss_subset_params(netcdf_resource[0], params, user, True, None)
 
-    #location = corrected_params.get('location', None).split('/',2)[2:][0]
     location = corrected_params.get('location', None)
-    if location:
-        location = location.split('/',2)[2:][0]
     error = corrected_params.get('error', None)
 
     user = toolkit.get_action('user_show')(context, {'id':subset_user})
@@ -220,7 +220,7 @@ def _get_parent_resource(context, child_res_id):
     parent_pkg_id = _get_id_relation(child_pkg, 'is_part_of')[0]
     parent_res = [res for res in parent_pkg_id['resources'] if res['format'].lower == "netcdf"][0]
     return parent_res
-    
-    
+
+
 def _get_id_relation(pkg, relation):
     return [rel['id'] for rel in pkg['relations'] if rel['relation'] == relation]
