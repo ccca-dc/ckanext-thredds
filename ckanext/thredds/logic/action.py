@@ -26,6 +26,10 @@ import socket
 import hashlib
 import os
 
+import logging
+log = logging.getLogger(__name__)
+
+
 check_access = logic.check_access
 
 _get_or_bust = logic.get_or_bust
@@ -396,7 +400,7 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
     only_location = False
     if data_dict.get('type', 'download').lower() == "download":
         only_location = True
-    corrected_params, subset_netcdf_hash = get_ncss_subset_params(resource['id'], params, user, only_location, metadata)
+    corrected_params, resource_params = get_ncss_subset_params(resource['id'], params, user, only_location, metadata)
 
     return_dict = dict()
 
@@ -416,9 +420,9 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
             #     abort(403, _('Unauthorized to show package'))
 
             # check if url already exists
-            if subset_netcdf_hash is not None:
+            if resource_params.get('hash',None) is not None:
                 search_results = tk.get_action('package_search')(context, {'rows': 10000, 'fq':
-                                'res_hash:%s' % (subset_netcdf_hash)})
+                                'res_hash:%s' % (resource_params.get('hash',None))})
 
                 if search_results['count'] > 0:
                     return_dict['existing_package'] = search_results['results'][0]
@@ -466,17 +470,21 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
                 for subset_format in subset_formats:
                     new_resource = {'name': data_dict['resource_name'], 'url': 'subset', 'format': subset_format, 'anonymous_download': 'False', 'package_id': new_package['id']}
                     if subset_format.lower() == 'netcdf':
-                        if subset_netcdf_hash is not None:
-                            new_resource['hash'] = subset_netcdf_hash
+                        if resource_params is not None:
+                            new_resource['hash'] = resource_params.get('hash',None)
+                        if resource_params is not None:
+                            new_resource['size'] = resource_params.get('size',None)
                     else:
                         params['format'] = subset_format
-                        corrected_params_new_res, subset_hash_new_res = get_ncss_subset_params(resource['id'], params, user, True, metadata)
+                        corrected_params_new_res, resource_params_new_res = get_ncss_subset_params(resource['id'], params, user, True, metadata)
 
                         if "error" not in corrected_params_new_res:
                             location.append(corrected_params_new_res['location'])
 
-                            if subset_hash_new_res is not None:
-                                new_resource['hash'] = subset_hash_new_res
+                            if resource_params_new_res is not None:
+                                new_resource['hash'] = resource_params_new_res.get('hash',None)
+                            if resource_params_new_res is not None:
+                                new_resource['size'] = resource_params_new_res.get('size',None)
 
                     new_resource = tk.get_action('resource_create')(context, new_resource)
 
@@ -613,17 +621,32 @@ def _send_mail(recipient_name, recipient_email, sender_name, subject, body):
         smtp_connection.quit()
 
 
-def get_ncss_subset_params(resource_id, params, user, only_location, orig_metadata):
+def get_ncss_subset_params(res_id, params, user, only_location, orig_metadata):
+    '''Get the ncss subset parameters
+
+    :param res_id: the id of the parent resource
+    :type res_id: string
+    :param params: TODO
+    :type params: dict
+    :param user: the users name or id
+    :type user: string
+    :param only_location: TODO
+    :type only_location: dict
+    :param orig_metadata:TODO 
+    :type orig_metadata: dict
+    :rtype: dict, dict
+    '''
     params['response_file'] = "false"
     headers={'Authorization': user.get('apikey')}
 
     ckan_url = config.get('ckan.site_url', '')
     thredds_location = config.get('ckanext.thredds.location')
 
-    r = requests.get(ckan_url + '/' + thredds_location + '/ncss/' + resource_id, params=params, headers=headers)
+
+    r = requests.get(ckan_url + '/' + thredds_location + '/ncss/' + res_id, params=params, headers=headers)
 
     corrected_params = dict()
-    subset_hash = None
+    resource_params = None
 
     if r.status_code == 200:
         # TODO not working for point
@@ -631,15 +654,19 @@ def get_ncss_subset_params(resource_id, params, user, only_location, orig_metada
 
         corrected_params['location'] = tree.get('location')
 
-        # TODO add if not local
-        # import hashlib
-        # hasher = hashlib.md5()
-        #
-        # with open(location, 'rb') as f:
-        #     for chunk in iter(lambda: f.read(128*hasher.block_size), b''):
-        #         hasher.update(chunk)
-        # subset_hash = hasher.hexdigest()
-        # print(subset_hash)
+        # Hashsum
+        file_path = os.path.join("/e/ckan/thredds", corrected_params['location'])
+        hasher = hashlib.md5()
+
+        with open(file_path, 'rb') as f:
+            for chunk in iter(lambda: f.read(128*hasher.block_size), b''):
+                hasher.update(chunk)
+
+        resource_params = dict()
+        resource_params['hash'] = hasher.hexdigest()
+
+        # Filesize
+        resource_params['size'] = os.path.getsize(file_path)
 
         if not only_location:
             # add spatial to new resource
@@ -670,7 +697,7 @@ def get_ncss_subset_params(resource_id, params, user, only_location, orig_metada
     else:
         corrected_params['error'] = r.content
 
-    return corrected_params, subset_hash
+    return corrected_params, resource_params 
 
 
 def _change_list_of_dicts_for_search(list_of_dicts):
