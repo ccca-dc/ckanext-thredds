@@ -151,7 +151,7 @@ class SubsetController(base.BaseController):
         redirect(h.url_for(controller='package', action='resource_read',
                                  id=resource['package_id'], resource_id=resource['id']))
 
-    def subset_get(self, resource_id, location, file_name):
+    def subset_get(self, resource_id, location, file_type):
         # TODO use real location from subset creation process
         # Check access not with resource id (can be faked)
         context = {'model': model, 'session': model.Session,
@@ -166,8 +166,9 @@ class SubsetController(base.BaseController):
         if authz.auth_is_anon_user(context) and rsc.get('anonymous_download', 'false') == 'false':
             abort(401, _('Unauthorized to read resource %s') % rsc['name'])
         else:
-            response.headers['X-Accel-Redirect'] = "/files/thredds/cache/ncss/{0}/{1}".format(location, file_name)
-            response.headers["Content-Disposition"] = "attachment; filename={0}".format(rsc.get('url','').split('/')[-1])
+            file_name = '_'.join([resource_id[3:6],resource_id[6:]])
+            response.headers['X-Accel-Redirect'] = "/files/thredds/cache/ncss/{0}/{1}.{2}".format(location, file_name, file_type)
+            response.headers["Content-Disposition"] = "attachment; filename={0}_{1}".format("subset", rsc.get('url','').split('/')[-1])
             content_type, content_enc = mimetypes.guess_type(
                     rsc.get('url', ''))
             if content_type:

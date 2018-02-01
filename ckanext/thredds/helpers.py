@@ -43,8 +43,8 @@ def check_subset_uniqueness(package_id):
                                 'res_hash:%s' % (resource['hash']), 'include_versions': True})
 
             if search_results['count'] > 0:
-                public_package = h.url_for(controller='package', action='resource_read',
-                                  id=search_results['results'][0]['package_id'], resource_id=search_results['results'][0]['id'])
+                public_package = h.url_for(controller='package', action='read',
+                                  id=search_results['results'][0]['name'])
                 uniqueness_problems.append(public_package)
 
     return uniqueness_problems

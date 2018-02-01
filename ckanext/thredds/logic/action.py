@@ -522,15 +522,17 @@ def send_email(res_id, user, location, error, new_package, existing_package):
 
     # If location is present, only take two last elements
     if location:
-        location = location.split('/',2)[2:][0]
+        #location = location.split('/',2)[2:][0]
+        file_path = location.split('/')[-2]
+        file_type = location.split('/')[-1].split('.')[-1]
 
     # sending of email after successful subset creation
     if error is not None:
         body = '\nThe subset couldn\'t be created due to the following error: %s' % (error)
     else:
-        body = 'Your subset is ready to download: %s' % "/".join([config.get('ckan.site_url'), 'subset', res_id, 'get', location])
+        body = 'Your subset is ready to download: %s' % "/".join([config.get('ckan.site_url'), 'subset', res_id, 'get', file_path, file_type])
         if new_package is not None:
-            body += '\nThe package "%s" was created' % (new_package['name'])
+            body += '\nThe package {0} was created and is available at: {1}'.format(new_package['name'], new_package['url'])
             if existing_package is not None:
                 body += '\n You cannot set your package public as another package ("%s") has the same query and is already public.' % (existing_package['name'])
         elif existing_package is not None:

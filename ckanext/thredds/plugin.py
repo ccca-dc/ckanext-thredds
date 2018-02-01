@@ -70,7 +70,7 @@ class ThreddsPlugin(plugins.SingletonPlugin):
         map.connect('subset_download', '/subset/{resource_id}/download',
                     controller='ckanext.thredds.controllers.subset:SubsetController',
                     action='subset_download')
-        map.connect('subset_get', '/subset/{resource_id}/get/{location}/{file_name}',
+        map.connect('subset_get', '/subset/{resource_id}/get/{location}/{file_type}',
                     controller='ckanext.thredds.controllers.subset:SubsetController',
                     action='subset_get')
         return map
