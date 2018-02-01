@@ -420,9 +420,9 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
             #     abort(403, _('Unauthorized to show package'))
 
             # check if url already exists
-            if resource_params.get('hash',None) is not None:
+            if resource_params is not None and resource_params.get('hash', None) is not None:
                 search_results = tk.get_action('package_search')(context, {'rows': 10000, 'fq':
-                                'res_hash:%s' % (resource_params.get('hash',None))})
+                                'res_hash:%s' % (resource_params['hash']), 'include_versions': True})
 
                 if search_results['count'] > 0:
                     return_dict['existing_package'] = search_results['results'][0]
@@ -471,11 +471,11 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
                     new_resource = {'name': data_dict['resource_name'], 'url': 'subset', 'format': subset_format, 'anonymous_download': 'False', 'package_id': new_package['id']}
                     if subset_format.lower() == 'netcdf':
                         if resource_params is not None:
-                            new_resource['hash'] = resource_params.get('hash',None)
+                            new_resource['hash'] = resource_params.get('hash', None)
                         if resource_params is not None:
-                            new_resource['size'] = resource_params.get('size',None)
+                            new_resource['size'] = resource_params.get('size', None)
                     else:
-                        params['format'] = subset_format
+                        params['accept'] = subset_format
                         corrected_params_new_res, resource_params_new_res = get_ncss_subset_params(resource['id'], params, user, True, metadata)
 
                         if "error" not in corrected_params_new_res:
@@ -532,7 +532,7 @@ def send_email(res_id, user, location, error, new_package, existing_package):
     else:
         body = 'Your subset is ready to download: %s' % "/".join([config.get('ckan.site_url'), 'subset', res_id, 'get', file_path, file_type])
         if new_package is not None:
-            body += '\nThe package {0} was created and is available at: {1}'.format(new_package['name'], new_package['url'])
+            body += '\nThe package "%s" was created and is available at: %s' % (new_package['title'], config.get('ckan.site_url') + h.url_for(controller='package', action='read', id=new_package['name']))
             if existing_package is not None:
                 body += '\n You cannot set your package public as another package ("%s") has the same query and is already public.' % (existing_package['name'])
         elif existing_package is not None:

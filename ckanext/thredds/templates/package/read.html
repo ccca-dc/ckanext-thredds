@@ -102,7 +102,7 @@
                                   {% if 'issued' in version and version['issued'] %}
                                   <td>{{ h.date_str_to_datetime(version['issued']) }}</td>
                                   {% else %}
-                                  <td><b>Release Date:</b> {{ h.date_str_to_datetime(version['metadata_created']) }}</td>
+                                  <td>{{ h.date_str_to_datetime(version['metadata_created']) }}</td>
                                   {% endif %}
                                   {% set subset_version = h.version_has_subset(pkg.id, version['id']) %}
                                   {% if subset_version == None %}
