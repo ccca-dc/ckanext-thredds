@@ -45,7 +45,7 @@ ckan.module('stored_queries', function($) {
                 } else if(param == "longitude"){
                     $('#east').val(params[param]);
                 } else if(param == "time_start" || param == "time_end"){
-                     $("[name='" + param + "']").val(moment(new Date(params[param])).format("YYYY-MM-DD hh:mm:ss"));
+                    $("[name='" + param + "']").val(moment(new Date(params[param])).format("YYYY-MM-DD HH:mm:ss"));
                 }
                 else if($("[name='" + param + "']").is(':radio') != true){
                     $("[name='" + param + "']").val(params[param]);
