@@ -730,7 +730,7 @@ def thredds_get_metadata_info(context, data_dict):
     :returns: dict with available metadata from resource
     """
     # Resource ID
-    user = context['auth_user_obj']
+    user = context.get('auth_user_obj', None)
 
     metadata = dict()
 
@@ -740,7 +740,11 @@ def thredds_get_metadata_info(context, data_dict):
     thredds_location = config.get('ckanext.thredds.location')
 
     try:
-        headers={'Authorization': user.apikey}
+        if user is not None:
+            headers = {'Authorization': user.apikey}
+        else:
+            user = tk.get_action('user_show')(context, {'id': context['user']})
+            headers = {'Authorization': user['apikey']}
     except:
         raise NotAuthorized
 
