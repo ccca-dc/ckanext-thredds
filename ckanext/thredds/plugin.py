@@ -90,7 +90,8 @@ class ThreddsPlugin(plugins.SingletonPlugin):
             'get_public_children_datasets': helpers.get_public_children_datasets,
             'check_subset_uniqueness': helpers.check_subset_uniqueness,
             'get_queries_from_user': helpers.get_queries_from_user,
-            'get_query_params': helpers.get_query_params
+            'get_query_params': helpers.get_query_params,
+            'check_if_res_can_create_subset': helpers.check_if_res_can_create_subset
             }
 
     # IPackageController

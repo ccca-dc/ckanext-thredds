@@ -6,6 +6,8 @@ import ckan.logic as logic
 import ckan.lib.helpers as h
 import json
 
+from ckan.common import _, ungettext, g, c, request, session
+
 
 def get_public_children_datasets(package_id):
     ctx = {'model': model}
@@ -124,3 +126,14 @@ def spatial_to_coordinates(spatial):
     coordinates['west'] = spatial['coordinates'][0][0][0][0]
 
     return coordinates
+
+
+def check_if_res_can_create_subset(resource_id):
+    context = {'model': model,
+               'user': c.user}
+    try:
+        tk.get_action('thredds_get_metadata_info')(context, {'id': resource_id})
+    except:
+        return False
+
+    return True

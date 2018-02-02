@@ -803,9 +803,16 @@ def _parse_ncss_metadata_info(ncss_tree, md_dict):
         d['name'] = dimension.attrib["name"]
         d['units'] = dimension.find(".attribute/[@name='units']").attrib["value"]
         d['description'] = dimension.find(".attribute/[@name='long_name']").attrib["value"]
-        d['start'] = dimension.find("values").attrib["start"]
         d['shape'] = dimension.attrib["shape"]
-        d['increment'] = dimension.find("values").attrib["increment"]
+        # not all dimensions contain start and increment attributes
+        try:
+            d['start'] = dimension.find("values").attrib["start"]
+        except:
+            d['start'] = ''
+        try:
+            d['increment'] = dimension.find("values").attrib["increment"]
+        except:
+            d['increment'] = ''
 
         md_dict['dimensions'].append(d)
 
