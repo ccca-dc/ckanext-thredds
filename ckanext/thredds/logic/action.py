@@ -445,6 +445,7 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
                 new_package['name'] = data_dict['package_name']
                 new_package['title'] = data_dict['package_title']
                 new_package['private'] = data_dict['private']
+                new_package['spatial_name'] = data_dict['spatial_name']
 
                 new_package['relations'] = [{'relation': 'is_part_of', 'id': package['id']}]
 

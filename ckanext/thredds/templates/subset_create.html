@@ -117,6 +117,9 @@
                 {% endfor %}
               </select>
 
+
+               <input name="spatial_name" id="spatial_name" type="hidden" value="{{ data.spatial_name if data.spatial_name is defined }}">
+
               <br>
               <div class="left">
                   {{ input('north', id='north', label=_('North'), value=data.north|float|round(4) if data.north != "" and data.north is defined, error=errors.north, title='min: ' + data.metadata.coordinates.south + ' max: ' + data.metadata.coordinates.north, attrs={'data-placement': 'right'}) }}

@@ -178,6 +178,7 @@ this.ckan.module('subset-form', function (jQuery, _) {
             geometry_type = fg.getLayers()[0].toGeoJSON().geometry.type;
             if(geometry_type != "MultiPolygon"){
                 document.getElementById("select-extent").selectedIndex = "0";
+                $('#spatial_name').val("");
             }
             if(geometry_type == "Polygon" || geometry_type == "MultiPolygon"){
                 var bounds = drawnItems.getLayers()[0].getBounds();
@@ -256,6 +257,8 @@ this.ckan.module('subset-form', function (jQuery, _) {
                 map.removeControl(drawControl);
                 map.addControl(drawControlGeoJson);
             }
+
+            $('#spatial_name').val($("#select-extent option:selected").text());
         });
 
         // following elements should not be in this module
