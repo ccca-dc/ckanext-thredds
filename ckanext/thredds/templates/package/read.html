@@ -1,4 +1,4 @@
-{% resource 'thredds/css/subset.css' %}
+{% resource 'thredds/css/package_read.css' %}
 
 {% ckan_extends %}
 
@@ -7,7 +7,7 @@
 {% block package_resources %}
 {% set children = h.get_public_children_datasets(pkg.id) %}
     {% if children|length > 0 %}
-        <a href="#dataset_subsets" class="btn" data-toggle="collapse">Relationship</a>
+        <a href="#dataset_subsets" class="btn btn-default" data-toggle="collapse">Relationship</a>
             <div id="dataset_subsets" class="collapse">
                 <p><b>The following datasets are derived from this dataset:</b></p>
                 <ul id="subset_list">
@@ -19,7 +19,7 @@
             </div>
     {% endif %}
 
-    <h3 href="#versions" class="btn" data-toggle="collapse">Dataset Versions</h3>
+    <p><h3 id="versions-button" href="#versions" class="btn btn-default" data-toggle="collapse">Dataset Versions</h3>
     <div id="versions" class="collapse">
         {% set versions = h.get_versions(pkg.id) %}
 
@@ -52,12 +52,10 @@
                 {% endif %}
             </tr>
         </table>
-        <br>
 
         {% if versions|length > 1 %}
-        <a href="#history" class="btn" data-toggle="collapse">Show History</a>
+        <h3 id="history-button" href="#history" class="btn btn-default btn-sm" data-toggle="collapse">Show History</h3>
           <div id="history" class="collapse">
-              <br>
               <table class="versiontable">
               {% for version in versions %}
                   {% set url=h.url_for(controller='package', action='read', id=version.name) %}
@@ -72,9 +70,8 @@
               {% endfor %}
             </table>
           </div>
-        <br>
         {% endif %}
-    </div>
+    </div></p>
 
     {% set parent_dataset = h.get_parent_dataset(pkg.id) %}
     {% if parent_dataset != None %}
