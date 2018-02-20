@@ -21,7 +21,7 @@ from xml.etree import ElementTree
 import ckanext.thredds.helpers as helpers
 import ckanext.resourceversions.helpers
 
-from ckanext.contact.interfaces import IContact
+#from ckanext.contact.interfaces import IContact #makes problems and obviously we do not need it? Anja, 15.2.18
 import socket
 import hashlib
 import os
