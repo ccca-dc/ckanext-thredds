@@ -36,16 +36,19 @@ ckan.module('wms_view', function ($) {
         var min_value = self.options.layers_details.scaleRange[0];
         var max_value = self.options.layers_details.scaleRange[1];
 
+        var num_colorbands = this.num_colorbands || 100;
+
         var opacity = 1;
 
         var map = L.map('map', {
             zoom: 7,
+            maxmaxZoom: 8,
             fullscreenControl: true,
             timeDimensionControl: true,
             timeDimensionControlOptions: {
                 position: 'bottomleft',
                 playerOptions: {
-                    transitionTime: 1000,
+                    transitionTime: 1000
                 },
                 minSpeed: 0.1,
                 maxSpeed: 2.0
@@ -57,46 +60,46 @@ ckan.module('wms_view', function ($) {
         // ------------------------------------------------
         // Create control elements for first layer
         // Style
-        $( "#style" ).append( 
+        $( "#style" ).append(
           this._getDropDownList(
-            'styles','select-styles',self.options.layers_details.supportedStyles) 
+              'styles','select-styles',self.options.layers_details.supportedStyles.sort())
         );
 
         // Palette
-        $( "#palette" ).append( 
+        $( "#palette" ).append(
           this._getDropDownList(
-            'palettes','select-palettes',self.options.layers_details.palettes) 
+              'palettes','select-palettes',self.options.layers_details.palettes.sort())
         );
 
         // Minimum/Maximum
-        $( "#min-field" ).append( 
-          $("<input id='min-value' type='text' class='numbersOnly' value=" + self.options.layers_details.scaleRange[0].toString() + ">")
+        $( "#min-field" ).append(
+          $("<input id='min-value' type='text' class='numbersOnly' value=" + this.maximum || self.options.layers_details.scaleRange[0].toString() + ">")
         );
 
-        $( "#max-field" ).append( 
-          $("<input id='max-value' type='text' class='numbersOnly' value=" + self.options.layers_details.scaleRange[1].toString() + ">")
+        $( "#max-field" ).append(
+          $("<input id='max-value' type='text' class='numbersOnly' value=" + this.minimum ||self.options.layers_details.scaleRange[1].toString() + ">")
         );
 
         // Opacity
-        $( "#opacity" ).append( 
+        $( "#opacity" ).append(
           $("<input id='opacity-value' type='range' min='0' max='1' step='0.1' value=" + opacity.toString() + " />")
         );
 
         // Export
-        $( "#export" ).append( 
+        $( "#export" ).append(
           $("<button type='button' id='export-png'>Export Map to PNG</button>")
         );
         // ------------------------------------------------
         // Define functions for control elements
-        $('.numbersOnly').keyup(function () { 
+        $('.numbersOnly').keyup(function () {
             this.value = this.value.replace(/[^0-9\.\-\+]/g,'');
         });
 
         $('#min-value').on('focusout', function() {
           min_value = this.value;
           // Update Preview
-          // cccaHeightLayer.setParams({colorscalerange: min_value + ',' + max_value}); 
-          cccaHeightTimeLayer.setParams({colorscalerange: min_value + ',' + max_value}); 
+          // cccaHeightLayer.setParams({colorscalerange: min_value + ',' + max_value});
+          cccaHeightTimeLayer.setParams({colorscalerange: min_value + ',' + max_value});
           cccaLegend.removeFrom(map);
           cccaLegend.addTo(map);
         });
@@ -104,12 +107,12 @@ ckan.module('wms_view', function ($) {
         $('#max-value').on('focusout', function() {
           max_value = this.value;
           // Update Preview
-          // cccaHeightLayer.setParams({colorscalerange: min_value + ',' + max_value}); 
-          cccaHeightTimeLayer.setParams({colorscalerange: min_value + ',' + max_value}); 
+          // cccaHeightLayer.setParams({colorscalerange: min_value + ',' + max_value});
+          cccaHeightTimeLayer.setParams({colorscalerange: min_value + ',' + max_value});
           cccaLegend.removeFrom(map);
           cccaLegend.addTo(map);
         });
-        
+
         $('#select-palettes').on('change', function() {
           palette_selection = this.value;
           // Update Preview
@@ -132,7 +135,7 @@ ckan.module('wms_view', function ($) {
           opacity = this.value;
           // Update Preview
           cccaHeightTimeLayer.setOpacity(opacity);
- 
+
         });
 
         $('#export-png').on('click', function() {
@@ -145,7 +148,7 @@ ckan.module('wms_view', function ($) {
             mapPane.style.transform = "";
             mapPane.style.left = mapX + "px";
             mapPane.style.top = mapY + "px";
-        
+
             var myTiles = $("img.leaflet-tile");
             var tilesLeft = [];
             var tilesTop = [];
@@ -170,7 +173,7 @@ ckan.module('wms_view', function ($) {
                 myTiles[i].style.top = (tilesTop[i]) + "px";
                 myTiles[i].style.opacity = myTiles[i]._layer.options.opacity;
             }
-        
+
             var myDivicons = $(".leaflet-marker-icon");
             var dx = [];
             var dy = [];
@@ -183,10 +186,10 @@ ckan.module('wms_view', function ($) {
                 myDivicons[i].style.left = dx[i] + "px";
                 myDivicons[i].style.top = dy[i] + "px";
             }
-        
+
             var mapWidth = parseFloat($("#map").css("width").replace("px", ""));
             var mapHeight = parseFloat($("#map").css("height").replace("px", ""));
-        
+
             var linesLayer = $("svg.leaflet-zoom-animated")[0];
             var oldLinesWidth = linesLayer.getAttribute("width");
             var oldLinesHeight = linesLayer.getAttribute("height");
@@ -207,7 +210,7 @@ ckan.module('wms_view', function ($) {
             $(".leaflet-bottom.leaflet-left").append("<div id='export-info'><p>" + currentTime.toUTCString() + "</p><p>" + wmsabstracts + "</p></div>");
             //$(".leaflet-bottom.leaflet-left").;
 
-        
+
             html2canvas(document.getElementById("map"), {
                 useCORS: true,
                 letterRendering: false,
@@ -222,7 +225,7 @@ ckan.module('wms_view', function ($) {
                     $("#export-info").remove();
                 }
             });
-        
+
             for (var i = 0; i < myTiles.length; i++) {
                 if (tileMethod[i] == "left") {
                     myTiles[i].style.left = (tilesLeft[i]) + "px";
@@ -264,7 +267,7 @@ ckan.module('wms_view', function ($) {
             colorscalerange: min_value + ',' + max_value,
             abovemaxcolor: "extend",
             belowmincolor: "extend",
-            numcolorbands: 100,
+            numcolorbands: num_colorbands,
             styles: style_selection + '/' + palette_selection
         });
 
@@ -311,7 +314,7 @@ ckan.module('wms_view', function ($) {
             position: 'bottomright'
         });
         cccaLegend.onAdd = function(map) {
-            var src = cccaWMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&LAYER=" + wmslayers[0].id + "&colorscalerange="+ min_value + ',' + max_value + "&PALETTE="+ palette_selection +"&numcolorbands=100&transparent=TRUE";
+            var src = cccaWMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&LAYER=" + wmslayers[0].id + "&colorscalerange="+ min_value + ',' + max_value + "&PALETTE="+ palette_selection +"&numcolorbands="+num_colorbands+"&transparent=TRUE";
             var div = L.DomUtil.create('div', 'info legend');
             div.innerHTML +=
                 '<img src="' + src + '" alt="legend">';
@@ -369,13 +372,13 @@ ckan.module('wms_view', function ($) {
 
       _getDropDownList: function(name, id, optionList) {
           var combo = $("<select></select>").attr("id", id).attr("name", name);
-      
+
           $.each(optionList, function (i, el) {
               combo.append("<option>" + el + "</option>");
           });
-      
+
           return combo;
       }
-      
+
   };
 });

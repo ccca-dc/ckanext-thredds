@@ -29,14 +29,20 @@ class ThreddsPlugin(plugins.SingletonPlugin):
                 'iframed': False,
                 'requires_datastore': False,
                 'default_title': plugins.toolkit._('View'),
-                'preview_enabled':True
+                'preview_enabled':True,
+                'schema': {
+                    'minimum': [ignore_empty, natural_number_validator],
+                    'maximum': [ignore_empty, natural_number_validator],
+                    'num_colorbands': [ignore_empty, is_positive_integer],
+                    'logscale': [ignore_empty, boolean_validator]
+                }
                 }
 
     def can_view(self, data_dict):
         resource = data_dict['resource']
         format_lower = resource.get('format', '').lower()
 
-        if format_lower in 'netcdf':
+        if 'netcdf' in format_lower:
             return True
         else:
             return False
