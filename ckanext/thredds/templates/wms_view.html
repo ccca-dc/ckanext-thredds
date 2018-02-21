@@ -15,7 +15,8 @@
       <div class="well well-lg">
           <h3>Map Preferences</h3>
            <ul class="nav nav-pills">
-             <li class="active"><a data-toggle="pill" href="#style">Style</a></li>
+             <li class="active"><a data-toggle="pill" href="#layer">Layer</a></li>
+             <li><a data-toggle="pill" href="#style">Style</a></li>
              <li><a data-toggle="pill" href="#palette">Color Palette</a></li>
              <li><a data-toggle="pill" href="#min-max">Minimum/Maximum</a></li>
              <li><a data-toggle="pill" href="#opacity">Opacity</a></li>
@@ -23,15 +24,20 @@
            </ul>
 
            <div class="tab-content" style="display:inline">
-             <div id="style" class="tab-pane active"></div>
+             <div id="layer" class="tab-pane active"></div>
+             <div id="style" class="tab-pane"></div>
              <div id="palette" class="tab-pane"></div>
              <div id="min-max" class="tab-pane">
-               <div class="form-group">
-                 <label id="min-field" for="min-value">Minimum Value:</label>
-               </div>
-               <div class="form-group">
-                 <label id="max-field" for="max-value">Maximum Value:</label>
-               </div>
+               <table>
+                 <tr>
+                   <td>Minimum Value:</td>
+                   <td id="min-field"></td>
+                 </tr>
+                 <tr>
+                   <td>Maximum Value:</td>
+                   <td id="max-field"></td>
+                 </tr>
+               </table>
              </div>
              <div id="opacity" class="tab-pane"></div>
              <div id="export" class="tab-pane"></div>
@@ -40,7 +46,14 @@
 
         <div id="map" class="map" data-module="wms_view"
              data-module-resource_id="{{ resource_id }}"
-             data-module-site_url="{{ h.dump_json(h.url('/', locale='default', qualified=true)) }}">
+             data-module-site_url="{{ h.dump_json(h.url('/', locale='default', qualified=true)) }}"
+             data-module-minimum ="{{ minimum }}"
+             data-module-maximum ="{{ maximum }}"
+             data-module-num_colorbands ="{{ num_colorbands }}"
+             data-module-logscale ="{{ logscale }}"
+             data-module-default_layer ="{{ default_layer }}"
+             data-module-default_colormap ="{{ default_colormap }}"
+        >
         </div>
 
         <div id="chart" class="chart-wrapper"></div>

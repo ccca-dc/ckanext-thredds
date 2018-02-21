@@ -3,7 +3,13 @@ ckan.module('wms_view', function ($) {
       /* options object can be extended using data-module-* attributes */
       options: {
           resource_id:'',
-          site_url:''
+          minimum:'',
+          maximum:'',
+          num_colorbands:'',
+          logscale:'',
+          site_url:'',
+          default_layer:'',
+          default_colormap:''
       },
 
       initialize: function () {
@@ -28,21 +34,26 @@ ckan.module('wms_view', function ($) {
 
         var self = this;
         var wmslayers = $.map(self.options.layers, function( value, key ) { return value.children});
+        var wmslayers_id = $.map(wmslayers, function( value, key ) { return value.id});
         var wmsabstracts = $.map(self.options.layers, function( value, key ) { return value.label } );
 
-        var palette_selection = self.options.layers_details.defaultPalette;
+        var wmslayer_selected = wmslayers[self.options.default_layer] || wmslayers[0];
+        var wmsabstract_selected = wmsabstracts[self.options.default_layer] || wmsabstracts[0];
+
+
+        var palette_selection = self.options.default_colormap || self.options.layers_details.defaultPalette;
         var style_selection = self.options.layers_details.supportedStyles[0];
 
-        var min_value = self.options.layers_details.scaleRange[0];
-        var max_value = self.options.layers_details.scaleRange[1];
+        var min_value = self.options.minimum.toString() || self.options.layers_details.scaleRange[0].toString();
+        var max_value = self.options.maximum.toString() || self.options.layers_details.scaleRange[1].toString();
 
-        var num_colorbands = this.num_colorbands || 100;
+        var num_colorbands = self.options.num_colorbands || 100;
 
         var opacity = 1;
 
         var map = L.map('map', {
             zoom: 7,
-            maxmaxZoom: 8,
+            maxZoom: 9,
             fullscreenControl: true,
             timeDimensionControl: true,
             timeDimensionControlOptions: {
@@ -59,6 +70,11 @@ ckan.module('wms_view', function ($) {
 
         // ------------------------------------------------
         // Create control elements for first layer
+        // Layer
+        $( "#layer" ).append(
+            this._getDropDownList(
+                'layers','select-layers',wmslayers_id)
+        );
         // Style
         $( "#style" ).append(
           this._getDropDownList(
@@ -73,11 +89,11 @@ ckan.module('wms_view', function ($) {
 
         // Minimum/Maximum
         $( "#min-field" ).append(
-          $("<input id='min-value' type='text' class='numbersOnly' value=" + this.maximum || self.options.layers_details.scaleRange[0].toString() + ">")
+          $("<input id='min-value' type='text' class='numbersOnly' value=" + min_value + ">")
         );
 
         $( "#max-field" ).append(
-          $("<input id='max-value' type='text' class='numbersOnly' value=" + this.minimum ||self.options.layers_details.scaleRange[1].toString() + ">")
+          $("<input id='max-value' type='text' class='numbersOnly' value=" + max_value + ">")
         );
 
         // Opacity
@@ -129,6 +145,16 @@ ckan.module('wms_view', function ($) {
           cccaHeightTimeLayer.setParams({styles:style_selection + '/' + palette_selection});
           cccaLegend.removeFrom(map);
           cccaLegend.addTo(map);
+        });
+
+        $('#select-layers').on('change', function() {
+            index = this.selectedIndex;
+            wmslayer_selected = wmslayers[index];
+            wmsabstract_selected = wmsabstracts[index];
+            // Update Preview
+            cccaHeightTimeLayer.setParams({layers:wmslayer_selected.id});
+            cccaLegend.removeFrom(map);
+            cccaLegend.addTo(map);
         });
 
         $('#opacity-value').on('change', function() {
@@ -261,7 +287,7 @@ ckan.module('wms_view', function ($) {
         var cccaWMS = self.options.site_url + "tds_proxy/wms/" + self.options.resource_id;
 
         var cccaHeightLayer = L.tileLayer.wms(cccaWMS, {
-            layers: wmslayers[0].id,
+            layers: wmslayer_selected.id,
             format: 'image/png',
             transparent: true,
             colorscalerange: min_value + ',' + max_value,
@@ -303,8 +329,8 @@ ckan.module('wms_view', function ($) {
         var cccaHeightTimeLayer = L.timeDimension.layer.wms.timeseries(cccaHeightLayer, {
             updateTimeDimension: true,
             markers: markers,
-            name: wmsabstracts[0],
-            legendname: wmslayers[0].label,
+            name: wmsabstract_selected,
+            legendname: wmslayer_selected.label,
             maxValues: 2000,
             units: self.options.layers_details.units,
             enableNewMarkers: true
@@ -314,7 +340,7 @@ ckan.module('wms_view', function ($) {
             position: 'bottomright'
         });
         cccaLegend.onAdd = function(map) {
-            var src = cccaWMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&LAYER=" + wmslayers[0].id + "&colorscalerange="+ min_value + ',' + max_value + "&PALETTE="+ palette_selection +"&numcolorbands="+num_colorbands+"&transparent=TRUE";
+            var src = cccaWMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&LAYER=" + wmslayer_selected.id + "&colorscalerange="+ min_value + ',' + max_value + "&PALETTE="+ palette_selection +"&numcolorbands="+num_colorbands+"&transparent=TRUE";
             var div = L.DomUtil.create('div', 'info legend');
             div.innerHTML +=
                 '<img src="' + src + '" alt="legend">';
@@ -323,16 +349,16 @@ ckan.module('wms_view', function ($) {
 
 
         var overlayMaps = {};
-        overlayMaps[wmsabstracts[0].toString()] = cccaHeightTimeLayer;
+        overlayMaps[wmsabstract_selected.toString()] = cccaHeightTimeLayer;
 
         map.on('overlayadd', function(eventLayer) {
-            if (eventLayer.name == wmsabstracts[0]) {
+            if (eventLayer.name == wmsabstract_selected) {
                 cccaLegend.addTo(this);
             }
         });
 
         map.on('overlayremove', function(eventLayer) {
-            if (eventLayer.name == wmsabstracts[0]) {
+            if (eventLayer.name == wmsabstract_selected) {
                 map.removeControl(cccaLegend);
             }
         });
