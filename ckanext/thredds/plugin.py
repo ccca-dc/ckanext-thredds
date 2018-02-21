@@ -36,6 +36,7 @@ class ThreddsPlugin(plugins.SingletonPlugin):
                     'maximum': [toolkit.get_validator('ignore_empty'), val.natural_number_validator],
                     'num_colorbands': [toolkit.get_validator('ignore_empty'), val.is_positive_integer],
                     'logscale': [toolkit.get_validator('ignore_empty'), val.boolean_validator]
+                    'default_layer': [toolkit.get_validator('ignore_empty')]
                 }
                 }
 
