@@ -7,7 +7,9 @@ ckan.module('wms_view', function ($) {
           maximum:'',
           num_colorbands:'',
           logscale:'',
-          site_url:''
+          site_url:'',
+          default_layer:'',
+          default_colormap:''
       },
 
       initialize: function () {
@@ -32,13 +34,14 @@ ckan.module('wms_view', function ($) {
 
         var self = this;
         var wmslayers = $.map(self.options.layers, function( value, key ) { return value.children});
+        var wmslayers_id = $.map(wmslayers, function( value, key ) { return value.id});
         var wmsabstracts = $.map(self.options.layers, function( value, key ) { return value.label } );
 
-        var wmslayer_selected = wmslayers[0];
-        var wmsabstract_selected = wmsabstracts[0];
+        var wmslayer_selected = wmslayers[self.options.default_layer] || wmslayers[0];
+        var wmsabstract_selected = wmsabstracts[self.options.default_layer] || wmsabstracts[0];
 
 
-        var palette_selection = self.options.layers_details.defaultPalette;
+        var palette_selection = self.options.default_colormap || self.options.layers_details.defaultPalette;
         var style_selection = self.options.layers_details.supportedStyles[0];
 
         var min_value = self.options.minimum.toString() || self.options.layers_details.scaleRange[0].toString();
@@ -70,7 +73,7 @@ ckan.module('wms_view', function ($) {
         // Layer
         $( "#layer" ).append(
             this._getDropDownList(
-                'layers','select-layers',self.options.wmslayers)
+                'layers','select-layers',wmslayers_id)
         );
         // Style
         $( "#style" ).append(
@@ -145,9 +148,11 @@ ckan.module('wms_view', function ($) {
         });
 
         $('#select-layers').on('change', function() {
-            wmslayer_selected = this.value;
+            index = this.selectedIndex;
+            wmslayer_selected = wmslayers[index];
+            wmsabstract_selected = wmsabstracts[index];
             // Update Preview
-            cccaHeightTimeLayer.setParams({layers:wmslayer_selected});
+            cccaHeightTimeLayer.setParams({layers:wmslayer_selected.id});
             cccaLegend.removeFrom(map);
             cccaLegend.addTo(map);
         });

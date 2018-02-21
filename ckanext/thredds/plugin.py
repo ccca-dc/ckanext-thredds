@@ -35,8 +35,9 @@ class ThreddsPlugin(plugins.SingletonPlugin):
                     'minimum': [toolkit.get_validator('ignore_empty'), val.natural_number_validator],
                     'maximum': [toolkit.get_validator('ignore_empty'), val.natural_number_validator],
                     'num_colorbands': [toolkit.get_validator('ignore_empty'), val.is_positive_integer],
-                    'logscale': [toolkit.get_validator('ignore_empty'), val.boolean_validator]
-                    'default_layer': [toolkit.get_validator('ignore_empty')]
+                    'logscale': [toolkit.get_validator('ignore_empty'), val.boolean_validator],
+                    'default_layer': [toolkit.get_validator('ignore_empty')],
+                    'default_colormap': [toolkit.get_validator('ignore_empty')]
                 }
                 }
 
@@ -65,7 +66,9 @@ class ThreddsPlugin(plugins.SingletonPlugin):
             'minimum': data_dict['resource_view'].get('minimum', ''),
             'maximum': data_dict['resource_view'].get('maximum', ''),
             'num_colorbands': data_dict['resource_view'].get('num_colorbands', ''),
-            'logscale': data_dict['resource_view'].get('logscale', '')
+            'logscale': data_dict['resource_view'].get('logscale', ''),
+            'default_layer': data_dict['resource_view'].get('default_layer', ''),
+            'default_colormap': data_dict['resource_view'].get('default_colormap', '')
         }
 
         return tpl_variables
