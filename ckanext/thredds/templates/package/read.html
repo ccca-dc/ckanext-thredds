@@ -101,14 +101,19 @@
                           <td>{{ h.date_str_to_datetime(version['metadata_created']) }}</td>
                           {% endif %}
                           {% set subset_version = h.version_has_subset(pkg.id, version['id']) %}
+                          <td>
                           {% if subset_version == None %}
-                            <td>{% link_for _('Create'), controller='ckanext.resourceversions.controllers.subset_version:SubsetVersionController', action='create_new_version_of_subset', subset_id=pkg.id, orig_id=version['id'], class_='btn btn-default btn-sm' %}</td>
-                            </p>
+                                {% if h.check_access('package_update', {'id':pkg.id }) %}
+                                    {% link_for _('Create'), controller='ckanext.resourceversions.controllers.subset_version:SubsetVersionController', action='create_new_version_of_subset', subset_id=pkg.id, orig_id=version['id'], class_='btn btn-default btn-sm' %}</td>
+                                {% else %}
+                                    <div class="small-grey">No subset available</div>
+                                {% endif %}
                           {% else %}
                             {% set url=h.url_for(controller='package', action='read', id=subset_version.name) %}
-                            <td ><a href="{{ url }}">{{ subset_version['title'] }} (Version {{ versions|length - subset_version_nr }})</a></td>
+                            <a href="{{ url }}">{{ subset_version['title'] }} (Version {{ versions|length - subset_version_nr }})</a>
                             {% set subset_version_nr = subset_version_nr + 1 %}
                           {% endif %}
+                          </td>
                       </tr>
                   {% endfor %}
               </table>
