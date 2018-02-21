@@ -2,6 +2,7 @@ import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
 import ckanext.thredds.logic.action as action
 from ckanext.thredds import helpers
+import ckan.logic.validators as val
 
 
 class ThreddsPlugin(plugins.SingletonPlugin):
@@ -31,10 +32,10 @@ class ThreddsPlugin(plugins.SingletonPlugin):
                 'default_title': plugins.toolkit._('View'),
                 'preview_enabled':True,
                 'schema': {
-                    'minimum': [ignore_empty, natural_number_validator],
-                    'maximum': [ignore_empty, natural_number_validator],
-                    'num_colorbands': [ignore_empty, is_positive_integer],
-                    'logscale': [ignore_empty, boolean_validator]
+                    'minimum': [toolkit.get_validator('ignore_empty'), val.natural_number_validator],
+                    'maximum': [toolkit.get_validator('ignore_empty'), val.natural_number_validator],
+                    'num_colorbands': [toolkit.get_validator('ignore_empty'), val.is_positive_integer],
+                    'logscale': [toolkit.get_validator('ignore_empty'), val.boolean_validator]
                 }
                 }
 
@@ -47,16 +48,23 @@ class ThreddsPlugin(plugins.SingletonPlugin):
         else:
             return False
 
-
     def view_template(self, context, data_dict):
         return 'wms_view.html'
+
+    def form_template(self, context, data_dict):
+        return 'wms_form.html'
 
     def setup_template_variables(self, context, data_dict):
         """Setup variables available to templates"""
         resource_id = data_dict['resource']['id']
+        print(data_dict['resource_view'])
 
         tpl_variables = {
-            'resource_id': resource_id
+            'resource_id': resource_id,
+            'minimum': data_dict['resource_view'].get('minimum', ''),
+            'maximum': data_dict['resource_view'].get('maximum', ''),
+            'num_colorbands': data_dict['resource_view'].get('num_colorbands', ''),
+            'logscale': data_dict['resource_view'].get('logscale', '')
         }
 
         return tpl_variables

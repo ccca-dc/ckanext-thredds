@@ -3,6 +3,10 @@ ckan.module('wms_view', function ($) {
       /* options object can be extended using data-module-* attributes */
       options: {
           resource_id:'',
+          minimum:'',
+          maximum:'',
+          num_colorbands:'',
+          logscale:'',
           site_url:''
       },
 
@@ -33,16 +37,16 @@ ckan.module('wms_view', function ($) {
         var palette_selection = self.options.layers_details.defaultPalette;
         var style_selection = self.options.layers_details.supportedStyles[0];
 
-        var min_value = self.options.layers_details.scaleRange[0];
-        var max_value = self.options.layers_details.scaleRange[1];
+        var min_value = self.options.minimum.toString() || self.options.layers_details.scaleRange[0].toString();
+        var max_value = self.options.maximum.toString() || self.options.layers_details.scaleRange[1].toString();
 
-        var num_colorbands = this.num_colorbands || 100;
+        var num_colorbands = self.options.num_colorbands || 100;
 
         var opacity = 1;
 
         var map = L.map('map', {
             zoom: 7,
-            maxmaxZoom: 8,
+            maxZoom: 9,
             fullscreenControl: true,
             timeDimensionControl: true,
             timeDimensionControlOptions: {
@@ -73,11 +77,11 @@ ckan.module('wms_view', function ($) {
 
         // Minimum/Maximum
         $( "#min-field" ).append(
-          $("<input id='min-value' type='text' class='numbersOnly' value=" + this.maximum || self.options.layers_details.scaleRange[0].toString() + ">")
+          $("<input id='min-value' type='text' class='numbersOnly' value=" + min_value + ">")
         );
 
         $( "#max-field" ).append(
-          $("<input id='max-value' type='text' class='numbersOnly' value=" + this.minimum ||self.options.layers_details.scaleRange[1].toString() + ">")
+          $("<input id='max-value' type='text' class='numbersOnly' value=" + max_value + ">")
         );
 
         // Opacity
