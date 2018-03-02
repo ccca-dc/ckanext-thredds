@@ -24,7 +24,7 @@
       <label for="field-private" class="control-label">{{ _('Visibility') }}</label>
       <div class="controls">
         {% if data.private == false %}
-            <input value="public" readonly="readonly" type="text"/>
+            <input value="public" readonly="readonly" type="text" class="form-control"/>
         {% else %}
             {% set subset_uniqueness = h.check_subset_uniqueness(data.id) if data.id is not undefined else [] %}
             {% if subset_uniqueness|length > 0 %}
@@ -37,18 +37,20 @@
                     with the same query as your package is already public and should be used for citation.
                 </div>
             {% else %}
-                <select id="field-private" name="private">
+                <select id="field-private" name="private" class="form-control">
                   {% for option in [('True', _('Private')), ('False', _('Public'))] %}
                   <option value="{{ option[0] }}" {% if option[0] == data.private|trim %}selected="selected"{% endif %}>{{ option[1] }}</option>
                   {% endfor %}
                 </select>
             {% endif %}
         {% endif %}
-      </div>
-      <div class="info-block info-inline">
-          <i class="icon-info-sign"></i>
+      <div class="helptip pull-right">
+         <i class="icon-question-sign icon-2x"></i>
+         <span class="helptiptext">
           Server operation variable: Shall your dataset be visible to others? (default: no! - private)
           <b>Attention:</b> Once set public it cannot be set private again nor can it be deleted!<br>
+          </span>
+     </div>
      </div>
     </div>
   {% endblock %}
