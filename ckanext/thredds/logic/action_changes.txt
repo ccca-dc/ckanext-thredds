@@ -11,6 +11,16 @@ in get_ncss_subset_params:
 
 r = requests.get('http://sandboxdc.ccca.ac.at/' + thredds_location + '/ncss/7e23ea50-3300-4796-b996-a8dfc21e2db1', params=params, headers=headers)
 
+# with open(file_path, 'rb') as f:
+#     for chunk in iter(lambda: f.read(128*hasher.block_size), b''):
+#         hasher.update(chunk)
+#
+# resource_params = dict()
+# resource_params['hash'] = hasher.hexdigest()
+#
+# # Filesize
+# resource_params['size'] = os.path.getsize(file_path)
+
 
 in thredds_get_metadata_info:
 

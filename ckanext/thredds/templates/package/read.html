@@ -41,10 +41,16 @@
 
         <h4>{{ _('Latest Version') }}</h4>
         {% set latest_version = versions|first %}
-        {% set url=h.url_for(controller='package', action='read', id=latest_version.name) %}
         <table class="versiontable">
             <tr>
-                <td style="width:100px"><a href="{{ url }}">Version {{ versions|length }} </a></td>
+                <td style="width:100px">
+                {% if h.check_access('package_show', {'id':latest_version.id}) %}
+                    {% set url=h.url_for(controller='package', action='read', id=latest_version.name) %}
+                    <a href="{{ url }}">
+                {% else %}
+                    <a data-toggle="tooltip" title="This version is private">
+                {% endif %}
+                Version {{ versions|length }} </a></td>
                 {% if 'issued' in latest_version and latest_version['issued'] %}
                 <td><b>Release Date:</b> {{ h.date_str_to_datetime(latest_version['issued']) }}</td>
                 {% else %}
@@ -58,9 +64,16 @@
           <div id="history" class="collapse">
               <table class="versiontable">
               {% for version in versions %}
-                  {% set url=h.url_for(controller='package', action='read', id=version.name) %}
                   <tr>
-                      <td style="width:100px"><a href="{{ url }}">Version {{ versions|length + 1 - loop.index }} </a></td>
+                      <td style="width:100px">
+                      {% if h.check_access('package_show', {'id':version.id}) %}
+                          {% set url=h.url_for(controller='package', action='read', id=version.name) %}
+                          <a href="{{ url }}">
+                      {% else %}
+                          <a data-toggle="tooltip" title="This version is private">
+                      {% endif %}
+                      Version {{ versions|length + 1 - loop.index }}
+                      </a></td>
                       {% if 'issued' in version and version['issued'] %}
                       <td><b>Release Date:</b> {{ h.date_str_to_datetime(version['issued']) }}</td>
                       {% else %}
@@ -110,7 +123,12 @@
                                 {% endif %}
                           {% else %}
                             {% set url=h.url_for(controller='package', action='read', id=subset_version.name) %}
-                            <a href="{{ url }}">{{ subset_version['title'] }} (Version {{ versions|length - subset_version_nr }})</a>
+                            {% if h.check_access('package_show', {'id':subset_version.id}) %}
+                                <a href="{{ url }}">
+                            {% else %}
+                                <a data-toggle="tooltip" title="This version is private">
+                            {% endif %}
+                            {{ subset_version['title'] }} (Version {{ versions|length - subset_version_nr }})</a>
                             {% set subset_version_nr = subset_version_nr + 1 %}
                           {% endif %}
                           </td>

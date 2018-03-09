@@ -18,7 +18,7 @@ def get_public_children_datasets(package_id):
 
 
 def get_parent_dataset(package_id):
-    ctx = {'model': model}
+    ctx = {'model': model, 'ignore_auth': True}
 
     package = tk.get_action('package_show')(ctx, {'id': package_id})
 
