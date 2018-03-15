@@ -137,3 +137,7 @@ def check_if_res_can_create_subset(resource_id):
         return False
 
     return True
+
+def get_current_datetime():
+    import datetime
+    return datetime.datetime.utcnow()

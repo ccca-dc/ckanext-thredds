@@ -3,11 +3,11 @@ ckan.module('wms_view', function ($) {
       /* options object can be extended using data-module-* attributes */
       options: {
           resource_id:'',
+          site_url:'',
           minimum:'',
           maximum:'',
           num_colorbands:'',
           logscale:'',
-          site_url:'',
           default_layer:'',
           default_colormap:''
       },
@@ -37,23 +37,45 @@ ckan.module('wms_view', function ($) {
         var wmslayers_id = $.map(wmslayers, function( value, key ) { return value.id});
         var wmsabstracts = $.map(self.options.layers, function( value, key ) { return value.label } );
 
-        var wmslayer_selected = wmslayers[self.options.default_layer] || wmslayers[0];
-        var wmsabstract_selected = wmsabstracts[self.options.default_layer] || wmsabstracts[0];
+        if ($.isNumeric(self.options.default_layer)) {
+          var wmslayer_selected = wmslayers[self.options.default_layer];
+          var wmsabstract_selected = wmsabstracts[self.options.default_layer];
+        } else {
+          var wmslayer_selected = wmslayers[0];
+          var wmsabstract_selected = wmsabstracts[0];
+          
+        }
 
+        if ($.type(self.options.default_colormap) == "string") {
+          var palette_selection = self.options.default_colormap;
+        } else {
+          var palette_selection = self.options.layers_details.defaultPalette;
+        }
 
-        var palette_selection = self.options.default_colormap || self.options.layers_details.defaultPalette;
         var style_selection = self.options.layers_details.supportedStyles[0];
 
-        var min_value = self.options.minimum.toString() || self.options.layers_details.scaleRange[0].toString();
-        var max_value = self.options.maximum.toString() || self.options.layers_details.scaleRange[1].toString();
+        if ($.isNumeric(self.options.minimum)) {
+          var min_value = self.options.minimum.toString();
+        } else {
+          var min_value = self.options.layers_details.scaleRange[0].toString();
+        }
 
-        var num_colorbands = self.options.num_colorbands || 100;
+        if ($.isNumeric(self.options.maximum)) {
+          var max_value = self.options.maximum.toString();
+        } else {
+          var max_value = self.options.layers_details.scaleRange[1].toString();
+        }
+
+        if ($.isNumeric(self.options.num_colorbands)) {
+          var num_colorbands = self.options.num_colorbands;
+        } else {
+          var num_colorbands = 100;
+        }
 
         var opacity = 1;
 
         var map = L.map('map', {
             zoom: 7,
-            maxZoom: 9,
             fullscreenControl: true,
             timeDimensionControl: true,
             timeDimensionControlOptions: {
@@ -75,6 +97,7 @@ ckan.module('wms_view', function ($) {
             this._getDropDownList(
                 'layers','select-layers',wmslayers_id)
         );
+
         // Style
         $( "#style" ).append(
           this._getDropDownList(
@@ -89,21 +112,23 @@ ckan.module('wms_view', function ($) {
 
         // Minimum/Maximum
         $( "#min-field" ).append(
-          $("<input id='min-value' type='text' class='numbersOnly' value=" + min_value + ">")
+          $("<input id='min-value' type='text' class='numbersOnly form-control' value=" + min_value + ">")
         );
-
         $( "#max-field" ).append(
-          $("<input id='max-value' type='text' class='numbersOnly' value=" + max_value + ">")
+          $("<input id='max-value' type='text' class='numbersOnly form-control' value=" + max_value + ">")
+        );
+        $( "#num-colorband" ).append(
+          $("<input id='num-colorbands' type='text' class='numbersOnly form-control' value=" + num_colorbands + ">")
         );
 
         // Opacity
-        $( "#opacity" ).append(
+        $( "#opacity-pane" ).append(
           $("<input id='opacity-value' type='range' min='0' max='1' step='0.1' value=" + opacity.toString() + " />")
         );
 
         // Export
-        $( "#export" ).append(
-          $("<button type='button' id='export-png'>Export Map to PNG</button>")
+        $( "#export-pane" ).append(
+          $("<button class='btn btn-primary' type='button' id='export-png'>Export Map to PNG</button>")
         );
         // ------------------------------------------------
         // Define functions for control elements
@@ -125,6 +150,15 @@ ckan.module('wms_view', function ($) {
           // Update Preview
           // cccaHeightLayer.setParams({colorscalerange: min_value + ',' + max_value});
           cccaHeightTimeLayer.setParams({colorscalerange: min_value + ',' + max_value});
+          cccaLegend.removeFrom(map);
+          cccaLegend.addTo(map);
+        });
+
+        $('#num-colorbands').on('focusout', function() {
+          num_colorbands = this.value;
+          // Update Preview
+          // cccaHeightLayer.setParams({colorscalerange: min_value + ',' + max_value});
+          cccaHeightTimeLayer.setParams({numcolorbands: num_colorbands});
           cccaLegend.removeFrom(map);
           cccaLegend.addTo(map);
         });
@@ -397,7 +431,7 @@ ckan.module('wms_view', function ($) {
       },
 
       _getDropDownList: function(name, id, optionList) {
-          var combo = $("<select></select>").attr("id", id).attr("name", name);
+          var combo = $("<select></select>").attr("id", id).attr("name", name).attr("class","form-control");
 
           $.each(optionList, function (i, el) {
               combo.append("<option>" + el + "</option>");

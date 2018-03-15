@@ -41,7 +41,16 @@ class ThreddsProxyController(base.BaseController):
         except (tk.ObjectNotFound, tk.NotAuthorized):
            tk.abort(404, _('Resource not found'))
 
-        if authz.auth_is_anon_user(context):
+        if "wms" in service:
+            p_query = request.query_string
+            if 'extra' in kwargs:
+                p_path = os.path.join('/thredds',service,'ckan',res_id[0:3], res_id[3:6], res_id[6:], kwargs.get('extra'))
+            else:
+                p_path = os.path.join('/thredds',service,'ckan',res_id[0:3], res_id[3:6], res_id[6:])
+
+            response.headers['X-Accel-Redirect'] = "{0}?{1}".format(p_path,p_query)
+            return response
+        elif authz.auth_is_anon_user(context):
             tk.abort(401, _('Unauthorized to read resource %s') % res_id)
         else:
             p_query = request.query_string

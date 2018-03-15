@@ -1,4 +1,7 @@
 {% resource 'thredds/css/package_read.css' %}
+{% resource 'thredds/citation_copy.js' %}
+{% resource 'thredds/citation_copy.css' %}
+
 
 {% ckan_extends %}
 
@@ -19,9 +22,18 @@
             </div>
     {% endif %}
 
-    <p><h3 id="versions-button" href="#versions" class="btn btn-default" data-toggle="collapse">Dataset Versions</h3>
-    <div id="versions" class="collapse">
+<div class="row">
+  <div class="col-md-12">
+  <a class="btn btn-default" data-toggle="collapse" href="#multiCollapseVersion" role="button" aria-expanded="false" aria-controls="multiCollapseVersion">Dataset Versions</a>
+  <button class="btn btn-default" type="button" data-toggle="collapse" data-target="#multiCollapseCitation" aria-expanded="false" aria-controls="multiCollapseCitation">Citation</button>
+  </div>
+</div>
+<div class="row">
+  <div class="col-md-12">
+    <div class="collapse multi-collapse" id="multiCollapseVersion">
+      <div class="card card-body">
         {% set versions = h.get_versions(pkg.id) %}
+        <h3> Dataset Versions: </h3>
 
         <h4>{{ _('This Version') }}</h4>
         {% for version in versions %}
@@ -84,7 +96,37 @@
             </table>
           </div>
         {% endif %}
-    </div></p>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="col-md-12">
+    <div class="collapse multi-collapse" id="multiCollapseCitation">
+      <div class="card card-body">
+        <h3> Cite this dataset: </h3>
+        <div class="panel panel-default">
+          <div class="panel-heading">
+            Using this data set or resource, you should cite this data set according to the given copyright conditions with following citation rules:
+          </div>
+          <div class="panel-body panel-body-citation">
+          <div class="row">
+          <div class="col-md-10">
+          <div id="citation-text">
+          {{ pkg.author }}. {{ h.render_datetime(pkg.issued, date_format="%Y") or h.render_datetime(pkg.metadata_created, date_format="%Y") }}. {{ pkg.title }}, Version {{ pkg.name.split('-')[-1][1:] }}. Vienna, Austria. CCCA Data Centre. PID: <a href="{{ pkg.uri }}">{{ pkg.uri }}</a>. [{{ h.render_datetime(h.get_current_datetime()) }}]
+          </div>
+          </div>
+          <div class="col-md-2">
+          <button id="copy-button" class="btn btn-default" data-module="citation_copy">Copy Text</button>
+          </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
 
     {% set parent_dataset = h.get_parent_dataset(pkg.id) %}
     {% if parent_dataset != None %}
