@@ -635,7 +635,7 @@ def get_ncss_subset_params(res_id, params, user, only_location, orig_metadata):
     :type user: string
     :param only_location: TODO
     :type only_location: dict
-    :param orig_metadata:TODO 
+    :param orig_metadata:TODO
     :type orig_metadata: dict
     :rtype: dict, dict
     '''
@@ -645,20 +645,24 @@ def get_ncss_subset_params(res_id, params, user, only_location, orig_metadata):
     ckan_url = config.get('ckan.site_url', '')
     thredds_location = config.get('ckanext.thredds.location')
 
-
     r = requests.get(ckan_url + '/' + thredds_location + '/ncss/' + res_id, params=params, headers=headers)
 
     corrected_params = dict()
     resource_params = None
 
     if r.status_code == 200:
+
+
         # TODO not working for point
         tree = ElementTree.fromstring(r.content)
 
         corrected_params['location'] = tree.get('location')
 
+        #Anja, 28.3.18 - > needs tds ncss path ....
+        storage_path = config.get('ckanext.thredds.ncss_cache')
+
         # Hashsum
-        file_path = os.path.join("/e/ckan/thredds", corrected_params['location'])
+        file_path = os.path.join(storage_path, corrected_params['location'])
         hasher = hashlib.md5()
 
         with open(file_path, 'rb') as f:
@@ -700,7 +704,7 @@ def get_ncss_subset_params(res_id, params, user, only_location, orig_metadata):
     else:
         corrected_params['error'] = r.content
 
-    return corrected_params, resource_params 
+    return corrected_params, resource_params
 
 
 def _change_list_of_dicts_for_search(list_of_dicts):
