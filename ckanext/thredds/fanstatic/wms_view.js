@@ -3,6 +3,7 @@ ckan.module('wms_view', function ($) {
       /* options object can be extended using data-module-* attributes */
       options: {
           resource_id:'',
+          subset_params:'',
           site_url:'',
           minimum:'',
           maximum:'',
@@ -17,6 +18,16 @@ ckan.module('wms_view', function ($) {
         var self = this;
 
         var options = this.options;
+
+        var subset_parameter ='';
+
+        if (self.options.subset_params != '') {
+          for(k in self.options.subset_params)
+          {
+              subset_parameter += "&" + k + "=" + self.options.subset_params[k];
+              console.log(k +": "+ self.options.subset_params[k]);
+          }
+        }
 
         this.sandbox = ckan.sandbox();
 
@@ -43,7 +54,7 @@ ckan.module('wms_view', function ($) {
         } else {
           var wmslayer_selected = wmslayers[0];
           var wmsabstract_selected = wmsabstracts[0];
-          
+
         }
 
         if ($.type(self.options.default_colormap) == "string") {
@@ -317,8 +328,18 @@ ckan.module('wms_view', function ($) {
             mapPane.style.top = "";
         });
 
+        var subset_parameter ='';
 
-        var cccaWMS = self.options.site_url + "tds_proxy/wms/" + self.options.resource_id;
+        if (self.options.subset_params != '') {
+          for(k in self.options.subset_params)
+          {
+              subset_parameter += "&" + k + "=" + self.options.subset_params[k];
+              console.log(k +": "+ self.options.subset_params[k]);
+          }
+          subset_parameter[0] ='?'
+        }
+
+        var cccaWMS = self.options.site_url + "tds_proxy/wms/" + self.options.resource_id + subset_parameter;
 
         var cccaHeightLayer = L.tileLayer.wms(cccaWMS, {
             layers: wmslayer_selected.id,
@@ -374,11 +395,18 @@ ckan.module('wms_view', function ($) {
             position: 'bottomright'
         });
         cccaLegend.onAdd = function(map) {
+          console.log ("****************HI");
+          console.log(subset_parameter);
+          if (subset_parameter != '')
+            var src = cccaWMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic"+ subset_parameter +"&LAYER=" + wmslayer_selected.id + "&colorscalerange="+ min_value + ',' + max_value + "&PALETTE="+ palette_selection +"&numcolorbands="+num_colorbands+"&transparent=TRUE";
+          else
             var src = cccaWMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&LAYER=" + wmslayer_selected.id + "&colorscalerange="+ min_value + ',' + max_value + "&PALETTE="+ palette_selection +"&numcolorbands="+num_colorbands+"&transparent=TRUE";
-            var div = L.DomUtil.create('div', 'info legend');
-            div.innerHTML +=
-                '<img src="' + src + '" alt="legend">';
-            return div;
+
+          console.log(src);
+          var div = L.DomUtil.create('div', 'info legend');
+          div.innerHTML +=
+              '<img src="' + src + '" alt="legend">';
+          return div;
         };
 
 
@@ -416,9 +444,19 @@ ckan.module('wms_view', function ($) {
           self = this;
           self.options.layers = json.result;
 
+          var subset_parameter ='';
+
+          if (self.options.subset_params != '') {
+            for(k in self.options.subset_params)
+            {
+                subset_parameter += "&" + k + "=" + self.options.subset_params[k];
+                console.log(k +": "+ self.options.subset_params[k]);
+            }
+          }
+
           var wmslayers = $.map(json.result, function( value, key ) { return value.children});
           self.sandbox.client.call('GET','thredds_get_layerdetails',
-                                  '?id='+ self.options.resource_id + '&layer=' + wmslayers[0].id,
+                                  '?id='+ self.options.resource_id + subset_parameter + '&layer=' + wmslayers[0].id,
                                    this._onHandleDataDetails,
                                    this._onHandleError
                                   );
@@ -427,7 +465,9 @@ ckan.module('wms_view', function ($) {
 
       _onHandleError: function(error) {
         document.getElementById("wms-view").innerHTML = "<h2>Please login to use this view</h2>";
+        console.log(error);
         throw new Error("Something went badly wrong!");
+
       },
 
       _getDropDownList: function(name, id, optionList) {

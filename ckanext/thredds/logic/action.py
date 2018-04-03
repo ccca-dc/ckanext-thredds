@@ -61,6 +61,36 @@ def thredds_get_layers(context, data_dict):
     resource_id = tk.get_or_bust(data_dict,'id')
     resource = tk.get_action('resource_show')(context, {'id': resource_id})
 
+
+    if 'subset' in resource['url']:
+        # get params from metadata
+        package = tk.get_action('package_show')(context, {'id': resource['package_id']})
+        try:
+            variables = str(','.join([var['name'] for var in package['variables']]))
+        except:
+            h.flash_error('Thredds View was not possible as the variables of the package are not defined correctly.')
+            redirect(h.url_for(controller='package', action='resource_read',
+                                     id=resource['package_id'], resource_id=resource['id']))
+        params = helpers.get_query_params(package)
+        params['var'] = variables
+        params['accept'] = resource['format']
+        params['item']='menu'
+        params['request']= 'GetMetadata'
+        payload = params
+        print params
+        # Get Resource_id from parent
+        # get parent of subset
+        is_part_of_id = [d for d in package['relations'] if d['relation'] == 'is_part_of']
+        is_part_of_pkg = tk.get_action('package_show')(context, {'id': is_part_of_id[0]['id']})
+
+        # get netcdf resource id from parent
+        netcdf_resource = [res['id'] for res in is_part_of_pkg['resources'] if res['format'].lower() == 'netcdf']
+        resource_id = netcdf_resource[0]
+    else:
+
+        payload={'item':'menu',
+                 'request':'GetMetadata'}
+
     # Get URL for WMS Proxy
     ckan_url = config.get('ckan.site_url', '')
     wms_url = ckan_url + '/tds_proxy/wms/' + resource_id
@@ -71,14 +101,14 @@ def thredds_get_layers(context, data_dict):
     except:
         raise NotAuthorized
 
-    payload={'item':'menu',
-             'request':'GetMetadata'}
 
     # Thredds request
     try:
         r = requests.get(wms_url, params=payload, headers=headers)
         layer_tds = json.loads(r.content)
+
     except Exception as e:
+        print "***************** Errror"
         raise NotFound("Thredds Server can not provide layer information for the resource")
 
     # Filter Contents
@@ -109,6 +139,38 @@ def thredds_get_layerdetails(context, data_dict):
     resource_id = tk.get_or_bust(data_dict,'id')
     layer_name = tk.get_or_bust(data_dict,'layer')
 
+    resource = tk.get_action('resource_show')(context, {'id': resource_id})
+
+    if 'subset' in resource['url']:
+        # get params from metadata
+        package = tk.get_action('package_show')(context, {'id': resource['package_id']})
+        try:
+            variables = str(','.join([var['name'] for var in package['variables']]))
+        except:
+            h.flash_error('Thredds View was not possible as the variables of the package are not defined correctly.')
+            redirect(h.url_for(controller='package', action='resource_read',
+                                     id=resource['package_id'], resource_id=resource['id']))
+        params = helpers.get_query_params(package)
+        params['var'] = variables
+        params['accept'] = resource['format']
+        params['item']='layerDetails'
+        params['layerName']=layer_name
+        params['request']= 'GetMetadata'
+        payload = params
+        print params
+        # Get Resource_id from parent
+        # get parent of subset
+        is_part_of_id = [d for d in package['relations'] if d['relation'] == 'is_part_of']
+        is_part_of_pkg = tk.get_action('package_show')(context, {'id': is_part_of_id[0]['id']})
+
+        # get netcdf resource id from parent
+        netcdf_resource = [res['id'] for res in is_part_of_pkg['resources'] if res['format'].lower() == 'netcdf']
+        resource_id = netcdf_resource[0]
+
+    else:
+        payload={'item':'layerDetails',
+                 'layerName':layer_name,
+                 'request':'GetMetadata'}
 
     # Get URL for WMS Proxy
     ckan_url = config.get('ckan.site_url', '')
@@ -118,10 +180,6 @@ def thredds_get_layerdetails(context, data_dict):
         headers={'Authorization':user.apikey}
     except:
         raise NotAuthorized
-
-    payload={'item':'layerDetails',
-             'layerName':layer_name,
-             'request':'GetMetadata'}
 
     try:
         r = requests.get(wms_url, params=payload, headers=headers)

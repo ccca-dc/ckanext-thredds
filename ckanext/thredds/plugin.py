@@ -3,6 +3,7 @@ import ckan.plugins.toolkit as toolkit
 import ckanext.thredds.logic.action as action
 from ckanext.thredds import helpers
 import ckan.logic.validators as val
+import json
 
 
 class ThreddsPlugin(plugins.SingletonPlugin):
@@ -59,10 +60,38 @@ class ThreddsPlugin(plugins.SingletonPlugin):
     def setup_template_variables(self, context, data_dict):
         """Setup variables available to templates"""
         resource_id = data_dict['resource']['id']
-        print(data_dict['resource_view'])
+
+        print json.dumps(data_dict,indent=4)
+
+        #Check subset
+        resource = toolkit.get_action('resource_show')(context, {'id': resource_id})
+        package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
+        is_part_of_id = [d for d in package['relations'] if d['relation'] == 'is_part_of']
+
+        #for subset
+        params=[]
+
+        print is_part_of_id
+
+        if is_part_of_id:
+                try:
+                    variables = str(','.join([var['name'] for var in package['variables']]))
+                except:
+                    h.flash_error('Thredds View was not possible as the variables of the package are not defined correctly.')
+                    redirect(h.url_for(controller='package', action='resource_read',
+                                             id=resource['package_id'], resource_id=resource['id']))
+                is_part_of_pkg = toolkit.get_action('package_show')(context, {'id': is_part_of_id[0]['id']})
+
+                # get netcdf resource id from parent
+                netcdf_resource = [res['id'] for res in is_part_of_pkg['resources'] if res['format'].lower() == 'netcdf']
+                resource_id = netcdf_resource[0]
+                params = helpers.get_query_params(package)
+                params['var'] = variables
+                print params
 
         tpl_variables = {
             'resource_id': resource_id,
+            'subset_params' : params,
             'minimum': data_dict['resource_view'].get('minimum', ''),
             'maximum': data_dict['resource_view'].get('maximum', ''),
             'num_colorbands': data_dict['resource_view'].get('num_colorbands', ''),

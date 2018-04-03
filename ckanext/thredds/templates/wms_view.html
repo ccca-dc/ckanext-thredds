@@ -60,6 +60,7 @@
 
         <div id="map" class="map" data-module="wms_view"
              data-module-resource_id="{{ resource_id }}"
+             data-module-subset_params="{{ h.dump_json(subset_params) }}"
              data-module-site_url="{{ h.dump_json(h.url('/', locale='default', qualified=true)) }}"
              data-module-minimum ="{{ minimum }}"
              data-module-maximum ="{{ maximum }}"
