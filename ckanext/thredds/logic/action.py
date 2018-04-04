@@ -386,17 +386,16 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
         params['time_start'] = time_start
         params['time_end'] = time_end
 
-    # removed passing of coordinates to method as ncss always returns different coordinates
     # adding coordinates
-    # if data_dict.get('north', "") != "" and data_dict.get('east', "") != "":
-    #     if data_dict['point'] is True:
-    #         params['latitude'] = round(float(data_dict['north']), 4)
-    #         params['longitude'] = round(float(data_dict['east']), 4)
-    #     else:
-    #         params['north'] = round(float(data_dict['north']), 4)
-    #         params['south'] = round(float(data_dict['south']), 4)
-    #         params['east'] = round(float(data_dict['east']), 4)
-    #         params['west'] = round(float(data_dict['west']), 4)
+    if data_dict.get('north', "") != "" and data_dict.get('east', "") != "":
+        if data_dict['point'] is True:
+            params['latitude'] = round(float(data_dict['north']), 4)
+            params['longitude'] = round(float(data_dict['east']), 4)
+        else:
+            params['north'] = round(float(data_dict['north']), 4)
+            params['south'] = round(float(data_dict['south']), 4)
+            params['east'] = round(float(data_dict['east']), 4)
+            params['west'] = round(float(data_dict['west']), 4)
 
     only_location = False
     if data_dict.get('type', 'download').lower() == "download":
@@ -440,7 +439,10 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
                 new_package['name'] = data_dict['package_name']
                 new_package['title'] = data_dict['package_title']
                 new_package['private'] = data_dict['private']
-                new_package['spatial_name'] = data_dict['spatial_name']
+                new_package['spatial_name'] = data_dict.get('spatial_name', '')
+
+                if params.get('north', "") != "":
+                    new_package['spatial'] = helpers.coordinates_to_spatial(params['north'], params['east'], params['south'], params['west'])
 
                 new_package['relations'] = [{'relation': 'is_part_of', 'id': package['id']}]
 
