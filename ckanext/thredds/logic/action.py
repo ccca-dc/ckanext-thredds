@@ -386,16 +386,17 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
         params['time_start'] = time_start
         params['time_end'] = time_end
 
+    # removed passing of coordinates to method as ncss always returns different coordinates
     # adding coordinates
-    if data_dict.get('north', "") != "" and data_dict.get('east', "") != "":
-        if data_dict['point'] is True:
-            params['latitude'] = round(float(data_dict['north']), 4)
-            params['longitude'] = round(float(data_dict['east']), 4)
-        else:
-            params['north'] = round(float(data_dict['north']), 4)
-            params['south'] = round(float(data_dict['south']), 4)
-            params['east'] = round(float(data_dict['east']), 4)
-            params['west'] = round(float(data_dict['west']), 4)
+    # if data_dict.get('north', "") != "" and data_dict.get('east', "") != "":
+    #     if data_dict['point'] is True:
+    #         params['latitude'] = round(float(data_dict['north']), 4)
+    #         params['longitude'] = round(float(data_dict['east']), 4)
+    #     else:
+    #         params['north'] = round(float(data_dict['north']), 4)
+    #         params['south'] = round(float(data_dict['south']), 4)
+    #         params['east'] = round(float(data_dict['east']), 4)
+    #         params['west'] = round(float(data_dict['west']), 4)
 
     only_location = False
     if data_dict.get('type', 'download').lower() == "download":
@@ -412,12 +413,6 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
         # create resource if requested from user
         if data_dict.get('type', 'download').lower() == "create_resource":
             package = tk.get_action('package_show')(context, {'id': resource['package_id']})
-
-            # is this check necessary?
-            # try:
-            #     check_access('package_show', context, {'id': package['id']})
-            # except NotAuthorized:
-            #     abort(403, _('Unauthorized to show package'))
 
             # check if url already exists
             if resource_params is not None and resource_params.get('hash', None) is not None:
@@ -676,13 +671,14 @@ def get_ncss_subset_params(res_id, params, user, only_location, orig_metadata):
         resource_params['size'] = os.path.getsize(file_path)
 
         if not only_location:
+            # removed as ncss always returns different coordinates
             # add spatial to new resource
-            lat_lon_box = tree.find('LatLonBox')
-            n = lat_lon_box.find('north').text
-            e = lat_lon_box.find('east').text
-            s = lat_lon_box.find('south').text
-            w = lat_lon_box.find('west').text
-            corrected_params['spatial'] = helpers.coordinates_to_spatial(n, e, s, w)
+            # lat_lon_box = tree.find('LatLonBox')
+            # n = lat_lon_box.find('north').text
+            # e = lat_lon_box.find('east').text
+            # s = lat_lon_box.find('south').text
+            # w = lat_lon_box.find('west').text
+            # corrected_params['spatial'] = helpers.coordinates_to_spatial(n, e, s, w)
 
             # add time to new resource
             time_span = tree.find('TimeSpan')
