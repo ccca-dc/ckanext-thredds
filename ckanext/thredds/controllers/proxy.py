@@ -26,7 +26,7 @@ log = logging.getLogger(__name__)
 
 
 class ThreddsProxyController(base.BaseController):
-    def tds_proxy(self, service, res_id, **kwargs):
+    def tds_proxy(self, service, catalog, res_id_1, res_id_2, res_id_3, **kwargs):
         """
         Provides a wms Service for netcdf files by redirecting the user to the
         thredds server
@@ -36,6 +36,7 @@ class ThreddsProxyController(base.BaseController):
         context = {'model': model, 'session': model.Session,
                    'user': c.user, 'auth_user_obj': c.userobj}
 
+        res_id = res_id_1 + res_id_2 + res_id_3
         try:
            rsc = tk.get_action('resource_show')(context, {'id': res_id})
         except (tk.ObjectNotFound, tk.NotAuthorized):
@@ -44,9 +45,9 @@ class ThreddsProxyController(base.BaseController):
         if "wms" in service:
             p_query = request.query_string
             if 'extra' in kwargs:
-                p_path = os.path.join('/thredds',service,'ckan',res_id[0:3], res_id[3:6], res_id[6:], kwargs.get('extra'))
+                p_path = os.path.join('/tds_internal', service, catalog, res_id_1, res_id_2, res_id_3, kwargs.get('extra'))
             else:
-                p_path = os.path.join('/thredds',service,'ckan',res_id[0:3], res_id[3:6], res_id[6:])
+                p_path = os.path.join('/tds_internal', service, catalog, res_id_1, res_id_2, res_id_3)
 
             response.headers['X-Accel-Redirect'] = "{0}?{1}".format(p_path,p_query)
             return response
@@ -55,9 +56,9 @@ class ThreddsProxyController(base.BaseController):
         else:
             p_query = request.query_string
             if 'extra' in kwargs:
-                p_path = os.path.join('/thredds',service,'ckan',res_id[0:3], res_id[3:6], res_id[6:], kwargs.get('extra'))
+                p_path = os.path.join('/tds_internal', service, catalog, res_id_1, res_id_2, res_id_3, kwargs.get('extra'))
             else:
-                p_path = os.path.join('/thredds',service,'ckan',res_id[0:3], res_id[3:6], res_id[6:])
+                p_path = os.path.join('/tds_internal', service, catalog,res_id_1, res_id_2, res_id_3)
 
             response.headers['X-Accel-Redirect'] = "{0}?{1}".format(p_path,p_query)
             return response

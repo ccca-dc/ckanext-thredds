@@ -76,10 +76,10 @@ class ThreddsPlugin(plugins.SingletonPlugin):
     # IRoutes
     def before_map(self, map):
         # image upload
-        map.connect('tds_proxy', '/tds_proxy/{service}/{res_id}',
+        map.connect('thredds', '/thredds/{service}/{catalog}/{res_id_1}/{res_id_2}/{res_id_3}',
                     controller='ckanext.thredds.controllers.proxy:ThreddsProxyController',
                     action='tds_proxy')
-        map.connect('tds_proxy', '/tds_proxy/{service}/{res_id}/{extra}',
+        map.connect('thredds', '/thredds/{service}/{catalog}/{res_id_1}/{res_id_2}/{res_id_3}/{extra}',
                     controller='ckanext.thredds.controllers.proxy:ThreddsProxyController',
                     action='tds_proxy')
         map.connect('subset_create', '/subset/{resource_id}/create',
