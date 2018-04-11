@@ -61,10 +61,17 @@ def thredds_get_layers(context, data_dict):
     resource_id = tk.get_or_bust(data_dict,'id')
     resource = tk.get_action('resource_show')(context, {'id': resource_id})
 
+    #check if the resource is a subset
 
-    if 'subset' in resource['url']:
-        # get params from metadata
+    print "*********************Thredds"
+    print data_dict
+    print resource
+
+    if '/subset/' in resource['url']:
+
         package = tk.get_action('package_show')(context, {'id': resource['package_id']})
+
+        # get params from metadata
         try:
             variables = str(','.join([var['name'] for var in package['variables']]))
         except:
@@ -77,14 +84,14 @@ def thredds_get_layers(context, data_dict):
         params['item']='menu'
         params['request']= 'GetMetadata'
         payload = params
-        print params
+        #print params
         # Get Resource_id from parent
         # get parent of subset
         is_part_of_id = [d for d in package['relations'] if d['relation'] == 'is_part_of']
         is_part_of_pkg = tk.get_action('package_show')(context, {'id': is_part_of_id[0]['id']})
 
         # get netcdf resource id from parent
-        netcdf_resource = [res['id'] for res in is_part_of_pkg['resources'] if res['format'].lower() == 'netcdf']
+        netcdf_resource = [res['id'] for res in is_part_of_pkg['resources'] if  'netcdf' in res['format'].lower()]
         resource_id = netcdf_resource[0]
     else:
 
@@ -108,7 +115,7 @@ def thredds_get_layers(context, data_dict):
         layer_tds = json.loads(r.content)
 
     except Exception as e:
-        print "***************** Errror"
+        #print "***************** Errror"
         raise NotFound("Thredds Server can not provide layer information for the resource")
 
     # Filter Contents
@@ -141,7 +148,7 @@ def thredds_get_layerdetails(context, data_dict):
 
     resource = tk.get_action('resource_show')(context, {'id': resource_id})
 
-    if 'subset' in resource['url']:
+    if '/subset/' in resource['url']:
         # get params from metadata
         package = tk.get_action('package_show')(context, {'id': resource['package_id']})
         try:
@@ -157,14 +164,14 @@ def thredds_get_layerdetails(context, data_dict):
         params['layerName']=layer_name
         params['request']= 'GetMetadata'
         payload = params
-        print params
+        #print params
         # Get Resource_id from parent
         # get parent of subset
         is_part_of_id = [d for d in package['relations'] if d['relation'] == 'is_part_of']
         is_part_of_pkg = tk.get_action('package_show')(context, {'id': is_part_of_id[0]['id']})
 
         # get netcdf resource id from parent
-        netcdf_resource = [res['id'] for res in is_part_of_pkg['resources'] if res['format'].lower() == 'netcdf']
+        netcdf_resource = [res['id'] for res in is_part_of_pkg['resources'] if 'netcdf' in res['format'].lower()]
         resource_id = netcdf_resource[0]
 
     else:
@@ -498,7 +505,7 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
                 new_package.pop('groups')
                 new_package.pop('revision_id')
 
-                new_package['iso_mdDate'] = new_package['metadata_created'] = new_package['metadata_modified'] = datetime.datetime.now()
+                new_package['created'] = new_package['metadata_created'] = new_package['metadata_modified'] = datetime.datetime.now()
                 new_package['owner_org'] = data_dict['organization']
                 new_package['name'] = data_dict['package_name']
                 new_package['title'] = data_dict['package_title']

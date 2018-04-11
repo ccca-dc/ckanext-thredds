@@ -3,6 +3,8 @@ import ckan.plugins.toolkit as toolkit
 import ckanext.thredds.logic.action as action
 from ckanext.thredds import helpers
 import ckan.logic.validators as val
+from pylons import config
+import urllib
 import json
 
 
@@ -59,39 +61,57 @@ class ThreddsPlugin(plugins.SingletonPlugin):
 
     def setup_template_variables(self, context, data_dict):
         """Setup variables available to templates"""
+
         resource_id = data_dict['resource']['id']
+        resource = data_dict['resource']
 
-        print json.dumps(data_dict,indent=4)
+        #print json.dumps(data_dict,indent=4)
 
-        #Check subset
-        resource = toolkit.get_action('resource_show')(context, {'id': resource_id})
-        package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
-        is_part_of_id = [d for d in package['relations'] if d['relation'] == 'is_part_of']
+        #For subset
+        subset_params =''
+        spatial_params =''
 
-        #for subset
-        params=[]
+        print "*********************Thredds"
+        print resource['url']
+        print resource
 
-        print is_part_of_id
+        # Check subset
+        if '/subset/' in resource['url']:
 
-        if is_part_of_id:
-                try:
-                    variables = str(','.join([var['name'] for var in package['variables']]))
-                except:
-                    h.flash_error('Thredds View was not possible as the variables of the package are not defined correctly.')
-                    redirect(h.url_for(controller='package', action='resource_read',
-                                             id=resource['package_id'], resource_id=resource['id']))
-                is_part_of_pkg = toolkit.get_action('package_show')(context, {'id': is_part_of_id[0]['id']})
+            #Get original resource id
+            package = data_dict['package']
+            is_part_of_id = [d for d in package['relations'] if d['relation'] == 'is_part_of']
 
-                # get netcdf resource id from parent
-                netcdf_resource = [res['id'] for res in is_part_of_pkg['resources'] if res['format'].lower() == 'netcdf']
-                resource_id = netcdf_resource[0]
-                params = helpers.get_query_params(package)
-                params['var'] = variables
-                print params
+            if is_part_of_id:
+                    try:
+                        variables = str(','.join([var['name'] for var in package['variables']]))
+                    except:
+                        h.flash_error('Thredds View was not possible as the variables of the package are not defined correctly.')
+                        redirect(h.url_for(controller='package', action='resource_read',
+                                                 id=resource['package_id'], resource_id=resource['id']))
+                    is_part_of_pkg = toolkit.get_action('package_show')(context, {'id': is_part_of_id[0]['id']})
+
+                    # get netcdf resource id from parent
+                    netcdf_resource = [res['id'] for res in is_part_of_pkg['resources'] if 'netcdf' in res['format'].lower()]
+
+                    if netcdf_resource:
+                        resource_id = netcdf_resource[0]
+                        subset_params = helpers.get_query_params(package)
+                        spatial_params = package['spatial']
+                    else:
+                        subset_params ={}
+                        subset_params['var'] = variables
+                        spatial_params = package['spatial']
+                        #params['accept'] = res['format']
+
+                    #ckan_url = config.get('ckan.site_url', '')
+                    ##thredds_location = config.get('ckanext.thredds.location')
+                    #url = ('%s/%s/ncss/%s?%s' % (ckan_url, thredds_location, netcdf_resource[0], urllib.urlencode(params)))
 
         tpl_variables = {
             'resource_id': resource_id,
-            'subset_params' : params,
+            'subset_params' : subset_params,
+            'spatial_params' : spatial_params,
             'minimum': data_dict['resource_view'].get('minimum', ''),
             'maximum': data_dict['resource_view'].get('maximum', ''),
             'num_colorbands': data_dict['resource_view'].get('num_colorbands', ''),

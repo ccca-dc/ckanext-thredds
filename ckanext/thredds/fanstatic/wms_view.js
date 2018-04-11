@@ -4,6 +4,7 @@ ckan.module('wms_view', function ($) {
       options: {
           resource_id:'',
           subset_params:'',
+          spatial_params:'',
           site_url:'',
           minimum:'',
           maximum:'',
@@ -11,23 +12,13 @@ ckan.module('wms_view', function ($) {
           logscale:'',
           default_layer:'',
           default_colormap:''
-      },
+      }, //options
 
       initialize: function () {
         $.proxyAll(this, /_on/);
         var self = this;
 
         var options = this.options;
-
-        var subset_parameter ='';
-
-        if (self.options.subset_params != '') {
-          for(k in self.options.subset_params)
-          {
-              subset_parameter += "&" + k + "=" + self.options.subset_params[k];
-              console.log(k +": "+ self.options.subset_params[k]);
-          }
-        }
 
         this.sandbox = ckan.sandbox();
 
@@ -37,7 +28,7 @@ ckan.module('wms_view', function ($) {
                                  this._onHandleError
                                 );
 
-      },
+      }, //initialize
 
       initializePreview: function () {
         var startDate = new Date();
@@ -99,8 +90,22 @@ ckan.module('wms_view', function ($) {
             },
             timeDimension: true,
             center: [47.3, 13.9]
-        });
+        }); //map
 
+        // store subset for subset_view
+        var subset_json = self.options.spatial_params;
+        var subset_parameter = self.options.subset_params;
+        var subset_bounds;
+
+        if (subset_parameter != ''){
+          southWest = L.latLng(self.options.subset_params['south'],  self.options.subset_params['west']);
+          northEast = L.latLng(self.options.subset_params['north'], self.options.subset_params['east']);
+
+          subset_bounds = L.latLngBounds(southWest, northEast);
+          console.log(self.options.subset_params);
+          console.log (self.options.spatial_params)
+          console.log(subset_bounds);
+        }
         // ------------------------------------------------
         // Create control elements for first layer
         // Layer
@@ -294,7 +299,7 @@ ckan.module('wms_view', function ($) {
                     $(".leaflet-bar").show();
                     $(".leaflet-control-attribution").show();
                     $("#export-info").remove();
-                }
+                } //html2canvas
             });
 
             for (var i = 0; i < myTiles.length; i++) {
@@ -326,22 +331,12 @@ ckan.module('wms_view', function ($) {
             mapPane.style.transform = "translate(" + (mapX) + "px," + (mapY) + "px)";
             mapPane.style.left = "";
             mapPane.style.top = "";
-        });
+        }); // export-png
 
-        var subset_parameter ='';
 
-        if (self.options.subset_params != '') {
-          for(k in self.options.subset_params)
-          {
-              subset_parameter += "&" + k + "=" + self.options.subset_params[k];
-              console.log(k +": "+ self.options.subset_params[k]);
-          }
-          subset_parameter[0] ='?'
-        }
+        var cccaWMS = self.options.site_url + "tds_proxy/wms/" + self.options.resource_id;
 
-        var cccaWMS = self.options.site_url + "tds_proxy/wms/" + self.options.resource_id + subset_parameter;
-
-        var cccaHeightLayer = L.tileLayer.wms(cccaWMS, {
+        var wmsOptions =  {
             layers: wmslayer_selected.id,
             format: 'image/png',
             transparent: true,
@@ -350,7 +345,9 @@ ckan.module('wms_view', function ($) {
             belowmincolor: "extend",
             numcolorbands: num_colorbands,
             styles: style_selection + '/' + palette_selection
-        });
+        }
+
+        var cccaHeightLayer = L.tileLayer.wms(cccaWMS,wmsOptions);
 
         var markers = [{
             name: 'Eisenstadt',
@@ -381,33 +378,57 @@ ckan.module('wms_view', function ($) {
             position: [48.209, 16.37]
         }];
 
-        var cccaHeightTimeLayer = L.timeDimension.layer.wms.timeseries(cccaHeightLayer, {
+        console.log(subset_json);
+        console.log (subset_parameter);
+        console.log (subset_bounds);
+
+        // Check whether the markers are inside the subset
+        var add_markers = [];
+        if (subset_bounds != '') {
+
+          for (var i=0; i< markers.length; i++) {
+            console.log(markers[i].position);
+             if (subset_bounds.contains(markers[i].position)){
+                  add_markers.push(markers[i]);
+                  console.log("*****************match");
+                }
+          }
+
+
+        } else {
+          add_markers = markers;
+        }
+
+        console.log("**************Markers");
+        console.log(add_markers);
+
+
+        var time_options = {
             updateTimeDimension: true,
-            markers: markers,
+            markers: add_markers,
             name: wmsabstract_selected,
             legendname: wmslayer_selected.label,
             maxValues: 2000,
             units: self.options.layers_details.units,
             enableNewMarkers: true
-        });
+        };
+
+
+        var cccaHeightTimeLayer = L.timeDimension.layer.wms.timeseries(cccaHeightLayer, time_options);
 
         var cccaLegend = L.control({
             position: 'bottomright'
         });
-        cccaLegend.onAdd = function(map) {
-          console.log ("****************HI");
-          console.log(subset_parameter);
-          if (subset_parameter != '')
-            var src = cccaWMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic"+ subset_parameter +"&LAYER=" + wmslayer_selected.id + "&colorscalerange="+ min_value + ',' + max_value + "&PALETTE="+ palette_selection +"&numcolorbands="+num_colorbands+"&transparent=TRUE";
-          else
-            var src = cccaWMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&LAYER=" + wmslayer_selected.id + "&colorscalerange="+ min_value + ',' + max_value + "&PALETTE="+ palette_selection +"&numcolorbands="+num_colorbands+"&transparent=TRUE";
 
-          console.log(src);
+        cccaLegend.onAdd = function(map) {
+
+          var src = cccaWMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&LAYER=" + wmslayer_selected.id + "&colorscalerange="+ min_value + ',' + max_value + "&PALETTE="+ palette_selection +"&numcolorbands="+num_colorbands+"&transparent=TRUE";
+
           var div = L.DomUtil.create('div', 'info legend');
           div.innerHTML +=
               '<img src="' + src + '" alt="legend">';
           return div;
-        };
+        }; // cccaLegend.onAdd
 
 
         var overlayMaps = {};
@@ -417,19 +438,156 @@ ckan.module('wms_view', function ($) {
             if (eventLayer.name == wmsabstract_selected) {
                 cccaLegend.addTo(this);
             }
-        });
+        }); // map on overlayadd
 
         map.on('overlayremove', function(eventLayer) {
             if (eventLayer.name == wmsabstract_selected) {
                 map.removeControl(cccaLegend);
             }
-        });
+        }); // map on overlayremove
 
         var baseLayers = getCommonBaseLayers(map); // see baselayers.js
+
         L.control.layers(baseLayers, overlayMaps).addTo(map);
 
-        cccaHeightTimeLayer.addTo(map);
-      },
+
+//////////////////////////////////////////////////////////////////////////////////
+
+        var styles = {
+          point:{
+            iconUrl: '/img/marker.png',
+            iconSize: [14, 25],
+            iconAnchor: [7, 25]
+          },
+          base_:{
+            color: '#B52',
+            weight: 2,
+            opacity: 0,
+            fillColor: '#FCF6CF',
+            fillOpacity: 0.8
+          },
+          default_:{
+            color: '#ffffff', //'#B52'
+            weight: 2,
+            opacity: 1,
+            fillColor: '#ffffff', //'#FCF6CF',
+            fillOpacity: 0.3
+          }
+        };
+
+      var ckanIcon = L.Icon.extend({options: styles.point});
+
+      var extent = subset_json;
+      console.log(extent);
+
+
+      function createPolygonFromBounds(latLngBounds) {
+          latlngs = [];
+
+          latlngs.push(latLngBounds.getSouthWest());//bottom left
+          latlngs.push(latLngBounds.getSouthEast());//bottom right
+          latlngs.push(latLngBounds.getNorthEast());//top right
+          latlngs.push(latLngBounds.getNorthWest());//top left
+          latlngs.push(latLngBounds.getSouthWest());//bottom left
+
+         return new L.polygon(latlngs).toGeoJSON();
+
+       }
+
+      var bounds = map.getBounds();
+
+      var inversePolygon = createPolygonFromBounds(bounds);
+
+      extent.coordinates[0].push(inversePolygon.geometry.coordinates[0]);
+
+      console.log(inversePolygon);
+      console.log(extent);
+
+      /* Definition Mulitpolygon
+      {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            {polygon},
+            {hole},
+            {hole},
+            {hole}
+          ]
+        ]
+      }
+      */
+
+
+
+      if (extent.type == 'Polygon'
+        && extent.coordinates[0].length == 5) {
+        _coordinates = extent.coordinates[0]
+        w = _coordinates[0][0];
+        e = _coordinates[2][0];
+        if (w >= 0 && e < 0) {
+          w_new = w
+          while (w_new > e) w_new -=360
+          for (var i = 0; i < _coordinates.length; i++) {
+            if (_coordinates[i][0] == w) {
+              _coordinates[i][0] = w_new
+            };
+          };
+          extent.coordinates[0] = _coordinates
+        };
+      };
+
+
+
+      var extentLayer = L.geoJson(extent, {
+          style: styles.default_,
+          pointToLayer: function (feature, latLng) {
+            return new L.Marker(latLng, {icon: new ckanIcon})
+          }});
+
+      extentLayer.addTo(map);
+
+      if (extent.type == 'Point'){
+        map.setView(L.latLng(extent.coordinates[1],extent.coordinates[0]), 9);
+      } else {
+      //  map.fitBounds(extentLayer.getBounds());
+      }
+
+      cccaHeightTimeLayer.addTo(map);
+
+///////////////////////////////////////////////////////
+
+/*
+
+        if (self.options.subset != '') {
+
+            console.log("************ subset");
+            console.log(cccaHeightLayer);
+
+            var cccaHeightLayerWithBoundary = withBoundary(cccaHeightLayer, wmsOptions);
+            //cccaHeightTimeLayerWithBoundary.addTo(map);
+
+            cccaHeightLayerWithBoundary.addTo(map);
+
+            //cccaHeightLayer.addTo(map);
+
+            console.log(map);
+
+            var btm = L.TileLayer.boundaryCanvas(cccaWMS, {
+              boundary: subset,
+              attribution :'xxx'
+            });
+
+            //btm.addTo(map);
+
+            //cccaHeightTimeLayer.addTo(map);
+
+         } else {
+           cccaHeightTimeLayer.addTo(map);
+         } //subset
+
+         */
+
+      }, //initializePreview
 
 
       _onHandleDataDetails: function(json) {
@@ -437,38 +595,31 @@ ckan.module('wms_view', function ($) {
           self.options.layers_details = json.result;
           this.initializePreview();
         }
-      },
+      }, //_onHandleDataDetails
 
       _onHandleData: function(json) {
         if (json.success) {
           self = this;
           self.options.layers = json.result;
 
-          var subset_parameter ='';
-
-          if (self.options.subset_params != '') {
-            for(k in self.options.subset_params)
-            {
-                subset_parameter += "&" + k + "=" + self.options.subset_params[k];
-                console.log(k +": "+ self.options.subset_params[k]);
-            }
-          }
 
           var wmslayers = $.map(json.result, function( value, key ) { return value.children});
           self.sandbox.client.call('GET','thredds_get_layerdetails',
-                                  '?id='+ self.options.resource_id + subset_parameter + '&layer=' + wmslayers[0].id,
+                                  '?id='+ self.options.resource_id + '&layer=' + wmslayers[0].id,
                                    this._onHandleDataDetails,
                                    this._onHandleError
                                   );
-        }
-      },
+          console.log("************** onhandledata")
+        } //if
+
+      }, // _onHandleData
 
       _onHandleError: function(error) {
         document.getElementById("wms-view").innerHTML = "<h2>Please login to use this view</h2>";
         console.log(error);
         throw new Error("Something went badly wrong!");
 
-      },
+      }, //_onHandleError
 
       _getDropDownList: function(name, id, optionList) {
           var combo = $("<select></select>").attr("id", id).attr("name", name).attr("class","form-control");
@@ -478,7 +629,7 @@ ckan.module('wms_view', function ($) {
           });
 
           return combo;
-      }
+      } // _getDropDownList
 
-  };
-});
+  }; // return
+}); //ckan.module wms_view
