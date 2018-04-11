@@ -1,0 +1,16 @@
+.alignments .text-left {
+  text-align: left;
+  margin-right: 10px;
+  padding-right: 0;
+}
+.alignments .vertically-centered-text {
+  height: 60px; /*make it same as LivIcon size*/
+  line-height: 60px; /*make it same as LivIcon size*/
+}
+.alignments .inline-block {
+  display: inline-block;
+  margin-right: 10px; /*adgust if necessary*/
+}
+.subset_params_section {
+    margin-left: 30px;
+}
