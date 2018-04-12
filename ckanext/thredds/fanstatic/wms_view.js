@@ -318,7 +318,7 @@ ckan.module('wms_view', function ($) {
         });
 
 
-        var cccaWMS = self.options.site_url + "tds_proxy/wms/" + self.options.resource_id;
+        var cccaWMS = self.options.site_url + "thredds/wms/ckan/" + [self.options.resource_id.slice(0,3), self.options.resource_id.slice(3,6), self.options.resource_id.slice(6)].join("/");
 
         var cccaHeightLayer = L.tileLayer.wms(cccaWMS, {
             layers: wmslayer_selected.id,

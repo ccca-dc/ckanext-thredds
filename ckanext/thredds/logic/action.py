@@ -63,7 +63,7 @@ def thredds_get_layers(context, data_dict):
 
     # Get URL for WMS Proxy
     ckan_url = config.get('ckan.site_url', '')
-    wms_url = ckan_url + '/tds_proxy/wms/' + resource_id
+    wms_url = ckan_url + '/thredds/wms/ckan/' + "/".join([resource_id[0:3],resource_id[3:6],resource_id[6:]])
 
     # Headers and payload for thredds request
     try:
@@ -112,7 +112,7 @@ def thredds_get_layerdetails(context, data_dict):
 
     # Get URL for WMS Proxy
     ckan_url = config.get('ckan.site_url', '')
-    wms_url = ckan_url + '/tds_proxy/wms/' + resource_id
+    wms_url = ckan_url + '/thredds/wms/ckan/' + "/".join([resource_id[0:3],resource_id[3:6],resource_id[6:]])
 
     try:
         headers={'Authorization':user.apikey}
@@ -642,7 +642,7 @@ def get_ncss_subset_params(res_id, params, user, only_location, orig_metadata):
     ckan_url = config.get('ckan.site_url', '')
     thredds_location = config.get('ckanext.thredds.location')
 
-    r = requests.get(ckan_url + '/' + thredds_location + '/ncss/' + res_id, params=params, headers=headers)
+    r = requests.get('/'.join([ckan_url, thredds_location, 'ncss', 'ckan', resource_id[0:3], resource_id[3:6], resource_id[6:]]), params=params, headers=headers)
 
     corrected_params = dict()
     resource_params = None
@@ -752,7 +752,7 @@ def thredds_get_metadata_info(context, data_dict):
         raise NotAuthorized
 
     # Extract NCML metadata
-    ncml_url = '/'.join([ckan_url, thredds_location, 'ncml', resource_id])
+    ncml_url = '/'.join([ckan_url, thredds_location, 'ncml', 'ckan', resource_id[0:3], resource_id[3:6], resource_id[6:]])
     try:
         r = requests.get(ncml_url, headers=headers)
     except Exception as e:
@@ -762,7 +762,7 @@ def thredds_get_metadata_info(context, data_dict):
     _parse_ncml_metadata_info(ncml_tree, metadata)
 
     # Extract NCSS metadata
-    ncss_url = '/'.join([ckan_url, thredds_location, 'ncss', resource_id, 'dataset.xml'])
+    ncss_url = '/'.join([ckan_url, thredds_location, 'ncss', 'ckan', resource_id[0:3],resource_id[3:6],resource_id[6:], 'dataset.xml'])
     try:
         r = requests.get(ncss_url, headers=headers)
     except Exception as e:
