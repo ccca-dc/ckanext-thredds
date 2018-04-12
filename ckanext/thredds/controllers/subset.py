@@ -147,7 +147,7 @@ class SubsetController(base.BaseController):
             from ckanext.rq.jobs import enqueue as enqueue_job
         enqueue_job(subset_download_job, [resource_id, variables, context['user']])
 
-        h.flash_notice('Your subset is being created. This might take a while, you will receive an E-Mail when your subset is available')
+        h.flash_notice('Your subset is being created. This might take a while, you will receive an E-Mail when your subset is available for download. Thank you for your patience!')
         redirect(h.url_for(controller='package', action='resource_read',
                                  id=resource['package_id'], resource_id=resource['id']))
 

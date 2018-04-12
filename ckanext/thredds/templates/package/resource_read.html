@@ -10,7 +10,7 @@
           {% elif  res.resource_type == 'api' %}
             <i class="icon-key"></i> {{ _('API Endpoint') }}
           {% elif h.get_parent_dataset(res.package_id) and '/subset/' in res.url %}
-            <i class="icon-external-link"></i> {{ _('Download') }}
+            <i class="icon-download"></i> {{ _('Download') }}
           {% elif not res.has_views or not res.can_be_previewed %}
             <i class="icon-external-link"></i> {{ _('Go to resource') }}
           {% else %}
@@ -37,19 +37,17 @@
     {% if h.get_parent_dataset(res.package_id) and '/subset/' in res.url %}
         <div class="alignments">
              <div class="row">
-                <div class="col-sm-4 col-xs-12">
-                    <p class="text-left">
-                        <span class="livicon-evo text-left" data-options="
-                            name: pie-chart.svg;
-                            size: 50px;
-                            style: lines;
-                            strokeColor: #606060
-                        "></span>
-                        <span class="vertically-centered-text">This resource is a subset</span>
-                    </p>
-                </div>
-                <div class="col-sm-4 col-xs-12">
-                    <a href="#subset_params" data-toggle="collapse">
+                 <div>
+                    <span class="livicon-evo" data-options="
+                        name: pie-chart.svg;
+                        size: 50px;
+                        style: lines;
+                        strokeColor: #606060;
+                        drawOnViewport: true
+                    "></span>
+                    <span class="vertically-centered-text">This resource is a subset</span>
+
+                    <a href="#subset_params" data-toggle="collapse" class="morph-chevron-button">
                     <span class="livicon-evo vertically-centered-text" data-options="
                         name: morph-chevron-top-bottom.svg;
                         style: solid;
@@ -60,56 +58,58 @@
                         eventOn:parent;
                         rotate: 180;
                     "></span></a>
+                </div>
             </div>
-        </div>
-        </div>
-        <div class="row">
-        <div class="subset_params_section col-sm-8 col-xs-12">
-        <div id="subset_params" class="collapse">
-            {% set coordinates = h.spatial_to_coordinates(pkg.spatial) %}
-            {% set parent = h.get_parent_dataset(pkg.id) %}
-            {% set vars = [] %}
-            {% for x in pkg.variables %}
-                {% do vars.append(x['description']) %}
-            {% endfor %}
-            {% set parent_url=h.url_for(controller='package', action='read', id=parent['name']) %}
-            <p><u>Original Dataset:</u> <a href="{{ parent_url }}">{{parent['name']}}</a></p>
-            <table class="table table-hover">
-                <tr>
-                    <th>Query Parameter</th>
-                    <th>Value</th>
-                </tr>
-                <tr>
-                    <td>Variable(s)</td>
-                    <td>{{ vars|join(', ') }}</td>
-                </tr>
-                <tr>
-                    <td>North</td>
-                    <td>{{coordinates['north']}}</td>
-                </tr>
-                <tr>
-                    <td>East</td>
-                    <td>{{coordinates['east']}}</td>
-                </tr>
-                <tr>
-                    <td>South</td>
-                    <td>{{coordinates['south']}}</td>
-                </tr>
-                <tr>
-                    <td>West</td>
-                    <td>{{coordinates['west']}}</td>
-                </tr>
-                <tr>
-                    <td>Time Start</td>
-                    <td>{{h.date_str_to_datetime(pkg.temporal_start)}}</td>
-                </tr>
-                <tr>
-                    <td>Time End</td>
-                    <td>{{h.date_str_to_datetime(pkg.temporal_start)}}</td>
-                </tr>
-            </table>
-        </div>
-        </div>
-        </div>
+            <div class="row">
+                <div class="subset_params_section col-sm-8 col-xs-12">
+                    <div id="subset_params" class="collapse">
+                        {% set coordinates = h.spatial_to_coordinates(pkg.spatial) %}
+                        {% set parent = h.get_parent_dataset(pkg.id) %}
+
+                        {% set vars = [] %}
+                        {% for x in pkg.variables %}
+                            {% do vars.append(x['description']) %}
+                        {% endfor %}
+
+                        {% set parent_url=h.url_for(controller='package', action='read', id=parent['name']) %}
+
+                        <p><u>Original Dataset:</u> <a href="{{ parent_url }}">{{parent['name']}}</a></p>
+                        <table class="table table-hover">
+                            <tr>
+                                <th>Query Parameter</th>
+                                <th>Value</th>
+                            </tr>
+                            <tr>
+                                <td>Variable(s)</td>
+                                <td>{{ vars|join(', ') }}</td>
+                            </tr>
+                            <tr>
+                                <td>North</td>
+                                <td>{{coordinates['north']}}</td>
+                            </tr>
+                            <tr>
+                                <td>East</td>
+                                <td>{{coordinates['east']}}</td>
+                            </tr>
+                            <tr>
+                                <td>South</td>
+                                <td>{{coordinates['south']}}</td>
+                            </tr>
+                            <tr>
+                                <td>West</td>
+                                <td>{{coordinates['west']}}</td>
+                            </tr>
+                            <tr>
+                                <td>Time Start</td>
+                                <td>{{h.date_str_to_datetime(pkg.temporal_start)}}</td>
+                            </tr>
+                            <tr>
+                                <td>Time End</td>
+                                <td>{{h.date_str_to_datetime(pkg.temporal_start)}}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
     {% endif %}
 {% endblock %}
