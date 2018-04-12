@@ -642,7 +642,7 @@ def get_ncss_subset_params(res_id, params, user, only_location, orig_metadata):
     ckan_url = config.get('ckan.site_url', '')
     thredds_location = config.get('ckanext.thredds.location')
 
-    r = requests.get('/'.join([ckan_url, thredds_location, 'ncss', 'ckan', resource_id[0:3], resource_id[3:6], resource_id[6:]]), params=params, headers=headers)
+    r = requests.get('/'.join([ckan_url, thredds_location, 'ncss', 'ckan', res_id[0:3], res_id[3:6], res_id[6:]]), params=params, headers=headers)
 
     corrected_params = dict()
     resource_params = None

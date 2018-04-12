@@ -113,7 +113,7 @@
           <div class="row">
           <div class="col-md-10">
           <div id="citation-text">
-          {{ pkg.citation_info }} ({{ h.render_datetime(pkg.issued, date_format="%Y") or h.render_datetime(pkg.metadata_created, date_format="%Y") }}). {{ pkg.title }}, Version {{ pkg.name.split('-')[-1][1:] }}. Vienna, Austria. CCCA Data Centre. PID: <a href="{{ pkg.uri }}">{{ pkg.uri }}</a>. [{{ h.render_datetime(h.get_current_datetime()) }}]
+          {{ pkg.citation_info }} ({{ h.render_datetime(pkg.issued, date_format="%Y") or h.render_datetime(pkg.metadata_created, date_format="%Y") }}). {{ pkg.title }}, Version {{ h.get_version_number(pkg) }}. Vienna, Austria. CCCA Data Centre. PID: <a href="{{ pkg.uri }}">{{ pkg.uri }}</a>. [{{ h.render_datetime(h.get_current_datetime()) }}]
           </div>
           </div>
           <div class="col-md-2">
