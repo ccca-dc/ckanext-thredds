@@ -6,6 +6,7 @@ import ckan.logic.validators as val
 from pylons import config
 import urllib
 import json
+import datetime
 
 
 class ThreddsPlugin(plugins.SingletonPlugin):
@@ -71,10 +72,6 @@ class ThreddsPlugin(plugins.SingletonPlugin):
         subset_params =''
         spatial_params =''
 
-        print "*********************Thredds"
-        print resource['url']
-        print resource
-
         # Check subset
         if '/subset/' in resource['url']:
 
@@ -98,15 +95,16 @@ class ThreddsPlugin(plugins.SingletonPlugin):
                         resource_id = netcdf_resource[0]
                         subset_params = helpers.get_query_params(package)
                         spatial_params = package['spatial']
-                    else:
+                         #End date will be excluded therefore increment it by one
+                        corrected_end_time = subset_params['time_end']
+                        date = datetime.datetime.strptime(corrected_end_time, '%Y-%m-%dT%H:%M:%S')
+                        date += datetime.timedelta(days=1)
+                        subset_params['time_end'] = str(date).replace(' ', 'T')
+                    else: # this should not happen
                         subset_params ={}
                         subset_params['var'] = variables
                         spatial_params = package['spatial']
-                        #params['accept'] = res['format']
 
-                    #ckan_url = config.get('ckan.site_url', '')
-                    ##thredds_location = config.get('ckanext.thredds.location')
-                    #url = ('%s/%s/ncss/%s?%s' % (ckan_url, thredds_location, netcdf_resource[0], urllib.urlencode(params)))
 
         tpl_variables = {
             'resource_id': resource_id,

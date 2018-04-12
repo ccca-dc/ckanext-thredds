@@ -76,36 +76,61 @@ ckan.module('wms_view', function ($) {
 
         var opacity = 1;
 
-        var map = L.map('map', {
-            zoom: 7,
-            fullscreenControl: true,
-            timeDimensionControl: true,
-            timeDimensionControlOptions: {
-                position: 'bottomleft',
-                playerOptions: {
-                    transitionTime: 1000
-                },
-                minSpeed: 0.1,
-                maxSpeed: 2.0
-            },
-            timeDimension: true,
-            center: [47.3, 13.9]
-        }); //map
-
-        // store subset for subset_view
+        // check and store subset for subset_view
         var subset_json = self.options.spatial_params;
         var subset_parameter = self.options.subset_params;
-        var subset_bounds;
+        var subset_bounds ='';
+        var subset_times = '';
 
         if (subset_parameter != ''){
           southWest = L.latLng(self.options.subset_params['south'],  self.options.subset_params['west']);
           northEast = L.latLng(self.options.subset_params['north'], self.options.subset_params['east']);
 
           subset_bounds = L.latLngBounds(southWest, northEast);
-          console.log(self.options.subset_params);
-          console.log (self.options.spatial_params)
-          console.log(subset_bounds);
+          subset_times = subset_parameter['time_start'] +"/" + subset_parameter['time_end'];
+        //    subset_times = subset_parameter['time_start'] +"/" + "2018-04-13T12:00:00";
         }
+
+        if (subset_times != ''){
+          var map = L.map('map', {
+              zoom: 7,
+              fullscreenControl: true,
+              timeDimensionControl: true,
+              timeDimensionControlOptions: {
+                  position: 'bottomleft',
+                  playerOptions: {
+                      transitionTime: 1000
+                  },
+                  minSpeed: 0.1,
+                  maxSpeed: 2.0
+              },
+              timeDimension: true,
+              timeDimensionOptions: {
+                  timeInterval:subset_times,
+                period: "PT1H" // Defines the Format of the time period
+                //period: "PYYYYMMDDThhmmss"
+              },
+              center: [47.3, 13.9]
+          }); //map
+        }
+        else {
+          var map = L.map('map', {
+              zoom: 7,
+              fullscreenControl: true,
+              timeDimensionControl: true,
+              timeDimensionControlOptions: {
+                  position: 'bottomleft',
+                  playerOptions: {
+                      transitionTime: 1000
+                  },
+                  minSpeed: 0.1,
+                  maxSpeed: 2.0
+              },
+              timeDimension: true,
+              center: [47.3, 13.9]
+          }); //map
+        }
+
         // ------------------------------------------------
         // Create control elements for first layer
         // Layer
@@ -378,29 +403,20 @@ ckan.module('wms_view', function ($) {
             position: [48.209, 16.37]
         }];
 
-        console.log(subset_json);
-        console.log (subset_parameter);
-        console.log (subset_bounds);
-
-        // Check whether the markers are inside the subset
+        // Check whether the markers are inside a potential subset
         var add_markers = [];
         if (subset_bounds != '') {
 
           for (var i=0; i< markers.length; i++) {
-            console.log(markers[i].position);
              if (subset_bounds.contains(markers[i].position)){
                   add_markers.push(markers[i]);
-                  console.log("*****************match");
                 }
           }
-
 
         } else {
           add_markers = markers;
         }
 
-        console.log("**************Markers");
-        console.log(add_markers);
 
 
         var time_options = {
@@ -450,142 +466,92 @@ ckan.module('wms_view', function ($) {
 
         L.control.layers(baseLayers, overlayMaps).addTo(map);
 
+        ////////////////////////////
+        // For Subset  extent
 
-//////////////////////////////////////////////////////////////////////////////////
+        if (subset_bounds != '') {
+              var styles = {
+                point:{
+                  iconUrl: '/img/marker.png',
+                  iconSize: [14, 25],
+                  iconAnchor: [7, 25]
+                },
+                base_:{
+                  color: '#B52',
+                  weight: 2,
+                  opacity: 0,
+                  fillColor: '#FCF6CF',
+                  fillOpacity: 0.8
+                },
+                default_:{
+                  color: '#ffffff', //'#B52'
+                  weight: 2,
+                  opacity: 1,
+                  fillColor: '#ffffff', //'#FCF6CF',
+                  fillOpacity: 0.3
+                }
+              };
 
-        var styles = {
-          point:{
-            iconUrl: '/img/marker.png',
-            iconSize: [14, 25],
-            iconAnchor: [7, 25]
-          },
-          base_:{
-            color: '#B52',
-            weight: 2,
-            opacity: 0,
-            fillColor: '#FCF6CF',
-            fillOpacity: 0.8
-          },
-          default_:{
-            color: '#ffffff', //'#B52'
-            weight: 2,
-            opacity: 1,
-            fillColor: '#ffffff', //'#FCF6CF',
-            fillOpacity: 0.3
-          }
-        };
+              var ckanIcon = L.Icon.extend({options: styles.point});
 
-      var ckanIcon = L.Icon.extend({options: styles.point});
+              var extent = subset_json;
 
-      var extent = subset_json;
-      console.log(extent);
+              var bounds = map.getBounds();
 
+              var inversePolygon = createPolygonFromBounds(bounds);
 
-      function createPolygonFromBounds(latLngBounds) {
-          latlngs = [];
+              extent.coordinates[0].push(inversePolygon.geometry.coordinates[0]);
 
-          latlngs.push(latLngBounds.getSouthWest());//bottom left
-          latlngs.push(latLngBounds.getSouthEast());//bottom right
-          latlngs.push(latLngBounds.getNorthEast());//top right
-          latlngs.push(latLngBounds.getNorthWest());//top left
-          latlngs.push(latLngBounds.getSouthWest());//bottom left
+              /* Definition Mulitpolygon
+              {
+                "type": "MultiPolygon",
+                "coordinates": [
+                  [
+                    {polygon},
+                    {hole},
+                    {hole},
+                    {hole}
+                  ]
+                ]
+              }
+              */
 
-         return new L.polygon(latlngs).toGeoJSON();
-
-       }
-
-      var bounds = map.getBounds();
-
-      var inversePolygon = createPolygonFromBounds(bounds);
-
-      extent.coordinates[0].push(inversePolygon.geometry.coordinates[0]);
-
-      console.log(inversePolygon);
-      console.log(extent);
-
-      /* Definition Mulitpolygon
-      {
-        "type": "MultiPolygon",
-        "coordinates": [
-          [
-            {polygon},
-            {hole},
-            {hole},
-            {hole}
-          ]
-        ]
-      }
-      */
-
-
-
-      if (extent.type == 'Polygon'
-        && extent.coordinates[0].length == 5) {
-        _coordinates = extent.coordinates[0]
-        w = _coordinates[0][0];
-        e = _coordinates[2][0];
-        if (w >= 0 && e < 0) {
-          w_new = w
-          while (w_new > e) w_new -=360
-          for (var i = 0; i < _coordinates.length; i++) {
-            if (_coordinates[i][0] == w) {
-              _coordinates[i][0] = w_new
-            };
-          };
-          extent.coordinates[0] = _coordinates
-        };
-      };
+              if (extent.type == 'Polygon'
+                && extent.coordinates[0].length == 5) {
+                _coordinates = extent.coordinates[0]
+                w = _coordinates[0][0];
+                e = _coordinates[2][0];
+                if (w >= 0 && e < 0) {
+                  w_new = w
+                  while (w_new > e) w_new -=360
+                  for (var i = 0; i < _coordinates.length; i++) {
+                    if (_coordinates[i][0] == w) {
+                      _coordinates[i][0] = w_new
+                    };
+                  };
+                  extent.coordinates[0] = _coordinates
+                };
+              };
 
 
+              var extentLayer = L.geoJson(extent, {
+                  style: styles.default_,
+                  pointToLayer: function (feature, latLng) {
+                    return new L.Marker(latLng, {icon: new ckanIcon})
+                  }});
 
-      var extentLayer = L.geoJson(extent, {
-          style: styles.default_,
-          pointToLayer: function (feature, latLng) {
-            return new L.Marker(latLng, {icon: new ckanIcon})
-          }});
+              extentLayer.addTo(map);
 
-      extentLayer.addTo(map);
+              if (extent.type == 'Point'){
+                map.setView(L.latLng(extent.coordinates[1],extent.coordinates[0]), 9);
+              } else {
+              //  map.fitBounds(extentLayer.getBounds());
+            }//else
 
-      if (extent.type == 'Point'){
-        map.setView(L.latLng(extent.coordinates[1],extent.coordinates[0]), 9);
-      } else {
-      //  map.fitBounds(extentLayer.getBounds());
-      }
+      } //if subset
 
       cccaHeightTimeLayer.addTo(map);
 
-///////////////////////////////////////////////////////
-
-/*
-
-        if (self.options.subset != '') {
-
-            console.log("************ subset");
-            console.log(cccaHeightLayer);
-
-            var cccaHeightLayerWithBoundary = withBoundary(cccaHeightLayer, wmsOptions);
-            //cccaHeightTimeLayerWithBoundary.addTo(map);
-
-            cccaHeightLayerWithBoundary.addTo(map);
-
-            //cccaHeightLayer.addTo(map);
-
-            console.log(map);
-
-            var btm = L.TileLayer.boundaryCanvas(cccaWMS, {
-              boundary: subset,
-              attribution :'xxx'
-            });
-
-            //btm.addTo(map);
-
-            //cccaHeightTimeLayer.addTo(map);
-
-         } else {
-           cccaHeightTimeLayer.addTo(map);
-         } //subset
-
-         */
 
       }, //initializePreview
 
@@ -609,7 +575,6 @@ ckan.module('wms_view', function ($) {
                                    this._onHandleDataDetails,
                                    this._onHandleError
                                   );
-          console.log("************** onhandledata")
         } //if
 
       }, // _onHandleData
@@ -632,4 +597,18 @@ ckan.module('wms_view', function ($) {
       } // _getDropDownList
 
   }; // return
+
+  function createPolygonFromBounds(latLngBounds) {
+      latlngs = [];
+
+      latlngs.push(latLngBounds.getSouthWest());//bottom left
+      latlngs.push(latLngBounds.getSouthEast());//bottom right
+      latlngs.push(latLngBounds.getNorthEast());//top right
+      latlngs.push(latLngBounds.getNorthWest());//top left
+      latlngs.push(latLngBounds.getSouthWest());//bottom left
+
+     return new L.polygon(latlngs).toGeoJSON();
+
+   } //createPolygonFromBounds
+
 }); //ckan.module wms_view

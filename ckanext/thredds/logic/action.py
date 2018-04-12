@@ -63,10 +63,6 @@ def thredds_get_layers(context, data_dict):
 
     #check if the resource is a subset
 
-    print "*********************Thredds"
-    print data_dict
-    print resource
-
     if '/subset/' in resource['url']:
 
         package = tk.get_action('package_show')(context, {'id': resource['package_id']})
