@@ -88,7 +88,7 @@ def get_queries_from_user(user_id):
             except:
                 pass
 
-    print(all_queries)
+    #print(all_queries)
     return user_queries, all_queries
 
 

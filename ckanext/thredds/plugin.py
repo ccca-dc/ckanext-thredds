@@ -3,6 +3,10 @@ import ckan.plugins.toolkit as toolkit
 import ckanext.thredds.logic.action as action
 from ckanext.thredds import helpers
 import ckan.logic.validators as val
+from pylons import config
+import urllib
+import json
+import datetime
 
 
 class ThreddsPlugin(plugins.SingletonPlugin):
@@ -58,11 +62,54 @@ class ThreddsPlugin(plugins.SingletonPlugin):
 
     def setup_template_variables(self, context, data_dict):
         """Setup variables available to templates"""
+
         resource_id = data_dict['resource']['id']
-        print(data_dict['resource_view'])
+        resource = data_dict['resource']
+
+        #print json.dumps(data_dict,indent=4)
+
+        #For subset
+        subset_params =''
+        spatial_params =''
+
+        # Check subset
+        if '/subset/' in resource['url']:
+
+            #Get original resource id
+            package = data_dict['package']
+            is_part_of_id = [d for d in package['relations'] if d['relation'] == 'is_part_of']
+
+            if is_part_of_id:
+                    try:
+                        variables = str(','.join([var['name'] for var in package['variables']]))
+                    except:
+                        h.flash_error('Thredds View was not possible as the variables of the package are not defined correctly.')
+                        redirect(h.url_for(controller='package', action='resource_read',
+                                                 id=resource['package_id'], resource_id=resource['id']))
+                    is_part_of_pkg = toolkit.get_action('package_show')(context, {'id': is_part_of_id[0]['id']})
+
+                    # get netcdf resource id from parent
+                    netcdf_resource = [res['id'] for res in is_part_of_pkg['resources'] if 'netcdf' in res['format'].lower()]
+
+                    if netcdf_resource:
+                        resource_id = netcdf_resource[0]
+                        subset_params = helpers.get_query_params(package)
+                        spatial_params = package['spatial']
+                         #End date will be excluded therefore increment it by one
+                        corrected_end_time = subset_params['time_end']
+                        date = datetime.datetime.strptime(corrected_end_time, '%Y-%m-%dT%H:%M:%S')
+                        date += datetime.timedelta(days=1)
+                        subset_params['time_end'] = str(date).replace(' ', 'T')
+                    else: # this should not happen
+                        subset_params ={}
+                        subset_params['var'] = variables
+                        spatial_params = package['spatial']
+
 
         tpl_variables = {
             'resource_id': resource_id,
+            'subset_params' : subset_params,
+            'spatial_params' : spatial_params,
             'minimum': data_dict['resource_view'].get('minimum', ''),
             'maximum': data_dict['resource_view'].get('maximum', ''),
             'num_colorbands': data_dict['resource_view'].get('num_colorbands', ''),

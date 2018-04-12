@@ -125,8 +125,11 @@ class SubsetController(base.BaseController):
 
     def subset_download(self, resource_id):
         context = {'model': model, 'session': model.Session,
-                   'user': c.user}
+                   'user': c.author}
 
+        #print c.author
+        #print toolkit.c
+        #print resource_id
         resource = toolkit.get_action('resource_show')(context, {'id': resource_id})
         package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
 
@@ -203,7 +206,10 @@ def subset_download_job(resource_id, variables, subset_user):
     is_part_of_pkg = toolkit.get_action('package_show')(context, {'id': is_part_of_id[0]['id']})
 
     # get netcdf resource id from parent
-    netcdf_resource = [res['id'] for res in is_part_of_pkg['resources'] if res['format'].lower() == 'netcdf']
+    netcdf_resource = [res['id'] for res in is_part_of_pkg['resources'] if 'netcdf' in res['format'].lower()]
+
+    #print "**************************+"
+    #print corrected_params
 
     corrected_params, subset_netcdf_hash = get_ncss_subset_params(netcdf_resource[0], params, user, True, None)
 

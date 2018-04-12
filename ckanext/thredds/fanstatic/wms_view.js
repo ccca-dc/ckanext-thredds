@@ -3,6 +3,8 @@ ckan.module('wms_view', function ($) {
       /* options object can be extended using data-module-* attributes */
       options: {
           resource_id:'',
+          subset_params:'',
+          spatial_params:'',
           site_url:'',
           minimum:'',
           maximum:'',
@@ -10,7 +12,7 @@ ckan.module('wms_view', function ($) {
           logscale:'',
           default_layer:'',
           default_colormap:''
-      },
+      }, //options
 
       initialize: function () {
         $.proxyAll(this, /_on/);
@@ -26,7 +28,7 @@ ckan.module('wms_view', function ($) {
                                  this._onHandleError
                                 );
 
-      },
+      }, //initialize
 
       initializePreview: function () {
         var startDate = new Date();
@@ -43,7 +45,7 @@ ckan.module('wms_view', function ($) {
         } else {
           var wmslayer_selected = wmslayers[0];
           var wmsabstract_selected = wmsabstracts[0];
-          
+
         }
 
         if ($.type(self.options.default_colormap) == "string") {
@@ -74,21 +76,60 @@ ckan.module('wms_view', function ($) {
 
         var opacity = 1;
 
-        var map = L.map('map', {
-            zoom: 7,
-            fullscreenControl: true,
-            timeDimensionControl: true,
-            timeDimensionControlOptions: {
-                position: 'bottomleft',
-                playerOptions: {
-                    transitionTime: 1000
-                },
-                minSpeed: 0.1,
-                maxSpeed: 2.0
-            },
-            timeDimension: true,
-            center: [47.3, 13.9]
-        });
+        // check and store subset for subset_view
+        var subset_json = self.options.spatial_params;
+        var subset_parameter = self.options.subset_params;
+        var subset_bounds ='';
+        var subset_times = '';
+
+        if (subset_parameter != ''){
+          southWest = L.latLng(self.options.subset_params['south'],  self.options.subset_params['west']);
+          northEast = L.latLng(self.options.subset_params['north'], self.options.subset_params['east']);
+
+          subset_bounds = L.latLngBounds(southWest, northEast);
+          subset_times = subset_parameter['time_start'] +"/" + subset_parameter['time_end'];
+        //    subset_times = subset_parameter['time_start'] +"/" + "2018-04-13T12:00:00";
+        }
+
+        if (subset_times != ''){
+          var map = L.map('map', {
+              zoom: 7,
+              fullscreenControl: true,
+              timeDimensionControl: true,
+              timeDimensionControlOptions: {
+                  position: 'bottomleft',
+                  playerOptions: {
+                      transitionTime: 1000
+                  },
+                  minSpeed: 0.1,
+                  maxSpeed: 2.0
+              },
+              timeDimension: true,
+              timeDimensionOptions: {
+                  timeInterval:subset_times,
+                period: "PT1H" // Defines the Format of the time period
+                //period: "PYYYYMMDDThhmmss"
+              },
+              center: [47.3, 13.9]
+          }); //map
+        }
+        else {
+          var map = L.map('map', {
+              zoom: 7,
+              fullscreenControl: true,
+              timeDimensionControl: true,
+              timeDimensionControlOptions: {
+                  position: 'bottomleft',
+                  playerOptions: {
+                      transitionTime: 1000
+                  },
+                  minSpeed: 0.1,
+                  maxSpeed: 2.0
+              },
+              timeDimension: true,
+              center: [47.3, 13.9]
+          }); //map
+        }
 
         // ------------------------------------------------
         // Create control elements for first layer
@@ -283,7 +324,7 @@ ckan.module('wms_view', function ($) {
                     $(".leaflet-bar").show();
                     $(".leaflet-control-attribution").show();
                     $("#export-info").remove();
-                }
+                } //html2canvas
             });
 
             for (var i = 0; i < myTiles.length; i++) {
@@ -315,12 +356,12 @@ ckan.module('wms_view', function ($) {
             mapPane.style.transform = "translate(" + (mapX) + "px," + (mapY) + "px)";
             mapPane.style.left = "";
             mapPane.style.top = "";
-        });
+        }); // export-png
 
 
         var cccaWMS = self.options.site_url + "thredds/wms/ckan/" + [self.options.resource_id.slice(0,3), self.options.resource_id.slice(3,6), self.options.resource_id.slice(6)].join("/");
 
-        var cccaHeightLayer = L.tileLayer.wms(cccaWMS, {
+        var wmsOptions =  {
             layers: wmslayer_selected.id,
             format: 'image/png',
             transparent: true,
@@ -329,7 +370,9 @@ ckan.module('wms_view', function ($) {
             belowmincolor: "extend",
             numcolorbands: num_colorbands,
             styles: style_selection + '/' + palette_selection
-        });
+        }
+
+        var cccaHeightLayer = L.tileLayer.wms(cccaWMS,wmsOptions);
 
         var markers = [{
             name: 'Eisenstadt',
@@ -360,26 +403,48 @@ ckan.module('wms_view', function ($) {
             position: [48.209, 16.37]
         }];
 
-        var cccaHeightTimeLayer = L.timeDimension.layer.wms.timeseries(cccaHeightLayer, {
+        // Check whether the markers are inside a potential subset
+        var add_markers = [];
+        if (subset_bounds != '') {
+
+          for (var i=0; i< markers.length; i++) {
+             if (subset_bounds.contains(markers[i].position)){
+                  add_markers.push(markers[i]);
+                }
+          }
+
+        } else {
+          add_markers = markers;
+        }
+
+
+
+        var time_options = {
             updateTimeDimension: true,
-            markers: markers,
+            markers: add_markers,
             name: wmsabstract_selected,
             legendname: wmslayer_selected.label,
             maxValues: 2000,
             units: self.options.layers_details.units,
             enableNewMarkers: true
-        });
+        };
+
+
+        var cccaHeightTimeLayer = L.timeDimension.layer.wms.timeseries(cccaHeightLayer, time_options);
 
         var cccaLegend = L.control({
             position: 'bottomright'
         });
+
         cccaLegend.onAdd = function(map) {
-            var src = cccaWMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&LAYER=" + wmslayer_selected.id + "&colorscalerange="+ min_value + ',' + max_value + "&PALETTE="+ palette_selection +"&numcolorbands="+num_colorbands+"&transparent=TRUE";
-            var div = L.DomUtil.create('div', 'info legend');
-            div.innerHTML +=
-                '<img src="' + src + '" alt="legend">';
-            return div;
-        };
+
+          var src = cccaWMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&LAYER=" + wmslayer_selected.id + "&colorscalerange="+ min_value + ',' + max_value + "&PALETTE="+ palette_selection +"&numcolorbands="+num_colorbands+"&transparent=TRUE";
+
+          var div = L.DomUtil.create('div', 'info legend');
+          div.innerHTML +=
+              '<img src="' + src + '" alt="legend">';
+          return div;
+        }; // cccaLegend.onAdd
 
 
         var overlayMaps = {};
@@ -389,19 +454,106 @@ ckan.module('wms_view', function ($) {
             if (eventLayer.name == wmsabstract_selected) {
                 cccaLegend.addTo(this);
             }
-        });
+        }); // map on overlayadd
 
         map.on('overlayremove', function(eventLayer) {
             if (eventLayer.name == wmsabstract_selected) {
                 map.removeControl(cccaLegend);
             }
-        });
+        }); // map on overlayremove
 
         var baseLayers = getCommonBaseLayers(map); // see baselayers.js
+
         L.control.layers(baseLayers, overlayMaps).addTo(map);
 
-        cccaHeightTimeLayer.addTo(map);
-      },
+        ////////////////////////////
+        // For Subset  extent
+
+        if (subset_bounds != '') {
+              var styles = {
+                point:{
+                  iconUrl: '/img/marker.png',
+                  iconSize: [14, 25],
+                  iconAnchor: [7, 25]
+                },
+                base_:{
+                  color: '#B52',
+                  weight: 2,
+                  opacity: 0,
+                  fillColor: '#FCF6CF',
+                  fillOpacity: 0.8
+                },
+                default_:{
+                  color: '#ffffff', //'#B52'
+                  weight: 2,
+                  opacity: 1,
+                  fillColor: '#ffffff', //'#FCF6CF',
+                  fillOpacity: 0.3
+                }
+              };
+
+              var ckanIcon = L.Icon.extend({options: styles.point});
+
+              var extent = subset_json;
+
+              var bounds = map.getBounds();
+
+              var inversePolygon = createPolygonFromBounds(bounds);
+
+              extent.coordinates[0].push(inversePolygon.geometry.coordinates[0]);
+
+              /* Definition Mulitpolygon
+              {
+                "type": "MultiPolygon",
+                "coordinates": [
+                  [
+                    {polygon},
+                    {hole},
+                    {hole},
+                    {hole}
+                  ]
+                ]
+              }
+              */
+
+              if (extent.type == 'Polygon'
+                && extent.coordinates[0].length == 5) {
+                _coordinates = extent.coordinates[0]
+                w = _coordinates[0][0];
+                e = _coordinates[2][0];
+                if (w >= 0 && e < 0) {
+                  w_new = w
+                  while (w_new > e) w_new -=360
+                  for (var i = 0; i < _coordinates.length; i++) {
+                    if (_coordinates[i][0] == w) {
+                      _coordinates[i][0] = w_new
+                    };
+                  };
+                  extent.coordinates[0] = _coordinates
+                };
+              };
+
+
+              var extentLayer = L.geoJson(extent, {
+                  style: styles.default_,
+                  pointToLayer: function (feature, latLng) {
+                    return new L.Marker(latLng, {icon: new ckanIcon})
+                  }});
+
+              extentLayer.addTo(map);
+
+              if (extent.type == 'Point'){
+                map.setView(L.latLng(extent.coordinates[1],extent.coordinates[0]), 9);
+              } else {
+              //  map.fitBounds(extentLayer.getBounds());
+            }//else
+
+      } //if subset
+
+      cccaHeightTimeLayer.addTo(map);
+
+
+      }, //initializePreview
 
 
       _onHandleDataDetails: function(json) {
@@ -409,12 +561,13 @@ ckan.module('wms_view', function ($) {
           self.options.layers_details = json.result;
           this.initializePreview();
         }
-      },
+      }, //_onHandleDataDetails
 
       _onHandleData: function(json) {
         if (json.success) {
           self = this;
           self.options.layers = json.result;
+
 
           var wmslayers = $.map(json.result, function( value, key ) { return value.children});
           self.sandbox.client.call('GET','thredds_get_layerdetails',
@@ -422,13 +575,16 @@ ckan.module('wms_view', function ($) {
                                    this._onHandleDataDetails,
                                    this._onHandleError
                                   );
-        }
-      },
+        } //if
+
+      }, // _onHandleData
 
       _onHandleError: function(error) {
         document.getElementById("wms-view").innerHTML = "<h2>Please login to use this view</h2>";
+        console.log(error);
         throw new Error("Something went badly wrong!");
-      },
+
+      }, //_onHandleError
 
       _getDropDownList: function(name, id, optionList) {
           var combo = $("<select></select>").attr("id", id).attr("name", name).attr("class","form-control");
@@ -438,7 +594,21 @@ ckan.module('wms_view', function ($) {
           });
 
           return combo;
-      }
+      } // _getDropDownList
 
-  };
-});
+  }; // return
+
+  function createPolygonFromBounds(latLngBounds) {
+      latlngs = [];
+
+      latlngs.push(latLngBounds.getSouthWest());//bottom left
+      latlngs.push(latLngBounds.getSouthEast());//bottom right
+      latlngs.push(latLngBounds.getNorthEast());//top right
+      latlngs.push(latLngBounds.getNorthWest());//top left
+      latlngs.push(latLngBounds.getSouthWest());//bottom left
+
+     return new L.polygon(latlngs).toGeoJSON();
+
+   } //createPolygonFromBounds
+
+}); //ckan.module wms_view
