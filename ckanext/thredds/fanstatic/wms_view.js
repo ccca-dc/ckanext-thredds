@@ -89,6 +89,7 @@ ckan.module('wms_view', function ($) {
           subset_bounds = L.latLngBounds(southWest, northEast);
           subset_times = subset_parameter['time_start'] +"/" + subset_parameter['time_end'];
         //    subset_times = subset_parameter['time_start'] +"/" + "2018-04-13T12:00:00";
+        //  subset_times ='';
         }
 
         if (subset_times != ''){
@@ -107,8 +108,11 @@ ckan.module('wms_view', function ($) {
               timeDimension: true,
               timeDimensionOptions: {
                   timeInterval:subset_times,
-                period: "PT1H" // Defines the Format of the time period
-                //period: "PYYYYMMDDThhmmss"
+                  period: "PT1H", // Defines the Format of the time period
+                  //period: "PT1D" // Defines the Format of the time period
+                  currentTime: subset_parameter['time_start'],
+                  lowerLimitTime: subset_parameter['time_start'],
+                  upperLimitTime: subset_parameter['time_end']
               },
               center: [47.3, 13.9]
           }); //map
@@ -405,18 +409,33 @@ ckan.module('wms_view', function ($) {
 
         // Check whether the markers are inside a potential subset
         var add_markers = [];
+
         if (subset_bounds != '') {
 
-          for (var i=0; i< markers.length; i++) {
-             if (subset_bounds.contains(markers[i].position)){
-                  add_markers.push(markers[i]);
+            //check if default marker within
+            for (i=0; i <markers.length;i++) {
+               if ((subset_bounds.contains(markers[i].position))){
+                 add_markers.push(markers[i]);
                 }
-          }
+            }
 
-        } else {
+            // add center marker if non so far
+            if (add_markers.length == 0){
+
+                var center = subset_bounds.getCenter();
+                console.log(center);
+                var element = {
+                  name: "Subset Center",
+                  position: [center.lat, center.lng]
+
+                };
+
+              add_markers.push(element);
+           }
+
+        }else{
           add_markers = markers;
         }
-
 
 
         var time_options = {
