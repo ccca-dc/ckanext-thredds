@@ -100,6 +100,12 @@ class ThreddsPlugin(plugins.SingletonPlugin):
                         date = datetime.datetime.strptime(corrected_end_time, '%Y-%m-%dT%H:%M:%S')
                         date += datetime.timedelta(days=1)
                         subset_params['time_end'] = str(date).replace(' ', 'T')
+                        #Add Z ...
+                        if not subset_params['time_start'].endswith('Z'):
+                            subset_params['time_start'] = subset_params['time_start'] + 'Z'
+                        if not subset_params['time_end'].endswith('Z'):
+                            subset_params['time_end'] = subset_params['time_end'] + 'Z'
+
                     else: # this should not happen
                         subset_params ={}
                         subset_params['var'] = variables

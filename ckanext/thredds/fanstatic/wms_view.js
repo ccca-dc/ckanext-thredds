@@ -88,8 +88,11 @@ ckan.module('wms_view', function ($) {
 
           subset_bounds = L.latLngBounds(southWest, northEast);
           subset_times = subset_parameter['time_start'] +"/" + subset_parameter['time_end'];
-        //    subset_times = subset_parameter['time_start'] +"/" + "2018-04-13T12:00:00";
-        //  subset_times ='';
+
+          // Attention: Necessary Format!
+          //subset_times = "2018-04-12T12:00:00Z" +"/" + "2018-04-13T12:00:00Z";
+
+
         }
 
         if (subset_times != ''){
@@ -108,12 +111,9 @@ ckan.module('wms_view', function ($) {
               timeDimension: true,
               timeDimensionOptions: {
                   timeInterval:subset_times,
-                  period: "PT1H", // Defines the Format of the time period
-                  //period: "PT1D" // Defines the Format of the time period
-                  currentTime: subset_parameter['time_start'],
-                  lowerLimitTime: subset_parameter['time_start'],
-                  upperLimitTime: subset_parameter['time_end']
-              },
+                  //period: "P1DT1H" // Defines (the Format of) the time period
+                   period: "PT1H" // Defines (the Format of) the time period
+                 },
               center: [47.3, 13.9]
           }); //map
         }
@@ -423,7 +423,6 @@ ckan.module('wms_view', function ($) {
             if (add_markers.length == 0){
 
                 var center = subset_bounds.getCenter();
-                console.log(center);
                 var element = {
                   name: "Subset Center",
                   position: [center.lat, center.lng]
@@ -513,12 +512,15 @@ ckan.module('wms_view', function ($) {
 
               var ckanIcon = L.Icon.extend({options: styles.point});
 
+              // set extent to subset bounds - will become hole
               var extent = subset_json;
 
+              // outer border of extent
               var bounds = map.getBounds();
 
               var inversePolygon = createPolygonFromBounds(bounds);
 
+              // defines a MultiPolygon with a hole - see Definition below
               extent.coordinates[0].push(inversePolygon.geometry.coordinates[0]);
 
               /* Definition Mulitpolygon
@@ -535,6 +537,7 @@ ckan.module('wms_view', function ($) {
               }
               */
 
+              // From ckanext_spatial
               if (extent.type == 'Polygon'
                 && extent.coordinates[0].length == 5) {
                 _coordinates = extent.coordinates[0]
@@ -559,7 +562,7 @@ ckan.module('wms_view', function ($) {
                     return new L.Marker(latLng, {icon: new ckanIcon})
                   }});
 
-              extentLayer.addTo(map);
+               extentLayer.addTo(map);
 
               if (extent.type == 'Point'){
                 map.setView(L.latLng(extent.coordinates[1],extent.coordinates[0]), 9);
@@ -570,7 +573,6 @@ ckan.module('wms_view', function ($) {
       } //if subset
 
       cccaHeightTimeLayer.addTo(map);
-
 
       }, //initializePreview
 
@@ -618,6 +620,7 @@ ckan.module('wms_view', function ($) {
   }; // return
 
   function createPolygonFromBounds(latLngBounds) {
+
       latlngs = [];
 
       latlngs.push(latLngBounds.getSouthWest());//bottom left
