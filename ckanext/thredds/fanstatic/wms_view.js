@@ -508,17 +508,14 @@ ckan.module('wms_view', function ($) {
                  var marker_position = map._layers[ml]._position;
                  //console.log("Marker:");
                  //console.log(marker_position);
-                 //console.log(typeof(marker_position.lat));
-                 if (typeof(marker_position.lat)== "number"){
+                if (typeof(marker_position.lat)== "number"){
                    marker_position.lat= map._layers[ml]._position.lat.toFixed(1);
                    marker_position.lng= map._layers[ml]._position.lng.toFixed(1);
-                   console.log(typeof(marker_position.lat));
-
-                 }
+                  }
                  // Note corresponding chart
                  if (marker_position.lat == event_position.lat && marker_position.lng == event_position.lng  && map._layers[ml]._serieId){
 
-                   console.log(map._layers[ml]._serieId);
+                   //console.log(map._layers[ml]._serieId);
                    series_ids.push(map._layers[ml]._serieId); // necessary to find series in charts
                    map.removeLayer(map._layers[ml]);
                  }
