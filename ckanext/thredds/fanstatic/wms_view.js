@@ -480,6 +480,76 @@ ckan.module('wms_view', function ($) {
             }
         }); // map on overlayremove
 
+        //right mouse or equivalent
+        map.on('contextmenu', function(event) {
+
+          var allMarkersArray = []; // for marker objects
+          var allChartsArray = []; // for charts
+
+
+          var event_position = event.latlng;
+
+          if (event_position) {
+            event_position.lat = event_position.lat.toFixed(1);
+            event_position.lng = event_position.lng.toFixed(1);
+          }
+          else
+            return;
+
+          //console.log("Event:");
+          //console.log(event.latlng);
+          //console.log (event_position);
+
+          var series_ids=[];
+          //find and remove circle marker layer  and identify chart series layer
+          for (ml in map._layers){
+
+               if (map._layers[ml]._labelMarker && map._layers[ml]._position) {
+                 var marker_position = map._layers[ml]._position;
+                 //console.log("Marker:");
+                 //console.log(marker_position);
+                 //console.log(typeof(marker_position.lat));
+                 if (typeof(marker_position.lat)== "number"){
+                   marker_position.lat= map._layers[ml]._position.lat.toFixed(1);
+                   marker_position.lng= map._layers[ml]._position.lng.toFixed(1);
+                   console.log(typeof(marker_position.lat));
+
+                 }
+                 // Note corresponding chart
+                 if (marker_position.lat == event_position.lat && marker_position.lng == event_position.lng  && map._layers[ml]._serieId){
+
+                   console.log(map._layers[ml]._serieId);
+                   series_ids.push(map._layers[ml]._serieId); // necessary to find series in charts
+                   map.removeLayer(map._layers[ml]);
+                 }
+
+               }
+               else if (map._layers[ml]._chart) {
+                   allChartsArray.push(map._layers[ml]);
+               }
+
+         } // for
+
+         if (series_ids.length > 0){
+         // remove  chart series
+               //console.log("Charts");
+               for (i=0;i < allChartsArray.length;i++) {
+                 //console.log(allChartsArray[i]);
+                 if (allChartsArray[i]._chart.series){
+                       for (j=0; j<allChartsArray[i]._chart.series.length ; j++){
+                         //console.log(allChartsArray[i]._chart.series[j].userOptions.id);
+                         if (allChartsArray[i]._chart.series[j].userOptions.id.indexOf(series_ids) >=0 )
+                                  allChartsArray[i]._chart.series[j].remove();
+                      } //for
+                  } //if
+
+                } //for
+
+          } // if series
+
+        }); // map on contextmenu
+
+
         var baseLayers = getCommonBaseLayers(map); // see baselayers.js
 
         L.control.layers(baseLayers, overlayMaps).addTo(map);
