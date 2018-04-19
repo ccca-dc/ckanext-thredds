@@ -1,0 +1,31 @@
+#dataset_subsets {
+    margin-top: 10px;
+    margin-left:30px;
+}
+#subset_list {
+    display: inline-block;
+    margin-bottom: 0;
+}
+#subset_list li {
+    padding-bottom: 10px;
+ }
+#subset_list li:hover {
+    font-weight: 800;
+}
+#subset_list li a {
+    color: black;
+}
+#versions-button {
+    margin-top: 5px;
+}
+#history-button {
+    margin-top: 10px;
+}
+#history {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+.small-grey {
+    color: grey;
+    opacity: 0.7;
+}

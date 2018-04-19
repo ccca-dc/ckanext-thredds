@@ -94,16 +94,14 @@ this.ckan.module('subset-form', function (jQuery, _) {
       }
 
       // should not be in this module
-      if(document.getElementById('new_package') !== null && document.getElementById("new_package").checked==true){
-          document.getElementById('new_package_well').style.display = 'block';
-          if(document.getElementById('existing_package') !== null){
-            document.getElementById('existing_package_well').style.display = 'none';
+      if(document.getElementById('download') !== null && document.getElementById("download").checked==true){
+          document.getElementById('download_well').style.display = 'block';
+          if(document.getElementById('create_resource') !== null){
+            document.getElementById('create_resource_well').style.display = 'none';
           }
-      }else if(document.getElementById('existing_package') !== null && document.getElementById("existing_package").checked==true){
-          document.getElementById('existing_package_well').style.display = 'block';
-          if(document.getElementById('new_package') !== null){
-            document.getElementById('new_package_well').style.display = 'none';
-          }
+      }else if(document.getElementById('create_resource') !== null && document.getElementById("create_resource").checked==true){
+          document.getElementById('create_resource_well').style.display = 'block';
+          document.getElementById('download_well').style.display = 'none';
       }
     },
 
@@ -180,6 +178,7 @@ this.ckan.module('subset-form', function (jQuery, _) {
             geometry_type = fg.getLayers()[0].toGeoJSON().geometry.type;
             if(geometry_type != "MultiPolygon"){
                 document.getElementById("select-extent").selectedIndex = "0";
+                $('#spatial_name').val("");
             }
             if(geometry_type == "Polygon" || geometry_type == "MultiPolygon"){
                 var bounds = drawnItems.getLayers()[0].getBounds();
@@ -258,31 +257,23 @@ this.ckan.module('subset-form', function (jQuery, _) {
                 map.removeControl(drawControl);
                 map.addControl(drawControlGeoJson);
             }
+
+            $('#spatial_name').val($("#select-extent option:selected").text());
         });
 
         // following elements should not be in this module
         $(':radio[id=download]').change(function() {
-            if(document.getElementById('new_package') !== null){
-                document.getElementById('new_package_well').style.display = 'none';
-            }
-            if(document.getElementById('existing_package') !== null){
-                document.getElementById('existing_package_well').style.display = 'none';
+            document.getElementById('download_well').style.display = 'block';
+            if(document.getElementById('create_resource') !== null){
+                document.getElementById('create_resource_well').style.display = 'none';
             }
         });
-        $(':radio[id=new_package]').change(function() {
-            document.getElementById('new_package_well').style.display = 'block';
-            if(document.getElementById('existing_package') !== null){
-                document.getElementById('existing_package_well').style.display = 'none';
-            }
-        });
-        $(':radio[id=existing_package]').change(function() {
-            document.getElementById('existing_package_well').style.display = 'block';
-            if(document.getElementById('new_package') !== null){
-                document.getElementById('new_package_well').style.display = 'none';
-            }
+        $(':radio[id=create_resource]').change(function() {
+            document.getElementById('create_resource_well').style.display = 'block';
+            document.getElementById('download_well').style.display = 'none';
         });
 
-        $("#subset-form :input").tooltip({ 'trigger': 'focus' });
+        $(".ttip").tooltip({ 'trigger': 'focus' });
     }
 
   }

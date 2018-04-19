@@ -1,30 +1,33 @@
+{% resource 'ccca/livicons' %}
+{% resource 'thredds/livicons_addition.css' %}
 {% ckan_extends %}
 
 {% block resource_actions_inner %}
-    {% if h.check_access('package_update', {'id':pkg.id }) %}
-      <li>{% link_for _('Manage'), controller='package', action='resource_edit', id=pkg.name, resource_id=res.id, class_='btn', icon='wrench' %}</li>
-    {% endif %}
-    {% if pkg.private == False and (res.format|lower == 'netcdf' or res.format == 'application/x-netcdf') %}
-        <li>
-            {% link_for _('Create Subset'), controller='ckanext.thredds.controllers.subset:SubsetController', action='create_subset', resource_id=res.id, class_='btn', icon='plus-sign-alt' %}
-        </li>
-    {% endif %}
     {% if res.url and h.is_url(res.url) %}
-      <li>
-        <a class="btn btn-primary resource-url-analytics resource-type-{{ res.resource_type }}" href="{{ res.url }}">
+        <a class="btn btn-primary pull-right resource-url-analytics resource-type-{{ res.resource_type }}" href="{{ res.url }}">
           {% if res.resource_type in ('listing', 'service') %}
             <i class="icon-eye-open"></i> {{ _('View') }}
           {% elif  res.resource_type == 'api' %}
             <i class="icon-key"></i> {{ _('API Endpoint') }}
+          {% elif h.get_parent_dataset(res.package_id) and '/subset/' in res.url %}
+            <i class="icon-download"></i> {{ _('Download') }}
           {% elif not res.has_views or not res.can_be_previewed %}
             <i class="icon-external-link"></i> {{ _('Go to resource') }}
           {% else %}
             <i class="icon-download"></i> {{ _('Download') }}
           {% endif %}
         </a>
-      </li>
     {% endif %}
+
+    {% if pkg.private == False and h.check_if_res_can_create_subset(res.id) %}
+        {% link_for _('Create Subset'), controller='ckanext.thredds.controllers.subset:SubsetController', action='subset_create', resource_id=res.id, class_='btn pull-right', icon='plus-sign-alt' %}
+    {% endif %}
+
+    {% if h.check_access('package_update', {'id':pkg.id }) %}
+        {% link_for _('Manage'), controller='package', action='resource_edit', id=pkg.name, resource_id=res.id, class_='btn pull-right', icon='wrench' %}
+    {% endif %}
+
     {% if 'datastore' in g.plugins %}
-      <li>{% snippet 'package/snippets/data_api_button.html', resource=res, datastore_root_url=c.datastore_api %}</li>
+        {% snippet 'package/snippets/data_api_button.html', resource=res, datastore_root_url=c.datastore_api %}
     {% endif %}
 {% endblock %}

@@ -1,0 +1,18 @@
+.alignments .vertically-centered-text {
+  margin-left: 10px;
+  height: 60px; /*make it same as LivIcon size*/
+  line-height: 60px; /*make it same as LivIcon size*/
+}
+.alignments .inline-block {
+  display: inline-block;
+  margin-right: 10px; /*adgust if necessary*/
+}
+.alignments .morph-chevron-button {
+    outline: 0;
+    border: 0;
+}
+@media (min-width: 780px) {
+    .subset_params_section {
+        margin-left: 30px;
+    }
+}

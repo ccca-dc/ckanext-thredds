@@ -3,21 +3,32 @@
 import ckan.plugins.toolkit as tk
 import ckan.logic
 from owslib.wms import WebMapService
-import os
 import requests
 import json
-import ckan.plugins.toolkit as toolkit
 import ckan.lib.helpers as h
 import ckan.logic as logic
 from ckan.model import (PACKAGE_NAME_MIN_LENGTH, PACKAGE_NAME_MAX_LENGTH)
 from dateutil.relativedelta import relativedelta
 from ckan.common import _
 import ckan.lib.navl.dictization_functions as df
-import urllib
-import ast
 import ckan.lib.base as base
 from pylons import config
 import datetime
+import ckan.plugins as p
+import ckan.lib.mailer as mailer
+import ckan.model as model
+from xml.etree import ElementTree
+import ckanext.thredds.helpers as helpers
+import ckanext.resourceversions.helpers
+
+#from ckanext.contact.interfaces import IContact #makes problems and obviously we do not need it? Anja, 15.2.18
+import socket
+import hashlib
+import os
+
+import logging
+log = logging.getLogger(__name__)
+
 
 check_access = logic.check_access
 
@@ -29,6 +40,8 @@ NotAuthorized = logic.NotAuthorized
 NotFound = logic.NotFound
 Invalid = df.Invalid
 ValidationError = logic.ValidationError
+
+c = base.c
 
 
 @ckan.logic.side_effect_free
@@ -46,11 +59,44 @@ def thredds_get_layers(context, data_dict):
     user = context['auth_user_obj']
 
     resource_id = tk.get_or_bust(data_dict,'id')
-    resource = toolkit.get_action('resource_show')(context, {'id': resource_id})
+    resource = tk.get_action('resource_show')(context, {'id': resource_id})
+
+    #check if the resource is a subset
+
+    if '/subset/' in resource['url']:
+
+        package = tk.get_action('package_show')(context, {'id': resource['package_id']})
+
+        # get params from metadata
+        try:
+            variables = str(','.join([var['name'] for var in package['variables']]))
+        except:
+            h.flash_error('Thredds View was not possible as the variables of the package are not defined correctly.')
+            redirect(h.url_for(controller='package', action='resource_read',
+                                     id=resource['package_id'], resource_id=resource['id']))
+        params = helpers.get_query_params(package)
+        params['var'] = variables
+        params['accept'] = resource['format']
+        params['item']='menu'
+        params['request']= 'GetMetadata'
+        payload = params
+        #print params
+        # Get Resource_id from parent
+        # get parent of subset
+        is_part_of_id = [d for d in package['relations'] if d['relation'] == 'is_part_of']
+        is_part_of_pkg = tk.get_action('package_show')(context, {'id': is_part_of_id[0]['id']})
+
+        # get netcdf resource id from parent
+        netcdf_resource = [res['id'] for res in is_part_of_pkg['resources'] if  'netcdf' in res['format'].lower()]
+        resource_id = netcdf_resource[0]
+    else:
+
+        payload={'item':'menu',
+                 'request':'GetMetadata'}
 
     # Get URL for WMS Proxy
     ckan_url = config.get('ckan.site_url', '')
-    wms_url = ckan_url + '/tds_proxy/wms/' + resource_id
+    wms_url = ckan_url + '/thredds/wms/ckan/' + "/".join([resource_id[0:3],resource_id[3:6],resource_id[6:]])
 
     # Headers and payload for thredds request
     try:
@@ -58,14 +104,14 @@ def thredds_get_layers(context, data_dict):
     except:
         raise NotAuthorized
 
-    payload={'item':'menu',
-             'request':'GetMetadata'}
 
     # Thredds request
     try:
         r = requests.get(wms_url, params=payload, headers=headers)
         layer_tds = json.loads(r.content)
+
     except Exception as e:
+        #print "***************** Errror"
         raise NotFound("Thredds Server can not provide layer information for the resource")
 
     # Filter Contents
@@ -91,25 +137,52 @@ def thredds_get_layerdetails(context, data_dict):
     '''
 
     # Resource ID
-    model = context['model']
     user = context['auth_user_obj']
 
     resource_id = tk.get_or_bust(data_dict,'id')
     layer_name = tk.get_or_bust(data_dict,'layer')
 
+    resource = tk.get_action('resource_show')(context, {'id': resource_id})
+
+    if '/subset/' in resource['url']:
+        # get params from metadata
+        package = tk.get_action('package_show')(context, {'id': resource['package_id']})
+        try:
+            variables = str(','.join([var['name'] for var in package['variables']]))
+        except:
+            h.flash_error('Thredds View was not possible as the variables of the package are not defined correctly.')
+            redirect(h.url_for(controller='package', action='resource_read',
+                                     id=resource['package_id'], resource_id=resource['id']))
+        params = helpers.get_query_params(package)
+        params['var'] = variables
+        params['accept'] = resource['format']
+        params['item']='layerDetails'
+        params['layerName']=layer_name
+        params['request']= 'GetMetadata'
+        payload = params
+        #print params
+        # Get Resource_id from parent
+        # get parent of subset
+        is_part_of_id = [d for d in package['relations'] if d['relation'] == 'is_part_of']
+        is_part_of_pkg = tk.get_action('package_show')(context, {'id': is_part_of_id[0]['id']})
+
+        # get netcdf resource id from parent
+        netcdf_resource = [res['id'] for res in is_part_of_pkg['resources'] if 'netcdf' in res['format'].lower()]
+        resource_id = netcdf_resource[0]
+
+    else:
+        payload={'item':'layerDetails',
+                 'layerName':layer_name,
+                 'request':'GetMetadata'}
 
     # Get URL for WMS Proxy
     ckan_url = config.get('ckan.site_url', '')
-    wms_url = ckan_url + '/tds_proxy/wms/' + resource_id
+    wms_url = ckan_url + '/thredds/wms/ckan/' + "/".join([resource_id[0:3],resource_id[3:6],resource_id[6:]])
 
     try:
         headers={'Authorization':user.apikey}
     except:
         raise NotAuthorized
-
-    payload={'item':'layerDetails',
-             'layerName':layer_name,
-             'request':'GetMetadata'}
 
     try:
         r = requests.get(wms_url, params=payload, headers=headers)
@@ -154,13 +227,10 @@ def subset_create(context, data_dict):
     errors = {}
 
     id = _get_or_bust(data_dict, 'id')
-    resource = toolkit.get_action('resource_show')(context, {'id': id})
-    package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
+    resource = tk.get_action('resource_show')(context, {'id': id})
+    package = tk.get_action('package_show')(context, {'id': resource['package_id']})
 
-    layers = toolkit.get_action('thredds_get_layers')(context, {'id': resource['id']})
-    layer_details = toolkit.get_action('thredds_get_layerdetails')(context, {'id': resource['id'], 'layer': layers[0]['children'][0]['id']})
-
-    bbox = layer_details['bbox']
+    metadata = tk.get_action('thredds_get_metadata_info')(context, {'id': id})
 
     # error section
     # error coordinate section, checking if values are entered and floats
@@ -210,92 +280,76 @@ def subset_create(context, data_dict):
         northf = float(data_dict['north'])
         if data_dict.get('south', "") != "":
             southf = float(data_dict['south'])
-            if northf > float(bbox[3]) and southf > float(bbox[3]):
+            if northf > float(metadata['coordinates']['north']) and southf > float(metadata['coordinates']['north']):
                 errors['north'] = [u'coordinate is further north than bounding box of resource']
                 errors['south'] = [u'coordinate is further north than bounding box of resource']
-            elif northf < float(bbox[1]) and southf < float(bbox[1]):
+            elif northf < float(metadata['coordinates']['south']) and southf < float(metadata['coordinates']['south']):
                 errors['north'] = [u'coordinate is further south than bounding box of resource']
                 errors['south'] = [u'coordinate is further south than bounding box of resource']
             else:
-                if northf > float(bbox[3]):
-                    data_dict['north'] = bbox[3]
-                if southf < float(bbox[1]):
-                    data_dict['south'] = bbox[1]
+                if northf > float(metadata['coordinates']['north']):
+                    data_dict['north'] = metadata['coordinates']['north']
+                if southf < float(metadata['coordinates']['south']):
+                    data_dict['south'] = metadata['coordinates']['south']
         else:
-            if northf > float(bbox[3]):
+            if northf > float(metadata['coordinates']['north']):
                 errors['north'] = [u'latitude is further north than bounding box of resource']
-            if northf < float(bbox[1]):
+            if northf < float(metadata['coordinates']['south']):
                 errors['north'] = [u'latitude is further south than bounding box of resource']
 
     if eastWestOk is True:
         eastf = float(data_dict['east'])
         if data_dict.get('west', "") != "":
             westf = float(data_dict['west'])
-            if eastf > float(bbox[2]) and westf > float(bbox[2]):
+            if eastf > float(metadata['coordinates']['east']) and westf > float(metadata['coordinates']['east']):
                 errors['east'] = [u'coordinate is further east than bounding box of resource']
                 errors['west'] = [u'coordinate is further east than bounding box of resource']
-            elif eastf < float(bbox[0]) and westf < float(bbox[0]):
+            elif eastf < float(metadata['coordinates']['west']) and westf < float(metadata['coordinates']['west']):
                 errors['east'] = [u'coordinate is further west than bounding box of resource']
                 errors['west'] = [u'coordinate is further west than bounding box of resource']
             else:
-                if eastf > float(bbox[2]):
-                    data_dict['east'] = bbox[2]
-                if westf < float(bbox[0]):
-                    data_dict['west'] = bbox[0]
+                if eastf > float(metadata['coordinates']['east']):
+                    data_dict['east'] = metadata['coordinates']['east']
+                if westf < float(metadata['coordinates']['west']):
+                    data_dict['west'] = metadata['coordinates']['west']
         else:
-            if eastf > float(bbox[2]):
+            if eastf > float(metadata['coordinates']['east']):
                 errors['east'] = [u'longitude is further east than bounding box of resource']
-            if eastf < float(bbox[0]):
+            if eastf < float(metadata['coordinates']['west']):
                 errors['east'] = [u'longitude is further west than bounding box of resource']
 
     # error resource creation section
-    if data_dict.get('type', 'download').lower() == 'new_package':
-        if data_dict.get('title', "") == '':
-            errors['title'] = [u'Missing Value']
-        if data_dict.get('name', "") == '':
-            errors['name'] = [u'Missing Value']
+    if data_dict.get('type', 'download').lower() == "create_resource":
+        if data_dict.get('resource_name', "") == '':
+            errors['resource_name'] = [u'Missing Value']
+        if data_dict.get('package_title', "") == '':
+            errors['package_title'] = [u'Missing Value']
+        if data_dict.get('package_name', "") == '':
+            errors['package_name'] = [u'Missing Value']
         else:
             model = context['model']
             session = context['session']
-            result = session.query(model.Package).filter_by(name=data_dict['name']).first()
+            result = session.query(model.Package).filter(model.Package.name.like(data_dict['package_name']+ "-v%")).first()
 
             if result:
-                errors['name'] = [u'That URL is already in use.']
-            elif len(data_dict['name']) < PACKAGE_NAME_MIN_LENGTH:
-                errors['name'] = [u'URL is shorter than minimum (' + str(PACKAGE_NAME_MIN_LENGTH) + u')']
-            elif len(data_dict['name']) > PACKAGE_NAME_MAX_LENGTH:
-                errors['name'] = [u'URL is longer than maximum (' + str(PACKAGE_NAME_MAX_LENGTH) + u')']
+                errors['package_name'] = [u'That URL is already in use.']
+            elif len(data_dict['package_name']) < PACKAGE_NAME_MIN_LENGTH:
+                errors['package_name'] = [u'URL is shorter than minimum (' + str(PACKAGE_NAME_MIN_LENGTH) + u')']
+            elif len(data_dict['package_name']) > PACKAGE_NAME_MAX_LENGTH:
+                errors['package_name'] = [u'URL is longer than maximum (' + str(PACKAGE_NAME_MAX_LENGTH) + u')']
         if data_dict.get('organization', "") == '':
             errors['organization'] = [u'Missing Value']
         else:
-            toolkit.get_action('organization_show')(context, {'id': data_dict['organization']})
-    elif data_dict.get('type', 'download').lower() == 'existing_package':
-        if data_dict.get('existing_package_id', "") == '':
-            errors['existing_package_id'] = [u'Missing Value']
+            tk.get_action('organization_show')(context, {'id': data_dict['organization']})
+    else:
+        # error format section
+        if data_dict.get('format', "") != "":
+            if data_dict['point'] is True and data_dict['format'].lower() not in {'netcdf', 'csv', 'xml'}:
+                errors['format'] = [u'Wrong format']
+            elif data_dict['point'] is False and data_dict['format'].lower() != 'netcdf':
+                errors['format'] = [u'Wrong format']
         else:
-            try:
-                package_exists = False
-                toolkit.get_action('package_show')(context, {'id': data_dict['existing_package_id']})
-                check_access('package_update', context, {'id': data_dict['existing_package_id']})
-                package_exists = True
-
-                relationships = toolkit.get_action('package_relationships_list')(context, {'id': package['id'], 'rel': 'parent_of'})
-
-                is_child_of = False
-                for rel in relationships:
-                    if rel['object'] == data_dict['existing_package_id']:
-                        is_child_of = True
-                        break
-
-                if is_child_of is False:
-                    errors['existing_package_id'] = [u'Given package is not derived from original package']
-            except NotFound:
-                if not package_exists:
-                    errors['existing_package_id'] = [u'Package not found']
-                else:
-                    errors['existing_package_id'] = [u'There are no derived packages available to use; change type']
-            except NotAuthorized:
-                errors['existing_package_id'] = [u'Not authorized to add subset to this package']
+            errors['format'] = [u'Missing value']
 
     # error time section
     times_exist = False
@@ -325,33 +379,19 @@ def subset_create(context, data_dict):
                     data_dict['time_end'] = str(package_end)
                 if given_start < package_start:
                     data_dict['time_start'] = str(package_start)
-
-            # currently only 5 year ranges are permitted
-            if abs(relativedelta(given_end, given_start).years) > 5:
-                errors['time_start'] = [u'Currently we only support time ranges lower than 6 years']
-                errors['time_end'] = [u'Currently we only support time ranges lower than 6 years']
     elif data_dict.get('time_start', "") != "" and data_dict.get('time_end', "") == "":
         errors['time_end'] = [u'Missing value']
     elif data_dict.get('time_start', "") == "" and data_dict.get('time_end', "") != "":
         errors['time_start'] = [u'Missing value']
 
-    # error format section
-    if data_dict.get('format', "") != "":
-        if data_dict['point'] is True and data_dict['format'].lower() not in {'netcdf', 'csv', 'xml'}:
-            errors['format'] = [u'Wrong format']
-        elif data_dict['point'] is False and data_dict['format'].lower() != 'netcdf':
-            errors['format'] = [u'Wrong format']
-    else:
-        errors['format'] = [u'Missing value']
-
     # error layer section
     if data_dict.get('layers', "") != "":
         if type(data_dict['layers']) is list:
             for l in data_dict['layers']:
-                if not any(child['id'] == l for child in layers[0]['children']):
+                if not any(var['name'] == l for var in metadata['variables']):
                     errors['layers'] = [u'layer "' + l + '" does not exist']
         else:
-            if not any(child['id'] == data_dict['layers'] for child in layers[0]['children']):
+            if not any(var['name'] == data_dict['layers'] for var in metadata['variables']):
                 errors['layers'] = [u'layer "' + data_dict['layers'] + '" does not exist']
     else:
         errors['layers'] = [u'Missing value']
@@ -360,152 +400,501 @@ def subset_create(context, data_dict):
     if len(errors) > 0:
         raise ValidationError(errors)
     else:
-        # start building URL params with var (required)
-        if type(data_dict['layers']) is list:
-            params = {'var': ','.join(data_dict['layers'])}
-        else:
-            params = {'var': data_dict['layers']}
+        try:
+            enqueue_job = tk.enqueue_job
+        except AttributeError:
+            from ckanext.rq.jobs import enqueue as enqueue_job
+        enqueue_job(subset_create_job, [c.user, resource, data_dict, times_exist, metadata])
+    return "Your subset is being created. This might take a while, you will receive an E-Mail when your subset is available."
 
-        # adding format
+
+def subset_create_job(user, resource, data_dict, times_exist, metadata):
+    '''The subset creation job (jobs are always executed as default user)
+
+    :param user: the user name or id
+    :type user: string
+    :param resource: the resource of which a subset is to be created
+    :type resource: dict
+    :param data_dict: all informations regarding the new subset
+    :type data_dict: dict
+    :param times_exist: TODO
+    :type times_exist: boolean
+    :param metadata: the thredds metadata for the parent resource
+    :type metadata: string
+    '''
+    context = {'model': model, 'session': model.Session,
+               'user': user}
+
+    user = tk.get_action('user_show')(context, {'id': user})
+
+    # start building URL params with var (required)
+    if type(data_dict['layers']) is list:
+        params = {'var': ','.join(data_dict['layers'])}
+    else:
+        params = {'var': data_dict['layers']}
+
+    # adding format
+    if data_dict.get('format', ''):
         params['accept'] = data_dict['format'].lower()
 
-        # adding time
-        if times_exist is True:
-            time_start = h.date_str_to_datetime(data_dict['time_start']).isoformat()
-            time_end = h.date_str_to_datetime(data_dict['time_end']).isoformat()
-            if time_end < time_start:
-                # swap times if start time before end time
-                data_dict['time_start'], data_dict['time_end'] = data_dict['time_end'], data_dict['time_start']
-            params['time_start'] = time_start
-            params['time_end'] = time_end
+    # adding time
+    if times_exist is True:
+        time_start = h.date_str_to_datetime(data_dict['time_start']).isoformat()
+        time_end = h.date_str_to_datetime(data_dict['time_end']).isoformat()
+        if time_end < time_start:
+            # swap times if start time before end time
+            data_dict['time_start'], data_dict['time_end'] = data_dict['time_end'], data_dict['time_start']
+        params['time_start'] = time_start
+        params['time_end'] = time_end
 
-        # adding coordinates
-        if data_dict.get('north', "") != "" and data_dict.get('east', "") != "":
-            if data_dict['point'] is True:
-                params['latitude'] = round(float(data_dict['north']), 4)
-                params['longitude'] = round(float(data_dict['east']), 4)
-            else:
-                params['north'] = round(float(data_dict['north']), 4)
-                params['south'] = round(float(data_dict['south']), 4)
-                params['east'] = round(float(data_dict['east']), 4)
-                params['west'] = round(float(data_dict['west']), 4)
+    # adding coordinates
+    if data_dict.get('north', "") != "" and data_dict.get('east', "") != "":
+        if data_dict['point'] is True:
+            params['latitude'] = round(float(data_dict['north']), 4)
+            params['longitude'] = round(float(data_dict['east']), 4)
+        else:
+            params['north'] = round(float(data_dict['north']), 4)
+            params['south'] = round(float(data_dict['south']), 4)
+            params['east'] = round(float(data_dict['east']), 4)
+            params['west'] = round(float(data_dict['west']), 4)
 
-        ckan_url = config.get('ckan.site_url', '')
-        url = ('%s/tds_proxy/ncss/%s?%s' % (ckan_url, resource['id'], urllib.urlencode(params)))
+    only_location = False
+    if data_dict.get('type', 'download').lower() == "download":
+        only_location = True
+    corrected_params, resource_params = get_ncss_subset_params(resource['id'], params, user, only_location, metadata)
 
-        return_dict = dict()
+    return_dict = dict()
+
+    location = None
+
+    if "error" not in corrected_params:
+        location = [corrected_params['location']]
 
         # create resource if requested from user
-        if data_dict.get('type', 'download').lower() in {'new_package', 'existing_package'}:
-            try:
-                check_access('package_show', context, {'id': package['id']})
-            except NotAuthorized:
-                abort(403, _('Unauthorized to show package'))
+        if data_dict.get('type', 'download').lower() == "create_resource":
+            package = tk.get_action('package_show')(context, {'id': resource['package_id']})
 
             # check if url already exists
-            search_results = toolkit.get_action('resource_search')(context, {'query': "url:" + url})
+            if resource_params is not None and resource_params.get('hash', None) is not None:
+                search_results = tk.get_action('package_search')(context, {'rows': 10000, 'fq':
+                                'res_hash:%s' % (resource_params['hash']), 'include_versions': True})
 
-            # check if private is true or false otherwise set private = "True"
-            if 'private' not in data_dict or data_dict['private'].lower() not in {'true', 'false'}:
-                data_dict['private'] = 'True'
-
-            user = toolkit.get_action('user_show')(context, {'id': context['auth_user_obj'].id})
-
-            # creating new package from the current one with few changes
-            if data_dict.get('type', 'download').lower() == 'new_package':
                 if search_results['count'] > 0:
-                    return_dict['existing_resource'] = toolkit.get_action('resource_show')(context, {'id': search_results['results'][0]['id']})
-                    if data_dict.get('private', 'True').lower() == 'false':
-                        return return_dict
+                    return_dict['existing_package'] = search_results['results'][0]
 
+            if 'existing_package' not in return_dict or str(data_dict.get('private', 'True')).lower() == 'true':
+                # check if private is True or False otherwise set private to True
+                if 'private' not in data_dict or str(data_dict['private']).lower() not in {'true', 'false'}:
+                    data_dict['private'] = 'True'
+
+                # creating new package from the current one with few changes
                 new_package = package.copy()
+                new_package.update(corrected_params)
                 new_package.pop('id')
                 new_package.pop('resources')
                 new_package.pop('groups')
                 new_package.pop('revision_id')
 
-                new_package['iso_mdDate'] = new_package['metadata_created'] = new_package['metadata_modified'] = datetime.datetime.now()
+                new_package['created'] = new_package['metadata_created'] = new_package['metadata_modified'] = datetime.datetime.now()
                 new_package['owner_org'] = data_dict['organization']
-                new_package['name'] = data_dict['name']
-                new_package['title'] = data_dict['title']
+                new_package['name'] = data_dict['package_name']
+                new_package['title'] = data_dict['package_title']
                 new_package['private'] = data_dict['private']
+                new_package['spatial_name'] = data_dict.get('spatial_name', '')
 
-                # add bbox and spatial if added
-                if 'north' in params:
-                    n = params['north']
-                    s = params['south']
-                    e = params['east']
-                    w = params['west']
+                if params.get('north', "") != "":
+                    new_package['spatial'] = helpers.coordinates_to_spatial(params['north'], params['east'], params['south'], params['west'])
 
-                    new_package['iso_northBL'] = n
-                    new_package['iso_southBL'] = s
-                    new_package['iso_eastBL'] = e
-                    new_package['iso_westBL'] = w
-
-                    coordinates = [[w, s], [e, s], [e, n], [w, n], [w, s]]
-                    spatial = ('{"type": "MultiPolygon", "coordinates": [[' + str(coordinates) + ']]}')
-
-                    new_package['spatial'] = spatial
-
-                # add time if added
-                if times_exist is True:
-                    new_package['iso_exTempStart'] = data_dict['time_start']
-                    new_package['iso_exTempEnd'] = data_dict['time_end']
+                new_package['relations'] = [{'relation': 'is_part_of', 'id': package['id']}]
 
                 # add subset creator
                 subset_creator = dict()
                 subset_creator['name'] = user['display_name']
-                subset_creator['mail'] = user['email']
-                subset_creator['role'] = "Subset Creator"
-                subset_creator['department'] = ""
-
-                contacts = toolkit.get_action('package_contact_show')(context, {'package_id': package['id']})
-                contacts.append(subset_creator)
-                new_package['contact_info'] = json.dumps(contacts)
+                subset_creator['email'] = user['email']
+                subset_creator['role'] = "subset creator"
+                if 'contact_points' not in new_package:
+                    new_package['contact_points'] = []
+                new_package['contact_points'].append(subset_creator)
 
                 # need to pop package otherwise it overwrites the current pkg
                 context.pop('package')
 
-                new_package = toolkit.get_action('package_create')(context, new_package)
-                package_to_add_id = new_package['id']
+                new_package = tk.get_action('package_create')(context, new_package)
+
+                # add resource in all formats
+                subset_formats = ['NetCDF']
+                if data_dict['point'] is True:
+                    subset_formats.extend(['xml', 'csv'])
+
+                for subset_format in subset_formats:
+                    new_resource = {'name': data_dict['resource_name'], 'url': 'subset', 'format': subset_format, 'anonymous_download': 'False', 'package_id': new_package['id']}
+                    if subset_format.lower() == 'netcdf':
+                        if resource_params is not None:
+                            new_resource['hash'] = resource_params.get('hash', None)
+                        if resource_params is not None:
+                            new_resource['size'] = resource_params.get('size', None)
+                    else:
+                        params['accept'] = subset_format
+                        corrected_params_new_res, resource_params_new_res = get_ncss_subset_params(resource['id'], params, user, True, metadata)
+
+                        if "error" not in corrected_params_new_res:
+                            location.append(corrected_params_new_res['location'])
+
+                            if resource_params_new_res is not None:
+                                new_resource['hash'] = resource_params_new_res.get('hash',None)
+                            if resource_params_new_res is not None:
+                                new_resource['size'] = resource_params_new_res.get('size',None)
+
+                    new_resource = tk.get_action('resource_create')(context, new_resource)
+
+                    # url needs id of the resource
+                    # TODO ckan_url in both methods
+                    ckan_url = config.get('ckan.site_url', '')
+                    new_resource['url'] = ('%s/subset/%s/download' % (ckan_url, new_resource['id']))
+                    context['create_version'] = False
+                    new_resource = tk.get_action('resource_update')(context, new_resource)
+
+                return_dict['new_package'] = new_package
+
+    error = corrected_params.get('error', None)
+    new_package = return_dict.get('new_package', None)
+    existing_package = return_dict.get('existing_package', None)
+
+    # Resource ID from parent
+    send_email(resource['id'], user, location[0], error, new_package, existing_package)
+
+
+def send_email(res_id, user, location, error, new_package, existing_package):
+    '''Send the subset response email
+
+    :param res_id: the id of the parent resource
+    :type res_id: string
+    :param user: the user name or id
+    :type user: string
+    :param location: the resource of which a subset is to be created
+    :type location: dict
+    :param new_package: metadata the new subset package
+    :type new_package: dict
+    :param existing_package: metadata of the existing subset package
+    :type existing_package: dict
+    '''
+
+    # If location is present, only take two last elements
+    if location:
+        #location = location.split('/',2)[2:][0]
+        file_path = location.split('/')[-2]
+        file_type = location.split('/')[-1].split('.')[-1]
+
+    # sending of email after successful subset creation
+    if error is not None:
+        body = '\nThe subset couldn\'t be created due to the following error: %s' % (error)
+    else:
+        body = 'Your subset is ready to download: %s' % "/".join([config.get('ckan.site_url'), 'subset', res_id, 'get', file_path, file_type])
+        if new_package is not None:
+            body += '\nThe package "%s" was created and is available at: %s' % (new_package['title'], config.get('ckan.site_url') + h.url_for(controller='package', action='read', id=new_package['name']))
+            if existing_package is not None:
+                body += '\n You cannot set your package public as another package ("%s") has the same query and is already public.' % (existing_package['name'])
+        elif existing_package is not None:
+            body += '\n Your package was not created, because the package "%s" has the same query and is already public.' % (existing_package['name'])
+
+    # mail_dict = {
+    #     'recipient_email': user.get('display_name',''),
+    #     'recipient_name': user.get('email',''),
+    #     'subject': 'Your subset is ready to download',
+    #     'body': body
+    # }
+
+    _send_mail(
+        user.get('display_name',''),
+        user.get('email',''),
+        'CCCA Datenzentrum',
+        'Your subset is ready to download',
+         body
+    )
+
+    # # Allow other plugins to modify the mail_dict
+    # for plugin in p.PluginImplementations(IContact):
+    #     plugin.mail_alter(mail_dict, data_dict)
+
+    # try:
+    #     mailer.mail_recipient(**mail_dict)
+    # except (mailer.MailerException, socket.error):
+    #     h.flash_error(_(u'Sorry, there was an error sending the email. Please try again later'))
+
+def _send_mail(recipient_name, recipient_email, sender_name, subject, body):
+    import smtplib
+    from email.mime.application import MIMEApplication
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    from email.utils import COMMASPACE, formatdate
+    from email.header import Header
+    from os.path import basename
+    import paste.deploy.converters
+
+    msg = MIMEMultipart()
+    mail_from = config.get('smtp.mail_from')
+    msg['From'] = _("%s <%s>") % (sender_name, mail_from)
+    recipient = u"%s <%s>" % (recipient_name, recipient_email)
+    msg['To'] = Header(recipient, 'utf-8')
+
+    msg['Date'] = formatdate(localtime=True)
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body.encode('utf-8'), 'plain', 'utf-8'))
+
+    smtp_connection = smtplib.SMTP()
+    smtp_server = config.get('smtp.server')
+    smtp_starttls = paste.deploy.converters.asbool(
+                config.get('smtp.starttls'))
+    smtp_user = config.get('smtp.user')
+    smtp_password = config.get('smtp.password')
+
+   # smtp = smtplib.SMTP(config.get('smtp.server'))
+    smtp_connection.connect(smtp_server)
+    try:
+        #smtp_connection.set_debuglevel(True)
+
+        # Identify ourselves and prompt the server for supported features.
+        smtp_connection.ehlo()
+
+        # If 'smtp.starttls' is on in CKAN config, try to put the SMTP
+        # connection into TLS mode.
+        if smtp_starttls:
+            if smtp_connection.has_extn('STARTTLS'):
+                smtp_connection.starttls()
+                # Re-identify ourselves over TLS connection.
+                smtp_connection.ehlo()
             else:
-                package_to_add_id = data_dict['existing_package_id']
-                existing_package = toolkit.get_action('package_show')(context, {'id': package_to_add_id})
+                raise mailer.MailerException("SMTP server does not support STARTTLS")
 
-                # add subset creator if not already added
-                subset_creators = toolkit.get_action('package_contact_show')(context, {'package_id': package_to_add_id, 'search_param': 'role', 'search_value': 'Subset Creator'})
+        # If 'smtp.user' is in CKAN config, try to login to SMTP server.
+        if smtp_user:
+            assert smtp_password, ("If smtp.user is configured then "
+                    "smtp.password must be configured as well.")
+            smtp_connection.login(smtp_user, smtp_password)
 
-                sc_added = False
+        smtp_connection.sendmail(mail_from, recipient_email, msg.as_string())
+        #log.info("Sent email to {0}".format(send_to))
 
-                for subset_creator in subset_creators:
-                    if subset_creator['mail'] == user['email']:
-                        sc_added = True
-                        break
+    except smtplib.SMTPException as e:
+        msg = '%r' % e
+        raise mailer.MailerException(msg)
+    finally:
+        smtp_connection.quit()
 
-                if sc_added is False:
-                    subset_creator = dict()
-                    subset_creator['name'] = user['display_name']
-                    subset_creator['mail'] = user['email']
-                    subset_creator['role'] = "Subset Creator"
-                    subset_creator['department'] = ""
 
-                    contacts = toolkit.get_action('package_contact_show')(context, {'package_id': package_to_add_id})
-                    contacts.append(subset_creator)
-                    existing_package['contact_info'] = json.dumps(contacts)
+def get_ncss_subset_params(res_id, params, user, only_location, orig_metadata):
+    '''Get the ncss subset parameters
 
-                    toolkit.get_action('package_update')(context, existing_package)
+    :param res_id: the id of the parent resource
+    :type res_id: string
+    :param params: TODO
+    :type params: dict
+    :param user: the users name or id
+    :type user: string
+    :param only_location: TODO
+    :type only_location: dict
+    :param orig_metadata:TODO
+    :type orig_metadata: dict
+    :rtype: dict, dict
+    '''
+    params['response_file'] = "false"
+    headers={'Authorization': user.get('apikey')}
 
-                if search_results['count'] > 0:
-                    return_dict['existing_resource'] = toolkit.get_action('resource_show')(context, {'id': search_results['results'][0]['id']})
-                    if existing_package['private'] is False:
-                        return return_dict
+    ckan_url = config.get('ckan.site_url', '')
+    thredds_location = config.get('ckanext.thredds.location')
 
-            new_resource = toolkit.get_action('resource_create')(context, {'name': 'subset_' + resource['name'], 'url': url, 'package_id': package_to_add_id, 'format': data_dict['format'], 'subset_of': resource['id']})
+    r = requests.get('/'.join([ckan_url, thredds_location, 'ncss', 'ckan', res_id[0:3], res_id[3:6], res_id[6:]]), params=params, headers=headers)
 
-            toolkit.get_action('package_relationship_create')(context, {'subject': package_to_add_id, 'object': package['id'], 'type': 'child_of'})
+    corrected_params = dict()
+    resource_params = None
 
-            return_dict['new_resource'] = new_resource
+    if r.status_code == 200:
+
+
+        # TODO not working for point
+        tree = ElementTree.fromstring(r.content)
+
+        corrected_params['location'] = tree.get('location')
+
+        #Anja, 28.3.18 - > needs tds ncss path ....
+        storage_path = config.get('ckanext.thredds.ncss_cache')
+
+        # Hashsum
+        file_path = os.path.join(storage_path, corrected_params['location'])
+        hasher = hashlib.md5()
+
+        with open(file_path, 'rb') as f:
+            for chunk in iter(lambda: f.read(128*hasher.block_size), b''):
+                hasher.update(chunk)
+
+        resource_params = dict()
+        resource_params['hash'] = hasher.hexdigest()
+
+        # Filesize
+        resource_params['size'] = os.path.getsize(file_path)
+
+        if not only_location:
+            # removed as ncss always returns different coordinates
+            # add spatial to new resource
+            # lat_lon_box = tree.find('LatLonBox')
+            # n = lat_lon_box.find('north').text
+            # e = lat_lon_box.find('east').text
+            # s = lat_lon_box.find('south').text
+            # w = lat_lon_box.find('west').text
+            # corrected_params['spatial'] = helpers.coordinates_to_spatial(n, e, s, w)
+
+            # add time to new resource
+            time_span = tree.find('TimeSpan')
+            corrected_params['temporal_start'] = h.date_str_to_datetime(time_span.find('begin').text[:-1])
+
+            if time_span.find('begin').text != time_span.find('end').text:
+                corrected_params['temporal_end'] = h.date_str_to_datetime(time_span.find('end').text[:-1])
+            else:
+                corrected_params['temporal_end'] = None
+
+            # add variables to new resource
+            # variables must be changed to dict
+            corrected_params['variables'] = []
+            layers = params['var'].split(",")
+            for layer in layers:
+                corrected_params['variables'].append((item for item in orig_metadata['variables'] if item["name"] == layer).next())
+
+            corrected_params['dimensions'] = orig_metadata['dimensions']
+    else:
+        corrected_params['error'] = r.content
+
+    return corrected_params, resource_params
+
+
+def _change_list_of_dicts_for_search(list_of_dicts):
+    for index, t in enumerate(list_of_dicts):
+        new_dict = dict([(str(k), v) for k, v in t.items()])
+        for k, val in new_dict.items():
+            if val is None:
+                new_dict[k] = "null"
+            elif isinstance(val, unicode):
+                new_dict[k] = str(val)
+            elif type(val) is list:
+                list_elements = []
+                for list_element in val:
+                    list_elements.append(str(list_element))
+                new_dict[k] = list_elements
+        t.update(new_dict)
+        list_of_dicts[index] = dict([(str(k), v) for k, v in t.items()])
+    return list_of_dicts
+
+
+@ckan.logic.side_effect_free
+def thredds_get_metadata_info(context, data_dict):
+    """Extract the metadata from a file with thredds capabilities.
+       This only works for cf conformal netcdf files.
+
+    :param id: The id of the resource
+    :type id: string
+    :returns: dict with available metadata from resource
+    """
+    # Resource ID
+    user = context.get('auth_user_obj', None)
+
+    metadata = dict()
+
+    resource_id = tk.get_or_bust(data_dict, 'id')
+
+    ckan_url = config.get('ckan.site_url', '')
+    thredds_location = config.get('ckanext.thredds.location')
+
+    try:
+        if user is not None:
+            headers = {'Authorization': user.apikey}
         else:
-            # redirect to url if user doesn't want to create a package
-            return_dict['url'] = str(url)
-        return return_dict
+            user = tk.get_action('user_show')(context, {'id': context['user']})
+            headers = {'Authorization': user['apikey']}
+    except:
+        raise NotAuthorized
+
+    # Extract NCML metadata
+    ncml_url = '/'.join([ckan_url, thredds_location, 'ncml', 'ckan', resource_id[0:3], resource_id[3:6], resource_id[6:]])
+    try:
+        r = requests.get(ncml_url, headers=headers)
+    except Exception as e:
+        raise NotFound("Thredds Server can not provide layer details")
+
+    ncml_tree = ElementTree.fromstring(r.content)
+    _parse_ncml_metadata_info(ncml_tree, metadata)
+
+    # Extract NCSS metadata
+    ncss_url = '/'.join([ckan_url, thredds_location, 'ncss', 'ckan', resource_id[0:3],resource_id[3:6],resource_id[6:], 'dataset.xml'])
+    try:
+        r = requests.get(ncss_url, headers=headers)
+    except Exception as e:
+        raise NotFound("Thredds Server can not provide layer details")
+
+    ncss_tree = ElementTree.fromstring(r.content)
+    _parse_ncss_metadata_info(ncss_tree, metadata)
+
+    return metadata
+
+    # time information should be used for error and display section in subset_create
+
+
+def _parse_ncml_metadata_info(ncml_tree, md_dict):
+    # get description and references
+    if ncml_tree.find(".//*[@name='comment']"):
+        md_dict['notes'] = ncml_tree.find(".//*[@name='comment']").attrib["value"]
+    if ncml_tree.find(".//*[@name='references']"):
+        md_dict['references'] = ncml_tree.find(".//*[@name='references']").attrib["value"]
+
+def _parse_ncss_metadata_info(ncss_tree, md_dict):
+    # NCSS section
+    # get coordinates
+    lat_lon_box = ncss_tree.find('LatLonBox')
+    n = lat_lon_box.find('north').text
+    e = lat_lon_box.find('east').text
+    s = lat_lon_box.find('south').text
+    w = lat_lon_box.find('west').text
+    md_dict['spatial'] = helpers.coordinates_to_spatial(n, e, s, w)
+    md_dict['coordinates'] = {'north': n, 'east': e, 'south': s, 'west': w}
+
+    # get time
+    time_span = ncss_tree.find('TimeSpan')
+    md_dict['temporal_start'] = time_span.find('begin').text
+    if md_dict['temporal_start'] != time_span.find('end').text:
+        md_dict['temporal_end'] = time_span.find('end').text
+    else:
+        md_dict['temporal_end'] = None
+
+    # get dimensions
+    md_dict['dimensions'] = []
+    dimensions = ncss_tree.findall('axis')
+    for dimension in dimensions:
+        d = dict()
+        d['name'] = dimension.attrib["name"]
+        d['units'] = dimension.find(".attribute/[@name='units']").attrib["value"]
+        d['description'] = dimension.find(".attribute/[@name='long_name']").attrib["value"]
+        d['shape'] = dimension.attrib["shape"]
+        # not all dimensions contain start and increment attributes
+        try:
+            d['start'] = dimension.find("values").attrib["start"]
+        except:
+            d['start'] = ''
+        try:
+            d['increment'] = dimension.find("values").attrib["increment"]
+        except:
+            d['increment'] = ''
+
+        md_dict['dimensions'].append(d)
+
+    # get variables
+    md_dict['variables'] = []
+    grids = ncss_tree.findall(".//grid")
+    for grid in grids:
+        axis_type = grid.find(".attribute/[@name='_CoordinateAxisType']")
+        if axis_type is None:
+            g = dict()
+            g['name'] = grid.attrib['name']
+            g['description'] = grid.attrib['desc']
+            g['standard_name'] = grid.find(".attribute/[@name='standard_name']").attrib["value"]
+            g['units'] = grid.find(".attribute/[@name='units']").attrib["value"]
+            g['shape'] = grid.attrib['shape'].split(" ")
+
+            md_dict['variables'].append(g)

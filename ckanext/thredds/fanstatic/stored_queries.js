@@ -45,7 +45,7 @@ ckan.module('stored_queries', function($) {
                 } else if(param == "longitude"){
                     $('#east').val(params[param]);
                 } else if(param == "time_start" || param == "time_end"){
-                     $("[name='" + param + "']").val(moment(new Date(params[param])).format("YYYY-MM-DD hh:mm:ss"));
+                    $("[name='" + param + "']").val(moment(new Date(params[param])).format("YYYY-MM-DD HH:mm:ss"));
                 }
                 else if($("[name='" + param + "']").is(':radio') != true){
                     $("[name='" + param + "']").val(params[param]);
@@ -62,6 +62,7 @@ ckan.module('stored_queries', function($) {
         if(this.el.attr("id") != "other_queries"){
             _fillFields(this.el);
         }else{
+            console.log(this.all_queries.replace(/'/g, '"'))
             var all_queries = JSON.parse(this.all_queries.replace(/'/g, '"'));
             this.el.text("");
             this.el.append($('<h5 name="dropdown_heading">Other Public Queries: <span class="badge">' + all_queries.length + '</span></h5>'));
@@ -69,22 +70,21 @@ ckan.module('stored_queries', function($) {
                 var li = '<li name="pubQuery"><a href="#">\
                           <div value="' + JSON.stringify(all_queries[i]).replace(/"/g, "'") +'"><h5>\
                           '+ all_queries[i]['query_name'] + '\
-                          <br><small>\
-                          '+ all_queries[i]['format'];
+                          <br><small>';
                 if(all_queries[i]['north']){
-                    li += ', ' + all_queries[i]['north'] + '/';
+                    li += all_queries[i]['north'] + '/';
                     li += all_queries[i]['east'] + '/';
                     li += all_queries[i]['south'] + '/';
                     li += all_queries[i]['west'];
                 } else if(all_queries[i]['latitude']){
-                    li += ', ' + all_queries[i]['latitude'] + '/';
+                    li += all_queries[i]['latitude'] + '/';
                     li += all_queries[i]['longitude'];
                 }
                 if(all_queries[i]['time_start']){
                     li += ', ' + moment(new Date(all_queries[i]['time_start'])).format("YYYY-MM-DD hh:mm:ss") + ' - ';
                     li += moment(new Date(all_queries[i]['time_end'])).format("YYYY-MM-DD hh:mm:ss");
                 }
-                li += '<br><span class="badge">created: ' + moment(new Date(all_queries[i]['created'])).format("YYYY-MM-DD hh:mm:ss") + '</span>';
+                li += '<br><span class="badge">created: ' + moment(new Date(all_queries[i]['created'])).format("YYYY-MM-DD hh:mm:ss") + '</span></small>';
                 $('ul#querylist').append($(li));
             }
             $('li[name = "pubQuery"]').click(function(e){

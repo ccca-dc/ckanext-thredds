@@ -3,8 +3,16 @@ ckan.module('wms_view', function ($) {
       /* options object can be extended using data-module-* attributes */
       options: {
           resource_id:'',
-          site_url:''
-      },
+          subset_params:'',
+          spatial_params:'',
+          site_url:'',
+          minimum:'',
+          maximum:'',
+          num_colorbands:'',
+          logscale:'',
+          default_layer:'',
+          default_colormap:''
+      }, //options
 
       initialize: function () {
         $.proxyAll(this, /_on/);
@@ -20,7 +28,7 @@ ckan.module('wms_view', function ($) {
                                  this._onHandleError
                                 );
 
-      },
+      }, //initialize
 
       initializePreview: function () {
         var startDate = new Date();
@@ -28,75 +36,156 @@ ckan.module('wms_view', function ($) {
 
         var self = this;
         var wmslayers = $.map(self.options.layers, function( value, key ) { return value.children});
+        var wmslayers_id = $.map(wmslayers, function( value, key ) { return value.id});
         var wmsabstracts = $.map(self.options.layers, function( value, key ) { return value.label } );
 
-        var palette_selection = self.options.layers_details.defaultPalette;
+        if ($.isNumeric(self.options.default_layer)) {
+          var wmslayer_selected = wmslayers[self.options.default_layer];
+          var wmsabstract_selected = wmsabstracts[self.options.default_layer];
+        } else {
+          var wmslayer_selected = wmslayers[0];
+          var wmsabstract_selected = wmsabstracts[0];
+
+        }
+
+        if ($.type(self.options.default_colormap) == "string") {
+          var palette_selection = self.options.default_colormap;
+        } else {
+          var palette_selection = self.options.layers_details.defaultPalette;
+        }
+
         var style_selection = self.options.layers_details.supportedStyles[0];
 
-        var min_value = self.options.layers_details.scaleRange[0];
-        var max_value = self.options.layers_details.scaleRange[1];
+        if ($.isNumeric(self.options.minimum)) {
+          var min_value = self.options.minimum.toString();
+        } else {
+          var min_value = self.options.layers_details.scaleRange[0].toString();
+        }
+
+        if ($.isNumeric(self.options.maximum)) {
+          var max_value = self.options.maximum.toString();
+        } else {
+          var max_value = self.options.layers_details.scaleRange[1].toString();
+        }
+
+        if ($.isNumeric(self.options.num_colorbands)) {
+          var num_colorbands = self.options.num_colorbands;
+        } else {
+          var num_colorbands = 100;
+        }
 
         var opacity = 1;
 
-        var map = L.map('map', {
-            zoom: 7,
-            fullscreenControl: true,
-            timeDimensionControl: true,
-            timeDimensionControlOptions: {
-                position: 'bottomleft',
-                playerOptions: {
-                    transitionTime: 1000,
-                },
-                minSpeed: 0.1,
-                maxSpeed: 2.0
-            },
-            timeDimension: true,
-            center: [47.3, 13.9]
-        });
+        // check and store subset for subset_view
+        var subset_json = self.options.spatial_params;
+        var subset_parameter = self.options.subset_params;
+        var subset_bounds ='';
+        var subset_times = '';
+
+        if (subset_parameter != ''){
+          southWest = L.latLng(self.options.subset_params['south'],  self.options.subset_params['west']);
+          northEast = L.latLng(self.options.subset_params['north'], self.options.subset_params['east']);
+
+          subset_bounds = L.latLngBounds(southWest, northEast);
+          subset_times = subset_parameter['time_start'] +"/" + subset_parameter['time_end'];
+
+          // Attention: Necessary Format!
+          //subset_times = "2018-04-12T12:00:00Z" +"/" + "2018-04-13T12:00:00Z";
+
+
+        }
+
+        if (subset_times != ''){
+          var map = L.map('map', {
+              zoom: 7,
+              fullscreenControl: true,
+              timeDimensionControl: true,
+              timeDimensionControlOptions: {
+                  position: 'bottomleft',
+                  playerOptions: {
+                      transitionTime: 1000
+                  },
+                  minSpeed: 0.1,
+                  maxSpeed: 2.0
+              },
+              timeDimension: true,
+              timeDimensionOptions: {
+                  timeInterval:subset_times,
+                  //period: "P1DT1H" // Defines (the Format of) the time period
+                   period: "PT1H" // Defines (the Format of) the time period
+                 },
+              center: [47.3, 13.9]
+          }); //map
+        }
+        else {
+          var map = L.map('map', {
+              zoom: 7,
+              fullscreenControl: true,
+              timeDimensionControl: true,
+              timeDimensionControlOptions: {
+                  position: 'bottomleft',
+                  playerOptions: {
+                      transitionTime: 1000
+                  },
+                  minSpeed: 0.1,
+                  maxSpeed: 2.0
+              },
+              timeDimension: true,
+              center: [47.3, 13.9]
+          }); //map
+        }
 
         // ------------------------------------------------
         // Create control elements for first layer
+        // Layer
+        $( "#layer" ).append(
+            this._getDropDownList(
+                'layers','select-layers',wmslayers_id)
+        );
+
         // Style
-        $( "#style" ).append( 
+        $( "#style" ).append(
           this._getDropDownList(
-            'styles','select-styles',self.options.layers_details.supportedStyles) 
+              'styles','select-styles',self.options.layers_details.supportedStyles.sort())
         );
 
         // Palette
-        $( "#palette" ).append( 
+        $( "#palette" ).append(
           this._getDropDownList(
-            'palettes','select-palettes',self.options.layers_details.palettes) 
+              'palettes','select-palettes',self.options.layers_details.palettes.sort())
         );
 
         // Minimum/Maximum
-        $( "#min-field" ).append( 
-          $("<input id='min-value' type='text' class='numbersOnly' value=" + self.options.layers_details.scaleRange[0].toString() + ">")
+        $( "#min-field" ).append(
+          $("<input id='min-value' type='text' class='numbersOnly form-control' value=" + min_value + ">")
         );
-
-        $( "#max-field" ).append( 
-          $("<input id='max-value' type='text' class='numbersOnly' value=" + self.options.layers_details.scaleRange[1].toString() + ">")
+        $( "#max-field" ).append(
+          $("<input id='max-value' type='text' class='numbersOnly form-control' value=" + max_value + ">")
+        );
+        $( "#num-colorband" ).append(
+          $("<input id='num-colorbands' type='text' class='numbersOnly form-control' value=" + num_colorbands + ">")
         );
 
         // Opacity
-        $( "#opacity" ).append( 
+        $( "#opacity-pane" ).append(
           $("<input id='opacity-value' type='range' min='0' max='1' step='0.1' value=" + opacity.toString() + " />")
         );
 
         // Export
-        $( "#export" ).append( 
-          $("<button type='button' id='export-png'>Export Map to PNG</button>")
+        $( "#export-pane" ).append(
+          $("<button class='btn btn-primary' type='button' id='export-png'>Export Map to PNG</button>")
         );
         // ------------------------------------------------
         // Define functions for control elements
-        $('.numbersOnly').keyup(function () { 
+        $('.numbersOnly').keyup(function () {
             this.value = this.value.replace(/[^0-9\.\-\+]/g,'');
         });
 
         $('#min-value').on('focusout', function() {
           min_value = this.value;
           // Update Preview
-          // cccaHeightLayer.setParams({colorscalerange: min_value + ',' + max_value}); 
-          cccaHeightTimeLayer.setParams({colorscalerange: min_value + ',' + max_value}); 
+          // cccaHeightLayer.setParams({colorscalerange: min_value + ',' + max_value});
+          cccaHeightTimeLayer.setParams({colorscalerange: min_value + ',' + max_value});
           cccaLegend.removeFrom(map);
           cccaLegend.addTo(map);
         });
@@ -104,12 +193,21 @@ ckan.module('wms_view', function ($) {
         $('#max-value').on('focusout', function() {
           max_value = this.value;
           // Update Preview
-          // cccaHeightLayer.setParams({colorscalerange: min_value + ',' + max_value}); 
-          cccaHeightTimeLayer.setParams({colorscalerange: min_value + ',' + max_value}); 
+          // cccaHeightLayer.setParams({colorscalerange: min_value + ',' + max_value});
+          cccaHeightTimeLayer.setParams({colorscalerange: min_value + ',' + max_value});
           cccaLegend.removeFrom(map);
           cccaLegend.addTo(map);
         });
-        
+
+        $('#num-colorbands').on('focusout', function() {
+          num_colorbands = this.value;
+          // Update Preview
+          // cccaHeightLayer.setParams({colorscalerange: min_value + ',' + max_value});
+          cccaHeightTimeLayer.setParams({numcolorbands: num_colorbands});
+          cccaLegend.removeFrom(map);
+          cccaLegend.addTo(map);
+        });
+
         $('#select-palettes').on('change', function() {
           palette_selection = this.value;
           // Update Preview
@@ -128,11 +226,21 @@ ckan.module('wms_view', function ($) {
           cccaLegend.addTo(map);
         });
 
+        $('#select-layers').on('change', function() {
+            index = this.selectedIndex;
+            wmslayer_selected = wmslayers[index];
+            wmsabstract_selected = wmsabstracts[index];
+            // Update Preview
+            cccaHeightTimeLayer.setParams({layers:wmslayer_selected.id});
+            cccaLegend.removeFrom(map);
+            cccaLegend.addTo(map);
+        });
+
         $('#opacity-value').on('change', function() {
           opacity = this.value;
           // Update Preview
           cccaHeightTimeLayer.setOpacity(opacity);
- 
+
         });
 
         $('#export-png').on('click', function() {
@@ -145,7 +253,7 @@ ckan.module('wms_view', function ($) {
             mapPane.style.transform = "";
             mapPane.style.left = mapX + "px";
             mapPane.style.top = mapY + "px";
-        
+
             var myTiles = $("img.leaflet-tile");
             var tilesLeft = [];
             var tilesTop = [];
@@ -170,7 +278,7 @@ ckan.module('wms_view', function ($) {
                 myTiles[i].style.top = (tilesTop[i]) + "px";
                 myTiles[i].style.opacity = myTiles[i]._layer.options.opacity;
             }
-        
+
             var myDivicons = $(".leaflet-marker-icon");
             var dx = [];
             var dy = [];
@@ -183,10 +291,10 @@ ckan.module('wms_view', function ($) {
                 myDivicons[i].style.left = dx[i] + "px";
                 myDivicons[i].style.top = dy[i] + "px";
             }
-        
+
             var mapWidth = parseFloat($("#map").css("width").replace("px", ""));
             var mapHeight = parseFloat($("#map").css("height").replace("px", ""));
-        
+
             var linesLayer = $("svg.leaflet-zoom-animated")[0];
             var oldLinesWidth = linesLayer.getAttribute("width");
             var oldLinesHeight = linesLayer.getAttribute("height");
@@ -207,7 +315,7 @@ ckan.module('wms_view', function ($) {
             $(".leaflet-bottom.leaflet-left").append("<div id='export-info'><p>" + currentTime.toUTCString() + "</p><p>" + wmsabstracts + "</p></div>");
             //$(".leaflet-bottom.leaflet-left").;
 
-        
+
             html2canvas(document.getElementById("map"), {
                 useCORS: true,
                 letterRendering: false,
@@ -220,9 +328,9 @@ ckan.module('wms_view', function ($) {
                     $(".leaflet-bar").show();
                     $(".leaflet-control-attribution").show();
                     $("#export-info").remove();
-                }
+                } //html2canvas
             });
-        
+
             for (var i = 0; i < myTiles.length; i++) {
                 if (tileMethod[i] == "left") {
                     myTiles[i].style.left = (tilesLeft[i]) + "px";
@@ -252,21 +360,23 @@ ckan.module('wms_view', function ($) {
             mapPane.style.transform = "translate(" + (mapX) + "px," + (mapY) + "px)";
             mapPane.style.left = "";
             mapPane.style.top = "";
-        });
+        }); // export-png
 
 
-        var cccaWMS = self.options.site_url + "tds_proxy/wms/" + self.options.resource_id;
+        var cccaWMS = self.options.site_url + "thredds/wms/ckan/" + [self.options.resource_id.slice(0,3), self.options.resource_id.slice(3,6), self.options.resource_id.slice(6)].join("/");
 
-        var cccaHeightLayer = L.tileLayer.wms(cccaWMS, {
-            layers: wmslayers[0].id,
+        var wmsOptions =  {
+            layers: wmslayer_selected.id,
             format: 'image/png',
             transparent: true,
             colorscalerange: min_value + ',' + max_value,
             abovemaxcolor: "extend",
             belowmincolor: "extend",
-            numcolorbands: 100,
+            numcolorbands: num_colorbands,
             styles: style_selection + '/' + palette_selection
-        });
+        }
+
+        var cccaHeightLayer = L.tileLayer.wms(cccaWMS,wmsOptions);
 
         var markers = [{
             name: 'Eisenstadt',
@@ -297,48 +407,241 @@ ckan.module('wms_view', function ($) {
             position: [48.209, 16.37]
         }];
 
-        var cccaHeightTimeLayer = L.timeDimension.layer.wms.timeseries(cccaHeightLayer, {
+        // Check whether the markers are inside a potential subset
+        var add_markers = [];
+
+        if (subset_bounds != '') {
+
+            //check if default marker within
+            for (i=0; i <markers.length;i++) {
+               if ((subset_bounds.contains(markers[i].position))){
+                 add_markers.push(markers[i]);
+                }
+            }
+
+            // add center marker if non so far
+            if (add_markers.length == 0){
+
+                var center = subset_bounds.getCenter();
+                var element = {
+                  name: "Subset Center",
+                  position: [center.lat, center.lng]
+
+                };
+
+              add_markers.push(element);
+           }
+
+        }else{
+          add_markers = markers;
+        }
+
+
+        var time_options = {
             updateTimeDimension: true,
-            markers: markers,
-            name: wmsabstracts[0],
-            legendname: wmslayers[0].label,
+            markers: add_markers,
+            name: wmsabstract_selected,
+            legendname: wmslayer_selected.label,
             maxValues: 2000,
             units: self.options.layers_details.units,
             enableNewMarkers: true
-        });
+        };
+
+
+        var cccaHeightTimeLayer = L.timeDimension.layer.wms.timeseries(cccaHeightLayer, time_options);
 
         var cccaLegend = L.control({
             position: 'bottomright'
         });
+
         cccaLegend.onAdd = function(map) {
-            var src = cccaWMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&LAYER=" + wmslayers[0].id + "&colorscalerange="+ min_value + ',' + max_value + "&PALETTE="+ palette_selection +"&numcolorbands=100&transparent=TRUE";
-            var div = L.DomUtil.create('div', 'info legend');
-            div.innerHTML +=
-                '<img src="' + src + '" alt="legend">';
-            return div;
-        };
+
+          var src = cccaWMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&LAYER=" + wmslayer_selected.id + "&colorscalerange="+ min_value + ',' + max_value + "&PALETTE="+ palette_selection +"&numcolorbands="+num_colorbands+"&transparent=TRUE";
+
+          var div = L.DomUtil.create('div', 'info legend');
+          div.innerHTML +=
+              '<img src="' + src + '" alt="legend">';
+          return div;
+        }; // cccaLegend.onAdd
 
 
         var overlayMaps = {};
-        overlayMaps[wmsabstracts[0].toString()] = cccaHeightTimeLayer;
+        overlayMaps[wmsabstract_selected.toString()] = cccaHeightTimeLayer;
 
         map.on('overlayadd', function(eventLayer) {
-            if (eventLayer.name == wmsabstracts[0]) {
+            if (eventLayer.name == wmsabstract_selected) {
                 cccaLegend.addTo(this);
             }
-        });
+        }); // map on overlayadd
 
         map.on('overlayremove', function(eventLayer) {
-            if (eventLayer.name == wmsabstracts[0]) {
+            if (eventLayer.name == wmsabstract_selected) {
                 map.removeControl(cccaLegend);
             }
-        });
+        }); // map on overlayremove
+
+        //right mouse or equivalent
+        map.on('contextmenu', function(event) {
+
+          var allMarkersArray = []; // for marker objects
+          var allChartsArray = []; // for charts
+
+
+          var event_position = event.latlng;
+
+          if (event_position) {
+            event_position.lat = event_position.lat.toFixed(1);
+            event_position.lng = event_position.lng.toFixed(1);
+          }
+          else
+            return;
+
+          //console.log("Event:");
+          //console.log(event.latlng);
+          //console.log (event_position);
+
+          var series_ids=[];
+          //find and remove circle marker layer  and identify chart series layer
+          for (ml in map._layers){
+
+               if (map._layers[ml]._labelMarker && map._layers[ml]._position) {
+                 var marker_position = map._layers[ml]._position;
+                 //console.log("Marker:");
+                 //console.log(marker_position);
+                if (typeof(marker_position.lat)== "number"){
+                   marker_position.lat= map._layers[ml]._position.lat.toFixed(1);
+                   marker_position.lng= map._layers[ml]._position.lng.toFixed(1);
+                  }
+                 // Note corresponding chart
+                 if (marker_position.lat == event_position.lat && marker_position.lng == event_position.lng  && map._layers[ml]._serieId){
+
+                   //console.log(map._layers[ml]._serieId);
+                   series_ids.push(map._layers[ml]._serieId); // necessary to find series in charts
+                   map.removeLayer(map._layers[ml]);
+                 }
+
+               }
+               else if (map._layers[ml]._chart) {
+                   allChartsArray.push(map._layers[ml]);
+               }
+
+         } // for
+
+         if (series_ids.length > 0){
+         // remove  chart series
+               //console.log("Charts");
+               for (i=0;i < allChartsArray.length;i++) {
+                 //console.log(allChartsArray[i]);
+                 if (allChartsArray[i]._chart.series){
+                       for (j=0; j<allChartsArray[i]._chart.series.length ; j++){
+                         //console.log(allChartsArray[i]._chart.series[j].userOptions.id);
+                         if (allChartsArray[i]._chart.series[j].userOptions.id.indexOf(series_ids) >=0 )
+                                  allChartsArray[i]._chart.series[j].remove();
+                      } //for
+                  } //if
+
+                } //for
+
+          } // if series
+
+        }); // map on contextmenu
+
 
         var baseLayers = getCommonBaseLayers(map); // see baselayers.js
+
         L.control.layers(baseLayers, overlayMaps).addTo(map);
 
-        cccaHeightTimeLayer.addTo(map);
-      },
+        ////////////////////////////
+        // For Subset  extent
+
+        if (subset_bounds != '') {
+              var styles = {
+                point:{
+                  iconUrl: '/img/marker.png',
+                  iconSize: [14, 25],
+                  iconAnchor: [7, 25]
+                },
+                base_:{
+                  color: '#B52',
+                  weight: 2,
+                  opacity: 0,
+                  fillColor: '#FCF6CF',
+                  fillOpacity: 0.8
+                },
+                default_:{
+                  color: '#ffffff', //'#B52'
+                  weight: 2,
+                  opacity: 1,
+                  fillColor: '#ffffff', //'#FCF6CF',
+                  fillOpacity: 0.3
+                }
+              };
+
+              var ckanIcon = L.Icon.extend({options: styles.point});
+
+              // set extent to subset bounds - will become hole
+              var extent = subset_json;
+
+              // outer border of extent
+              var bounds = map.getBounds();
+
+              var inversePolygon = createPolygonFromBounds(bounds);
+
+              // defines a MultiPolygon with a hole - see Definition below
+              extent.coordinates[0].push(inversePolygon.geometry.coordinates[0]);
+
+              /* Definition Mulitpolygon
+              {
+                "type": "MultiPolygon",
+                "coordinates": [
+                  [
+                    {polygon},
+                    {hole},
+                    {hole},
+                    {hole}
+                  ]
+                ]
+              }
+              */
+
+              // From ckanext_spatial
+              if (extent.type == 'Polygon'
+                && extent.coordinates[0].length == 5) {
+                _coordinates = extent.coordinates[0]
+                w = _coordinates[0][0];
+                e = _coordinates[2][0];
+                if (w >= 0 && e < 0) {
+                  w_new = w
+                  while (w_new > e) w_new -=360
+                  for (var i = 0; i < _coordinates.length; i++) {
+                    if (_coordinates[i][0] == w) {
+                      _coordinates[i][0] = w_new
+                    };
+                  };
+                  extent.coordinates[0] = _coordinates
+                };
+              };
+
+
+              var extentLayer = L.geoJson(extent, {
+                  style: styles.default_,
+                  pointToLayer: function (feature, latLng) {
+                    return new L.Marker(latLng, {icon: new ckanIcon})
+                  }});
+
+               extentLayer.addTo(map);
+
+              if (extent.type == 'Point'){
+                map.setView(L.latLng(extent.coordinates[1],extent.coordinates[0]), 9);
+              } else {
+              //  map.fitBounds(extentLayer.getBounds());
+            }//else
+
+      } //if subset
+
+      cccaHeightTimeLayer.addTo(map);
+
+      }, //initializePreview
 
 
       _onHandleDataDetails: function(json) {
@@ -346,12 +649,13 @@ ckan.module('wms_view', function ($) {
           self.options.layers_details = json.result;
           this.initializePreview();
         }
-      },
+      }, //_onHandleDataDetails
 
       _onHandleData: function(json) {
         if (json.success) {
           self = this;
           self.options.layers = json.result;
+
 
           var wmslayers = $.map(json.result, function( value, key ) { return value.children});
           self.sandbox.client.call('GET','thredds_get_layerdetails',
@@ -359,23 +663,41 @@ ckan.module('wms_view', function ($) {
                                    this._onHandleDataDetails,
                                    this._onHandleError
                                   );
-        }
-      },
+        } //if
+
+      }, // _onHandleData
 
       _onHandleError: function(error) {
         document.getElementById("wms-view").innerHTML = "<h2>Please login to use this view</h2>";
+        console.log(error);
         throw new Error("Something went badly wrong!");
-      },
+
+      }, //_onHandleError
 
       _getDropDownList: function(name, id, optionList) {
-          var combo = $("<select></select>").attr("id", id).attr("name", name);
-      
+          var combo = $("<select></select>").attr("id", id).attr("name", name).attr("class","form-control");
+
           $.each(optionList, function (i, el) {
               combo.append("<option>" + el + "</option>");
           });
-      
+
           return combo;
-      }
-      
-  };
-});
+      } // _getDropDownList
+
+  }; // return
+
+  function createPolygonFromBounds(latLngBounds) {
+
+      latlngs = [];
+
+      latlngs.push(latLngBounds.getSouthWest());//bottom left
+      latlngs.push(latLngBounds.getSouthEast());//bottom right
+      latlngs.push(latLngBounds.getNorthEast());//top right
+      latlngs.push(latLngBounds.getNorthWest());//top left
+      latlngs.push(latLngBounds.getSouthWest());//bottom left
+
+     return new L.polygon(latlngs).toGeoJSON();
+
+   } //createPolygonFromBounds
+
+}); //ckan.module wms_view

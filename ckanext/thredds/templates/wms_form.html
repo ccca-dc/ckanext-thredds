@@ -1,0 +1,49 @@
+<div id="masterdiv">
+    <div class="row">
+        <div class="col-xs-6">
+            <div class="input-group">
+                <span class="input-group-addon">Minimum</span>
+                <input name="minimum" id="minimum" type="text" class="form-control" value="{{ minimum }}">
+            </div>
+        </div>
+        <div class="col-xs-6">
+            <div class="input-group">
+                <span class="input-group-addon">Maximum</span>
+                <input name="maximum" id="maximum" type="text" class="form-control" value="{{ maximum }}">
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-xs-6">
+            <div class="input-group">
+                <span class="input-group-addon">Number of Colorbands</span>
+                <input name="num_colorbands" id="num_colorbands" type="text" class="form-control" value="{{ num_colorbands }}">
+            </div>
+        </div>
+        <div class="col-xs-6">
+            <div class="input-group">
+                <span class="input-group-addon">Logarithmic Scale</span>
+                  <select name="logscale" id="logscale" class="form-control">
+                    <option value="false" selected>false</option>
+                    <option value="true">true</option>
+                  </select>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-xs-6">
+            <div class="input-group">
+                <span class="input-group-addon">Layer</span>
+                <!-- TODO: dropdown -->
+                <input name="default_layer" id="default_layer" type="text" class="form-control" value="{{ default_layer }}">
+            </div>
+        </div>
+        <div class="col-xs-6">
+            <div class="input-group">
+                <span class="input-group-addon">Colormap</span>
+                <!-- TODO: dropdown -->
+                <input name="default_colormap" id="default_colormap" type="text" class="form-control" value="{{ default_colormap }}">
+            </div>
+        </div>
+    </div>
+</div>

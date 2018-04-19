@@ -86,6 +86,12 @@ L.TimeDimension.Layer.WMS.TimeSeries = L.TimeDimension.Layer.WMS.extend({
         if (!this._map) {
             return;
         }
+        // Anja: check wether we have a time ... needed for loaddata
+        // otherwise a circle is added without binding to data
+        // happened for first item in add_markers[]
+        // 18.4.2018
+        if (!this._currentDateRange)
+          return;
         var color = this._getNextMarkerColor();
         var circle = L.circleMarker([point.position[0], point.position[1]], {
             color: '#FFFFFF',

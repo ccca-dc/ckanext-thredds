@@ -1,23 +1,17 @@
-{% resource 'thredds/css/subset.css' %}
+{% resource 'thredds/css/package_read.css' %}
+{% resource 'thredds/citation_copy.js' %}
+{% resource 'thredds/citation_copy.css' %}
+
 
 {% ckan_extends %}
 
 {% set pkg = c.pkg_dict %}
 
 {% block package_resources %}
-{% set parent = h.get_parent_dataset(pkg.id) %}
 {% set children = h.get_public_children_datasets(pkg.id) %}
-    {% if parent != None %}
-        <h3>Relationship</h3>
-        {% set url=h.url_for(controller='package', action='read', id=parent.name) %}
-        <p> This dataset is derived from <a href="{{ url }}">{{ parent.title }}</a></p>
-    {% endif %}
-
     {% if children|length > 0 %}
-        {% if parent == None %}
-        <a href="#dataset_subsets" class="btn" data-toggle="collapse">Relationship</a>
+        <a href="#dataset_subsets" class="btn btn-default" data-toggle="collapse">Relationship</a>
             <div id="dataset_subsets" class="collapse">
-        {% endif %}
                 <p><b>The following datasets are derived from this dataset:</b></p>
                 <ul id="subset_list">
                 {% for child in children %}
@@ -25,9 +19,166 @@
                   <li><a href="{{ url }}">{{ child.title }}</a></li>
                 {% endfor %}
                 </ul>
-        {% if parent == None %}
             </div>
+    {% endif %}
+
+<div class="row">
+  <div class="col-md-12">
+  <a class="btn btn-default" data-toggle="collapse" href="#multiCollapseVersion" role="button" aria-expanded="false" aria-controls="multiCollapseVersion">Dataset Versions</a>
+  <button class="btn btn-default" type="button" data-toggle="collapse" data-target="#multiCollapseCitation" aria-expanded="false" aria-controls="multiCollapseCitation">Citation</button>
+  </div>
+</div>
+<div class="row">
+  <div class="col-md-12">
+    <div class="collapse multi-collapse" id="multiCollapseVersion">
+      <div class="card card-body">
+        {% set versions = h.get_versions(pkg.id) %}
+        <h3> Dataset Versions: </h3>
+
+        <h4>{{ _('This Version') }}</h4>
+        {% for version in versions %}
+            {% if version['id'] == pkg.id %}
+                <table class="versiontable">
+                    <tr>
+                        <td style="width:100px">Version {{ versions|length - versions.index(version) }}</td>
+                        {% if 'issued' in version and version['issued'] %}
+                        <td><b>Release Date:</b> {{ h.date_str_to_datetime(version['issued']) }}</td>
+                        {% else %}
+                        <td><b>Release Date:</b> {{ h.date_str_to_datetime(version['metadata_created']) }}</td>
+                        {% endif %}
+                    </tr>
+                </table>
+            {% endif %}
+        {% endfor %}
+
+        <h4>{{ _('Latest Version') }}</h4>
+        {% set latest_version = versions|first %}
+        <table class="versiontable">
+            <tr>
+                <td style="width:100px">
+                {% if h.check_access('package_show', {'id':latest_version.id}) %}
+                    {% set url=h.url_for(controller='package', action='read', id=latest_version.name) %}
+                    <a href="{{ url }}">
+                {% else %}
+                    <a data-toggle="tooltip" title="This version is private">
+                {% endif %}
+                Version {{ versions|length }} </a></td>
+                {% if 'issued' in latest_version and latest_version['issued'] %}
+                <td><b>Release Date:</b> {{ h.date_str_to_datetime(latest_version['issued']) }}</td>
+                {% else %}
+                <td><b>Release Date:</b> {{ h.date_str_to_datetime(latest_version['metadata_created']) }}</td>
+                {% endif %}
+            </tr>
+        </table>
+
+        {% if versions|length > 1 %}
+        <h3 id="history-button" href="#history" class="btn btn-default btn-sm" data-toggle="collapse">Show History</h3>
+          <div id="history" class="collapse">
+              <table class="versiontable">
+              {% for version in versions %}
+                  <tr>
+                      <td style="width:100px">
+                      {% if h.check_access('package_show', {'id':version.id}) %}
+                          {% set url=h.url_for(controller='package', action='read', id=version.name) %}
+                          <a href="{{ url }}">
+                      {% else %}
+                          <a data-toggle="tooltip" title="This version is private">
+                      {% endif %}
+                      Version {{ versions|length + 1 - loop.index }}
+                      </a></td>
+                      {% if 'issued' in version and version['issued'] %}
+                      <td><b>Release Date:</b> {{ h.date_str_to_datetime(version['issued']) }}</td>
+                      {% else %}
+                      <td><b>Release Date:</b> {{ h.date_str_to_datetime(version['metadata_created']) }}</td>
+                      {% endif %}
+                  </tr>
+              {% endfor %}
+            </table>
+          </div>
         {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="col-md-12">
+    <div class="collapse multi-collapse" id="multiCollapseCitation">
+      <div class="card card-body">
+        <h3> Cite this dataset: </h3>
+        <div class="panel panel-default">
+          <div class="panel-heading">
+            Using this data set or resource, you should cite this data set according to the given copyright conditions with following citation rules:
+          </div>
+          <div class="panel-body panel-body-citation">
+          <div class="row">
+          <div class="col-md-10">
+          <div id="citation-text">
+          {{ pkg.citation_info }} ({{ h.render_datetime(pkg.issued, date_format="%Y") or h.render_datetime(pkg.metadata_created, date_format="%Y") }}). {{ pkg.title }}, Version {{ h.get_version_number(pkg) }}. Vienna, Austria. CCCA Data Centre. PID: <a href="{{ pkg.uri }}">{{ pkg.uri }}</a>. [{{ h.render_datetime(h.get_current_datetime()) }}]
+          </div>
+          </div>
+          <div class="col-md-2">
+          <button id="copy-button" class="btn btn-default" data-module="citation_copy">Copy Text</button>
+          </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+    {% set parent_dataset = h.get_parent_dataset(pkg.id) %}
+    {% if parent_dataset != None %}
+        <h3>Subset</h3>
+        <div id="subset">
+            {% set url=h.url_for(controller='package', action='read',id=parent_dataset.name) %}
+            {% set orig_versions = h.get_versions(parent_dataset.id) %}
+
+            <p>This dataset is a subset of "<a href="{{ url }}">{{ parent_dataset.title }}</a>"
+            <a href="#orig_versions" class="btn btn-default" data-toggle="collapse">Show relations</a></p>
+
+            <div id="orig_versions" class="collapse">
+              <table class="orig_versiontable table-hover table">
+                  <tr>
+                      <th>Original Version</th>
+                      <th>Release Date</th>
+                      <th>Subset Version</th>
+                  </tr>
+                  {% set subset_version_nr = 0 %}
+                  {% for version in orig_versions %}
+                      {% set url=h.url_for(controller='package', action='read', id=version.name) %}
+                      <tr>
+                          <td><a href="{{ url }}">Version {{ orig_versions|length + 1 - loop.index }}</a></td>
+                          {% if 'issued' in version and version['issued'] %}
+                          <td>{{ h.date_str_to_datetime(version['issued']) }}</td>
+                          {% else %}
+                          <td>{{ h.date_str_to_datetime(version['metadata_created']) }}</td>
+                          {% endif %}
+                          {% set subset_version = h.version_has_subset(pkg.id, version['id']) %}
+                          <td>
+                          {% if subset_version == None %}
+                                {% if h.check_access('package_update', {'id':pkg.id }) %}
+                                    {% link_for _('Create'), controller='ckanext.resourceversions.controllers.subset_version:SubsetVersionController', action='create_new_version_of_subset', subset_id=pkg.id, orig_id=version['id'], class_='btn btn-default btn-sm' %}</td>
+                                {% else %}
+                                    <div class="small-grey">No subset available</div>
+                                {% endif %}
+                          {% else %}
+                            {% set url=h.url_for(controller='package', action='read', id=subset_version.name) %}
+                            {% if h.check_access('package_show', {'id':subset_version.id}) %}
+                                <a href="{{ url }}">
+                            {% else %}
+                                <a data-toggle="tooltip" title="This version is private">
+                            {% endif %}
+                            {{ subset_version['title'] }} (Version {{ versions|length - subset_version_nr }})</a>
+                            {% set subset_version_nr = subset_version_nr + 1 %}
+                          {% endif %}
+                          </td>
+                      </tr>
+                  {% endfor %}
+              </table>
+            </div>
+        </div>
     {% endif %}
 {{ super() }}
 {% endblock %}

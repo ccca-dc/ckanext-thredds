@@ -80,8 +80,9 @@ setup(
     entry_points='''
         [ckan.plugins]
         thredds=ckanext.thredds.plugin:ThreddsPlugin
-	[babel.extractors]
-	ckan = ckan.lib.extract:extract_ckan
+
+        [babel.extractors]
+        ckan = ckan.lib.extract:extract_ckan
     ''',
 
     # If you are changing from the default layout of your extension, you may
