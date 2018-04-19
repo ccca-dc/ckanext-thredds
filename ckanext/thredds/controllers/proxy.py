@@ -36,13 +36,13 @@ class ThreddsProxyController(base.BaseController):
         context = {'model': model, 'session': model.Session,
                    'user': c.user, 'auth_user_obj': c.userobj}
 
-        res_id = res_id_1 + res_id_2 + res_id_3
+        res_id = res_id_1 + res_id_2 + res_id_3.split('.')[0]
         try:
            rsc = tk.get_action('resource_show')(context, {'id': res_id})
         except (tk.ObjectNotFound, tk.NotAuthorized):
            tk.abort(404, _('Resource not found'))
 
-        if "wms" in service:
+        if "wms" or "dodsC" in service:
             p_query = request.query_string
             if 'extra' in kwargs:
                 p_path = os.path.join('/tds_internal', service, catalog, res_id_1, res_id_2, res_id_3, kwargs.get('extra'))
