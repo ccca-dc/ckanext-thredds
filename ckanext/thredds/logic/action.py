@@ -734,14 +734,15 @@ def get_ncss_subset_params(res_id, params, user, only_location, orig_metadata):
         resource_params['size'] = os.path.getsize(file_path)
 
         if not only_location:
-            # removed as ncss always returns different coordinates
+            # removed for cases with spatial query as ncss always returns different coordinates
             # add spatial to new resource
-            # lat_lon_box = tree.find('LatLonBox')
-            # n = lat_lon_box.find('north').text
-            # e = lat_lon_box.find('east').text
-            # s = lat_lon_box.find('south').text
-            # w = lat_lon_box.find('west').text
-            # corrected_params['spatial'] = helpers.coordinates_to_spatial(n, e, s, w)
+            if params.get('north', "") == "":
+                lat_lon_box = tree.find('LatLonBox')
+                n = lat_lon_box.find('north').text
+                e = lat_lon_box.find('east').text
+                s = lat_lon_box.find('south').text
+                w = lat_lon_box.find('west').text
+                corrected_params['spatial'] = helpers.coordinates_to_spatial(n, e, s, w)
 
             # add time to new resource
             time_span = tree.find('TimeSpan')
