@@ -120,10 +120,13 @@ def spatial_to_coordinates(spatial):
     spatial = json.loads(spatial)
 
     coordinates = dict()
-    coordinates['north'] = spatial['coordinates'][0][0][2][1]
-    coordinates['east'] = spatial['coordinates'][0][0][1][0]
-    coordinates['south'] = spatial['coordinates'][0][0][0][1]
-    coordinates['west'] = spatial['coordinates'][0][0][0][0]
+    lon_list = [item[1] for item in spatial['coordinates'][0][0]]
+    coordinates['south'] = min(float(l) for l in lon_list)
+    coordinates['north'] = max(float(l) for l in lon_list)
+
+    lat_list = [item[0] for item in spatial['coordinates'][0][0]]
+    coordinates['west'] = min(float(l) for l in lat_list)
+    coordinates['east'] = max(float(l) for l in lat_list)
 
     return coordinates
 

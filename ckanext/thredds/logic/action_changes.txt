@@ -9,7 +9,7 @@ in get_ncss_subset_params:
 
 # r = requests.get(ckan_url + '/' + thredds_location + '/ncss/' + resource_id, params=params, headers=headers)
 
-r = requests.get('http://sandboxdc.ccca.ac.at/' + thredds_location + '/ncss/7e23ea50-3300-4796-b996-a8dfc21e2db1', params=params, headers=headers)
+r = requests.get('http://sandboxdc.ccca.ac.at/' + thredds_location + '/ncss/7e2/3ea/50-3300-4796-b996-a8dfc21e2db1', params=params, headers=headers)
 
 # with open(file_path, 'rb') as f:
 #     for chunk in iter(lambda: f.read(128*hasher.block_size), b''):
@@ -25,8 +25,8 @@ r = requests.get('http://sandboxdc.ccca.ac.at/' + thredds_location + '/ncss/7e23
 in thredds_get_metadata_info:
 
 # r = requests.get(ncml_url, headers=headers)
-r = requests.get('http://sandboxdc.ccca.ac.at/' + 'tds_proxy/ncml/' + '7e23ea50-3300-4796-b996-a8dfc21e2db1', headers=headers)
+r = requests.get('http://sandboxdc.ccca.ac.at/' + 'tds_proxy/ncml/' + '7e2/3ea/50-3300-4796-b996-a8dfc21e2db1', headers=headers)
 
 
 # r = requests.get(ncss_url, headers=headers)
-r = requests.get('http://sandboxdc.ccca.ac.at/' + 'tds_proxy/ncss/7e23ea50-3300-4796-b996-a8dfc21e2db1/dataset.xml', headers=headers)
+r = requests.get('http://sandboxdc.ccca.ac.at/' + 'tds_proxy/ncss/7e2/3ea/50-3300-4796-b996-a8dfc21e2db1/dataset.xml', headers=headers)
