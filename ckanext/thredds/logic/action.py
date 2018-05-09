@@ -29,7 +29,6 @@ import os
 import logging
 log = logging.getLogger(__name__)
 
-
 check_access = logic.check_access
 
 _get_or_bust = logic.get_or_bust
@@ -703,21 +702,72 @@ def get_ncss_subset_params(res_id, params, user, only_location, orig_metadata):
     ckan_url = config.get('ckan.site_url', '')
     thredds_location = config.get('ckanext.thredds.location')
 
+    print "******************* get_ncss_subset_params 0"
+    print params
+    print headers
+
+    print only_location
+
     r = requests.get('/'.join([ckan_url, thredds_location, 'ncss', 'ckan', res_id[0:3], res_id[3:6], res_id[6:]]), params=params, headers=headers)
 
     corrected_params = dict()
     resource_params = None
-
+    print "******************* get_ncss_subset_params 1"
+    print "r"
+    print str(r)
     if r.status_code == 200:
-
-
-        # TODO not working for point
-        tree = ElementTree.fromstring(r.content)
-
-        corrected_params['location'] = tree.get('location')
 
         #Anja, 28.3.18 - > needs tds ncss path ....
         storage_path = config.get('ckanext.thredds.ncss_cache')
+
+        print "******************* get_ncss_subset_params 2"
+        print "r content"
+        print str(r.content)
+        print "r headers"
+        print str(r.headers)
+
+        is_point = False
+
+        # check whether point subset -> response contains file
+        if 'longitude' in params:
+            is_point = True
+            print "point"
+            import random
+
+            # find a storage point and file name
+            newdir = random.randint(0,10000000000)
+            newpath = os.path.join(storage_path, 'cache', 'ncss', str(newdir))
+            while os.path.exists(newpath):
+                newdir = random.randint(0,10000000000)
+                newpath = os.path.join(storage_path, 'cache', 'ncss', str(newdir))
+            try:
+                os.makedirs(newpath)
+            except:
+                print "Error creating directory " + str(newpath)
+                return corrected_params, resource_params
+
+            newfile = str(random.randint(0,10000000000))
+            fmode = 'w'
+            if params['accept'] == 'netcdf':
+                newfile += '.nc'
+                fmode = 'wb'
+            elif params['accept'] == 'xml':
+                newfile += '.xml'
+            elif params['accept'] == 'csv':
+                newfile += '.csv'
+
+            #write contents
+            print newpath
+            print newfile
+            fn = open(os.path.join(newpath,newfile),fmode)
+            fn.write(r.content)
+            fn.close()
+            corrected_params['location'] = os.path.join('cache', 'ncss', newpath,newfile)
+        else:
+            # Area Subset has different response format
+            tree = ElementTree.fromstring(r.content)
+            corrected_params['location'] = tree.get('location')
+
 
         # Hashsum
         file_path = os.path.join(storage_path, corrected_params['location'])
@@ -733,25 +783,40 @@ def get_ncss_subset_params(res_id, params, user, only_location, orig_metadata):
         # Filesize
         resource_params['size'] = os.path.getsize(file_path)
 
+        # only_location means : Just download!! i.e.
         if not only_location:
-            # removed for cases with spatial query as ncss always returns different coordinates
-            # add spatial to new resource
-            if params.get('north', "") == "":
-                lat_lon_box = tree.find('LatLonBox')
-                n = lat_lon_box.find('north').text
-                e = lat_lon_box.find('east').text
-                s = lat_lon_box.find('south').text
-                w = lat_lon_box.find('west').text
-                corrected_params['spatial'] = helpers.coordinates_to_spatial(n, e, s, w)
+            if is_point:
+                # Point coordinates not supported by solr - try as bbox
+                #coordinates = [params['latitude'], params['longitude']]
+                #corrected_params['spatial'] = '{"type": "Point", "coordinates": ' + str(coordinates) + '}'
+                n = str(params['latitude'])
+                e = str(params['longitude'])
+                print  helpers.coordinates_to_spatial(n, e, n, e)
+                corrected_params['spatial'] = helpers.coordinates_to_spatial(n, e, n, e)
+                if 'time_start' in params and params['time_start'] != '':
+                    corrected_params['temporal_end'] = h.date_str_to_datetime(params['time_start'])
+                if 'time_end' in params and params['time_end'] != '':
+                    corrected_params['temporal_end'] = h.date_str_to_datetime(params['time_end'])
 
-            # add time to new resource
-            time_span = tree.find('TimeSpan')
-            corrected_params['temporal_start'] = h.date_str_to_datetime(time_span.find('begin').text[:-1])
-
-            if time_span.find('begin').text != time_span.find('end').text:
-                corrected_params['temporal_end'] = h.date_str_to_datetime(time_span.find('end').text[:-1])
             else:
-                corrected_params['temporal_end'] = None
+                # removed for cases with spatial query as ncss always returns different coordinates
+                # add spatial to new resource
+                if params.get('north', "") == "":
+                    lat_lon_box = tree.find('LatLonBox')
+                    n = lat_lon_box.find('north').text
+                    e = lat_lon_box.find('east').text
+                    s = lat_lon_box.find('south').text
+                    w = lat_lon_box.find('west').text
+                    corrected_params['spatial'] = helpers.coordinates_to_spatial(n, e, s, w)
+
+                # add time to new resource
+                time_span = tree.find('TimeSpan')
+                corrected_params['temporal_start'] = h.date_str_to_datetime(time_span.find('begin').text[:-1])
+
+                if time_span.find('begin').text != time_span.find('end').text:
+                    corrected_params['temporal_end'] = h.date_str_to_datetime(time_span.find('end').text[:-1])
+                else:
+                    corrected_params['temporal_end'] = None
 
             # add variables to new resource
             # variables must be changed to dict
