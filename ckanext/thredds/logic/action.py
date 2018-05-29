@@ -494,6 +494,7 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
                 new_package.pop('resources')
                 new_package.pop('groups')
                 new_package.pop('revision_id')
+                new_package.pop('uri', None)
 
                 new_package['created'] = new_package['metadata_created'] = new_package['metadata_modified'] = datetime.datetime.now()
                 new_package['owner_org'] = data_dict['organization']
