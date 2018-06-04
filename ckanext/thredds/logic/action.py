@@ -841,9 +841,9 @@ def thredds_get_metadata_info(context, data_dict):
 
 def _parse_ncml_metadata_info(ncml_tree, md_dict):
     # get description and references
-    if ncml_tree.find(".//*[@name='comment']"):
+    if ncml_tree.find(".//*[@name='comment']") is not None:
         md_dict['notes'] = ncml_tree.find(".//*[@name='comment']").attrib["value"]
-    if ncml_tree.find(".//*[@name='references']"):
+    if ncml_tree.find(".//*[@name='references']") is not None:
         md_dict['references'] = ncml_tree.find(".//*[@name='references']").attrib["value"]
 
 def _parse_ncss_metadata_info(ncss_tree, md_dict):
@@ -895,8 +895,10 @@ def _parse_ncss_metadata_info(ncss_tree, md_dict):
             g = dict()
             g['name'] = grid.attrib['name']
             g['description'] = grid.attrib['desc']
-            g['standard_name'] = grid.find(".attribute/[@name='standard_name']").attrib["value"]
-            g['units'] = grid.find(".attribute/[@name='units']").attrib["value"]
+            if grid.find(".attribute/[@name='standard_name']") is not None:
+                g['standard_name'] = grid.find(".attribute/[@name='standard_name']").attrib["value"]
+            if grid.find(".attribute/[@name='units']") is not None:
+                g['units'] = grid.find(".attribute/[@name='units']").attrib["value"]
             g['shape'] = grid.attrib['shape'].split(" ")
 
             md_dict['variables'].append(g)
