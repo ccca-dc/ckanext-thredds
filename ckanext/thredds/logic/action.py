@@ -493,7 +493,6 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
                 new_package.pop('resources')
                 new_package.pop('groups')
                 new_package.pop('revision_id')
-                new_package.pop('uri', None)
 
                 new_package['created'] = new_package['metadata_created'] = new_package['metadata_modified'] = datetime.datetime.now()
                 new_package['owner_org'] = data_dict['organization']
@@ -906,9 +905,9 @@ def thredds_get_metadata_info(context, data_dict):
 
 def _parse_ncml_metadata_info(ncml_tree, md_dict):
     # get description and references
-    if ncml_tree.find(".//*[@name='comment']") is not None:
+    if ncml_tree.find(".//*[@name='comment']"):
         md_dict['notes'] = ncml_tree.find(".//*[@name='comment']").attrib["value"]
-    if ncml_tree.find(".//*[@name='references']") is not None:
+    if ncml_tree.find(".//*[@name='references']"):
         md_dict['references'] = ncml_tree.find(".//*[@name='references']").attrib["value"]
 
 def _parse_ncss_metadata_info(ncss_tree, md_dict):
@@ -960,10 +959,8 @@ def _parse_ncss_metadata_info(ncss_tree, md_dict):
             g = dict()
             g['name'] = grid.attrib['name']
             g['description'] = grid.attrib['desc']
-            if grid.find(".attribute/[@name='standard_name']") is not None:
-                g['standard_name'] = grid.find(".attribute/[@name='standard_name']").attrib["value"]
-            if grid.find(".attribute/[@name='units']") is not None:
-                g['units'] = grid.find(".attribute/[@name='units']").attrib["value"]
+            g['standard_name'] = grid.find(".attribute/[@name='standard_name']").attrib["value"]
+            g['units'] = grid.find(".attribute/[@name='units']").attrib["value"]
             g['shape'] = grid.attrib['shape'].split(" ")
 
             md_dict['variables'].append(g)
