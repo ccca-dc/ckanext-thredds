@@ -99,7 +99,12 @@ class SubsetController(base.BaseController):
             data['organizations'].append({'value': org['id'], 'text': org['display_name']})
 
         vars = {'data': data, 'errors': errors, 'error_summary': error_summary}
-        return toolkit.render('subset_create.html', extra_vars=vars)
+
+        if 'result_content' in data and data['result_content']:
+            return toolkit.render('subset_show.html' , extra_vars=vars)
+
+        else:
+            return toolkit.render('subset_create.html', extra_vars=vars)
 
     @staticmethod
     def _submit(context, resource, package):
@@ -114,9 +119,15 @@ class SubsetController(base.BaseController):
         try:
             message = toolkit.get_action('subset_create')(context, data)
 
-            h.flash_notice(message)
-            redirect(h.url_for(controller='package', action='resource_read',
-                                     id=package['id'], resource_id=resource['id']))
+            #Anja 6.6.18
+            print "**************************DATA"
+            print data
+            if 'CONTENT:' in message:
+                data['result_content'] = message.split('CONTENT: ')[1]
+            else:
+                h.flash_notice(message)
+                redirect(h.url_for(controller='package', action='resource_read',
+                                         id=package['id'], resource_id=resource['id']))
         except ValidationError, e:
             errors = e.error_dict
             error_summary = e.error_summary

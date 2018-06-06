@@ -103,6 +103,22 @@ this.ckan.module('subset-form', function (jQuery, _) {
           document.getElementById('create_resource_well').style.display = 'block';
           document.getElementById('download_well').style.display = 'none';
       }
+      // Anja 5.62018
+      if($('#north').val()!="" && $('#south').val()==""){
+        document.getElementById("hide_create").style.display = 'none';
+        document.getElementById("hide_create").disabled = true;
+        document.getElementById("hide_formats").style.display = 'block';
+        document.getElementById("hide_formats").disabled = false;
+
+      }
+      else{
+        document.getElementById("hide_create").style.display = 'block';
+        document.getElementById("hide_create").disabled = false;
+        document.getElementById("hide_formats").style.display = 'none';
+        document.getElementById("hide_formats").disabled = true;
+
+      }
+
     },
 
 
@@ -194,6 +210,14 @@ this.ckan.module('subset-form', function (jQuery, _) {
                 document.getElementById("radio_netcdf").checked=true;
                 document.getElementById("radio_csv").disabled=true;
                 document.getElementById("radio_xml").disabled=true;
+
+                // Anja 5.62018
+                document.getElementById("hide_create").style.display = 'block';
+                document.getElementById("hide_create").disabled = false;
+                document.getElementById("hide_formats").style.display = 'none';
+                document.getElementById("hide_formats").disabled = true;
+
+
             }
             else{
                 var gj = drawnItems.toGeoJSON().features;
@@ -211,6 +235,12 @@ this.ckan.module('subset-form', function (jQuery, _) {
 
                 document.getElementById("radio_csv").disabled=false;
                 document.getElementById("radio_xml").disabled=false;
+
+                // Anja 5.6
+                document.getElementById("hide_create").style.display = 'none';
+                document.getElementById("hide_create").disabled = true;
+                document.getElementById("hide_formats").style.display = 'block';
+                document.getElementById("hide_formats").disabled = false;
             // TODO use input for element id
                 //$('#coordinates').val(JSON.stringify(polyarray));
             }

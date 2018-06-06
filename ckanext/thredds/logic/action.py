@@ -395,10 +395,19 @@ def subset_create(context, data_dict):
     else:
         errors['layers'] = [u'Missing value']
 
+    print "POINT:------------------"
+
+    print data_dict['point']
+
+
     # end of error section
     if len(errors) > 0:
         raise ValidationError(errors)
     else:
+        # Anja: For Point no jobs
+        if data_dict['point']:
+            result = subset_create_job (c.user, resource, data_dict, times_exist, metadata,True)
+            return result
         try:
             enqueue_job = tk.enqueue_job
         except AttributeError:
@@ -407,7 +416,7 @@ def subset_create(context, data_dict):
     return "Your subset is being created. This might take a while, you will receive an E-Mail when your subset is available."
 
 
-def subset_create_job(user, resource, data_dict, times_exist, metadata):
+def subset_create_job(user, resource, data_dict, times_exist, metadata, point=False):
     '''The subset creation job (jobs are always executed as default user)
 
     :param user: the user name or id
@@ -469,6 +478,9 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
     if "error" not in corrected_params:
         location = [corrected_params['location']]
 
+        if point:
+            return  'CONTENT: ' + corrected_params['result_content']
+
         # create resource if requested from user
         if data_dict.get('type', 'download').lower() == "create_resource":
             package = tk.get_action('package_show')(context, {'id': resource['package_id']})
@@ -493,6 +505,7 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
                 new_package.pop('resources')
                 new_package.pop('groups')
                 new_package.pop('revision_id')
+                new_package.pop('uri', None)
 
                 new_package['created'] = new_package['metadata_created'] = new_package['metadata_modified'] = datetime.datetime.now()
                 new_package['owner_org'] = data_dict['organization']
@@ -763,6 +776,8 @@ def get_ncss_subset_params(res_id, params, user, only_location, orig_metadata):
             fn.write(r.content)
             fn.close()
             corrected_params['location'] = os.path.join('cache', 'ncss', newpath,newfile)
+            #Anja 6.6.18
+            corrected_params['result_content'] = r.content
         else:
             # Area Subset has different response format
             tree = ElementTree.fromstring(r.content)
