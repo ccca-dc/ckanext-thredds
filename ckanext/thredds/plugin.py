@@ -95,16 +95,17 @@ class ThreddsPlugin(plugins.SingletonPlugin):
                         resource_id = netcdf_resource[0]
                         subset_params = helpers.get_query_params(package)
                         spatial_params = package['spatial']
-                         #End date will be excluded therefore increment it by one
-                        corrected_end_time = subset_params['time_end']
-                        date = datetime.datetime.strptime(corrected_end_time, '%Y-%m-%dT%H:%M:%S')
-                        date += datetime.timedelta(days=1)
-                        subset_params['time_end'] = str(date).replace(' ', 'T')
-                        #Add Z ...
-                        if not subset_params['time_start'].endswith('Z'):
-                            subset_params['time_start'] = subset_params['time_start'] + 'Z'
-                        if not subset_params['time_end'].endswith('Z'):
-                            subset_params['time_end'] = subset_params['time_end'] + 'Z'
+                        if 'time_end' in subset_params and subset_params['time_end']: # Anja 14.6.18: Time not in Signal Change Indices
+                             #End date will be excluded therefore increment it by one
+                            corrected_end_time = subset_params['time_end']
+                            date = datetime.datetime.strptime(corrected_end_time, '%Y-%m-%dT%H:%M:%S')
+                            date += datetime.timedelta(days=1)
+                            subset_params['time_end'] = str(date).replace(' ', 'T')
+                            #Add Z ...
+                            if not subset_params['time_start'].endswith('Z'):
+                                subset_params['time_start'] = subset_params['time_start'] + 'Z'
+                            if not subset_params['time_end'].endswith('Z'):
+                                subset_params['time_end'] = subset_params['time_end'] + 'Z'
 
                     else: # this should not happen
                         subset_params ={}
