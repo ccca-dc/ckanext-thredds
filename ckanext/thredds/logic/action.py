@@ -747,13 +747,21 @@ def get_ncss_subset_params(res_id, params, user, only_location, orig_metadata):
 
             # add time to new resource
             time_span = tree.find('TimeSpan')
-            if time_span:
+            if time_span != None and time_span != '':
                 corrected_params['temporal_start'] = h.date_str_to_datetime(time_span.find('begin').text[:-1])
 
                 if time_span.find('begin').text != time_span.find('end').text:
                     corrected_params['temporal_end'] = h.date_str_to_datetime(time_span.find('end').text[:-1])
                 else:
                     corrected_params['temporal_end'] = None
+            else:
+                # Anja 15.6.2018
+                # Attention: We might have time information in the package but NOT in the resource!
+                # Delete it! TODO: Better would be to check in wms_view.js wether the resource really has time information
+                # Especially important for climate change signals
+                corrected_params['temporal_end'] = ''
+                corrected_params['temporal_start'] = ''
+
 
             # add variables to new resource
             # variables must be changed to dict
