@@ -41,7 +41,10 @@ ckan.module('wms_view', function ($) {
 
         if ($.isNumeric(self.options.default_layer)) {
           var wmslayer_selected = wmslayers[self.options.default_layer];
-          var wmsabstract_selected = wmsabstracts[self.options.default_layer];
+          if (wmsabstracts.length > self.options.default_layer)
+            var wmsabstract_selected = wmsabstracts[self.options.default_layer];
+          else
+            var wmsabstract_selected = wmsabstracts[0];
         } else {
           var wmslayer_selected = wmslayers[0];
           var wmsabstract_selected = wmsabstracts[0];
@@ -140,19 +143,19 @@ ckan.module('wms_view', function ($) {
         // Layer
         $( "#layer" ).append(
             this._getDropDownList(
-                'layers','select-layers',wmslayers_id)
+                'layers','select-layers',wmslayers_id, wmslayer_selected.id)
         );
 
         // Style
         $( "#style" ).append(
           this._getDropDownList(
-              'styles','select-styles',self.options.layers_details.supportedStyles.sort())
+              'styles','select-styles',self.options.layers_details.supportedStyles.sort(),'')
         );
 
         // Palette
         $( "#palette" ).append(
           this._getDropDownList(
-              'palettes','select-palettes',self.options.layers_details.palettes.sort())
+              'palettes','select-palettes',self.options.layers_details.palettes.sort(),'')
         );
 
         // Minimum/Maximum
@@ -678,12 +681,15 @@ ckan.module('wms_view', function ($) {
 
       }, //_onHandleError
 
-      _getDropDownList: function(name, id, optionList) {
+      _getDropDownList: function(name, id, optionList,selectedItem) {
           var combo = $("<select></select>").attr("id", id).attr("name", name).attr("class","form-control");
 
           $.each(optionList, function (i, el) {
               combo.append("<option>" + el + "</option>");
           });
+
+          if (selectedItem)
+            combo.val(selectedItem);
 
           return combo;
       } // _getDropDownList
