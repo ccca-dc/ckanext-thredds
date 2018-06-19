@@ -296,18 +296,20 @@ ckan.module('wms_view', function ($) {
             var mapHeight = parseFloat($("#map").css("height").replace("px", ""));
 
             var linesLayer = $("svg.leaflet-zoom-animated")[0];
-            var oldLinesWidth = linesLayer.getAttribute("width");
-            var oldLinesHeight = linesLayer.getAttribute("height");
-            var oldViewbox = linesLayer.getAttribute("viewBox");
-            linesLayer.setAttribute("width", mapWidth);
-            linesLayer.setAttribute("height", mapHeight);
-            linesLayer.setAttribute("viewBox", "0 0 " + mapWidth + " " + mapHeight);
-            var linesTransform = linesLayer.style.transform.split(",");
-            var linesX = parseFloat(linesTransform[0].split("(")[1].replace("px", ""));
-            var linesY = parseFloat(linesTransform[1].replace("px", ""));
-            linesLayer.style.transform = "";
-            linesLayer.style.left = "";
-            linesLayer.style.top = "";
+            if (linesLayer) {
+                var oldLinesWidth = linesLayer.getAttribute("width");
+                var oldLinesHeight = linesLayer.getAttribute("height");
+                var oldViewbox = linesLayer.getAttribute("viewBox");
+                linesLayer.setAttribute("width", mapWidth);
+                linesLayer.setAttribute("height", mapHeight);
+                linesLayer.setAttribute("viewBox", "0 0 " + mapWidth + " " + mapHeight);
+                var linesTransform = linesLayer.style.transform.split(",");
+                var linesX = parseFloat(linesTransform[0].split("(")[1].replace("px", ""));
+                var linesY = parseFloat(linesTransform[1].replace("px", ""));
+                linesLayer.style.transform = "";
+                linesLayer.style.left = "";
+                linesLayer.style.top = "";
+            }
             $(".leaflet-top").hide();
             $(".leaflet-bar").hide();
             $(".leaflet-control-attribution").hide();
@@ -353,10 +355,12 @@ ckan.module('wms_view', function ($) {
                 myDivicons[i].style.left = "0px";
                 myDivicons[i].style.top = "0px";
             }
-            linesLayer.style.transform = "translate(" + (linesX) + "px," + (linesY) + "px)";
-            linesLayer.setAttribute("viewBox", oldViewbox);
-            linesLayer.setAttribute("width", oldLinesWidth);
-            linesLayer.setAttribute("height", oldLinesHeight);
+            if (linesLayer) {
+                linesLayer.style.transform = "translate(" + (linesX) + "px," + (linesY) + "px)";
+                linesLayer.setAttribute("viewBox", oldViewbox);
+                linesLayer.setAttribute("width", oldLinesWidth);
+                linesLayer.setAttribute("height", oldLinesHeight);
+            }
             mapPane.style.transform = "translate(" + (mapX) + "px," + (mapY) + "px)";
             mapPane.style.left = "";
             mapPane.style.top = "";
