@@ -38,6 +38,15 @@ ckan.module('wms_view', function ($) {
         var wmslayers = $.map(self.options.layers, function( value, key ) { return value.children});
         var wmslayers_id = $.map(wmslayers, function( value, key ) { return value.id});
         var wmsabstracts = $.map(self.options.layers, function( value, key ) { return value.label } );
+        if (self.options.logscale){
+          if (self.options.logscale=="True")
+            var wmslogscale = true;
+          else
+            var wmslogscale = false;
+        }
+        else {
+          var wmslogscale = false;
+        }
 
         if ($.isNumeric(self.options.default_layer)) {
           var wmslayer_selected = wmslayers[self.options.default_layer];
@@ -139,11 +148,16 @@ ckan.module('wms_view', function ($) {
         }
 
         // ------------------------------------------------
-        // Create control elements for first layer
+        // Create control elements for wms_view (wms_form is separate!)
         // Layer
         $( "#layer" ).append(
             this._getDropDownList(
                 'layers','select-layers',wmslayers_id, wmslayer_selected.id)
+        );
+        $( "#logscale-field" ).append(
+            this._getDropDownList(
+                'select-logscale','select-logscale',{"true":true, "false":false}, wmslogscale.toString())
+
         );
 
         // Style
@@ -165,6 +179,8 @@ ckan.module('wms_view', function ($) {
         $( "#max-field" ).append(
           $("<input id='max-value' type='text' class='numbersOnly form-control' value=" + max_value + ">")
         );
+
+        //Colors
         $( "#num-colorband" ).append(
           $("<input id='num-colorbands' type='text' class='numbersOnly form-control' value=" + num_colorbands + ">")
         );
@@ -245,6 +261,16 @@ ckan.module('wms_view', function ($) {
           cccaHeightTimeLayer.setOpacity(opacity);
 
         });
+
+        $('#select-logscale').on('change', function() {
+          wmslogscale = this.value;
+          // Update Preview
+          cccaHeightTimeLayer.setParams({logscale:wmslogscale});
+          cccaLegend.removeFrom(map);
+          cccaLegend.addTo(map);
+      });
+
+
 
         $('#export-png').on('click', function() {
             var mapPane = $(".leaflet-map-pane")[0];
@@ -376,6 +402,7 @@ ckan.module('wms_view', function ($) {
             layers: wmslayer_selected.id,
             format: 'image/png',
             transparent: true,
+            logscale:wmslogscale,
             colorscalerange: min_value + ',' + max_value,
             abovemaxcolor: "extend",
             belowmincolor: "extend",
@@ -463,7 +490,7 @@ ckan.module('wms_view', function ($) {
 
         cccaLegend.onAdd = function(map) {
 
-          var src = cccaWMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&LAYER=" + wmslayer_selected.id + "&colorscalerange="+ min_value + ',' + max_value + "&PALETTE="+ palette_selection +"&numcolorbands="+num_colorbands+"&transparent=TRUE";
+          var src = cccaWMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&LAYER=" + wmslayer_selected.id + "&colorscalerange="+ min_value + ',' + max_value + "&PALETTE="+ palette_selection +"&numcolorbands="+num_colorbands+"&transparent=TRUE"+"&LOGSCALE="+wmslogscale;
 
           var div = L.DomUtil.create('div', 'info legend');
           div.innerHTML +=

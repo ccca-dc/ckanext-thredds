@@ -36,8 +36,11 @@ class ThreddsPlugin(plugins.SingletonPlugin):
                 'default_title': plugins.toolkit._('View'),
                 'preview_enabled':True,
                 'schema': {
-                    'minimum': [toolkit.get_validator('ignore_empty'), val.natural_number_validator],
-                    'maximum': [toolkit.get_validator('ignore_empty'), val.natural_number_validator],
+                    #Anja,20.6.2018: Validators do not work correctly: Do not allow float although they are supposed to do
+                    #'minimum': [toolkit.get_validator('ignore_empty'), val.natural_number_validator],
+                    #'maximum': [toolkit.get_validator('ignore_empty'), val.natural_number_validator],
+                    'minimum': [toolkit.get_validator('ignore_empty')],
+                    'maximum': [toolkit.get_validator('ignore_empty')],
                     'num_colorbands': [toolkit.get_validator('ignore_empty'), val.is_positive_integer],
                     'logscale': [toolkit.get_validator('ignore_empty'), val.boolean_validator],
                     'default_layer': [toolkit.get_validator('ignore_empty')],
