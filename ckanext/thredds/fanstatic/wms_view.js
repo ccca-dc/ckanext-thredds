@@ -38,10 +38,22 @@ ckan.module('wms_view', function ($) {
         var wmslayers = $.map(self.options.layers, function( value, key ) { return value.children});
         var wmslayers_id = $.map(wmslayers, function( value, key ) { return value.id});
         var wmsabstracts = $.map(self.options.layers, function( value, key ) { return value.label } );
+        if (self.options.logscale){
+          if (self.options.logscale=="True")
+            var wmslogscale = true;
+          else
+            var wmslogscale = false;
+        }
+        else {
+          var wmslogscale = false;
+        }
 
         if ($.isNumeric(self.options.default_layer)) {
           var wmslayer_selected = wmslayers[self.options.default_layer];
-          var wmsabstract_selected = wmsabstracts[self.options.default_layer];
+          if (wmsabstracts.length > self.options.default_layer)
+            var wmsabstract_selected = wmsabstracts[self.options.default_layer];
+          else
+            var wmsabstract_selected = wmsabstracts[0];
         } else {
           var wmslayer_selected = wmslayers[0];
           var wmsabstract_selected = wmsabstracts[0];
@@ -136,23 +148,28 @@ ckan.module('wms_view', function ($) {
         }
 
         // ------------------------------------------------
-        // Create control elements for first layer
+        // Create control elements for wms_view (wms_form is separate!)
         // Layer
         $( "#layer" ).append(
             this._getDropDownList(
-                'layers','select-layers',wmslayers_id)
+                'layers','select-layers',wmslayers_id, wmslayer_selected.id)
+        );
+        $( "#logscale-field" ).append(
+            this._getDropDownList(
+                'select-logscale','select-logscale',{"true":true, "false":false}, wmslogscale.toString())
+
         );
 
         // Style
         $( "#style" ).append(
           this._getDropDownList(
-              'styles','select-styles',self.options.layers_details.supportedStyles.sort())
+              'styles','select-styles',self.options.layers_details.supportedStyles.sort(),'')
         );
 
         // Palette
         $( "#palette" ).append(
           this._getDropDownList(
-              'palettes','select-palettes',self.options.layers_details.palettes.sort())
+              'palettes','select-palettes',self.options.layers_details.palettes.sort(),'')
         );
 
         // Minimum/Maximum
@@ -162,6 +179,8 @@ ckan.module('wms_view', function ($) {
         $( "#max-field" ).append(
           $("<input id='max-value' type='text' class='numbersOnly form-control' value=" + max_value + ">")
         );
+
+        //Colors
         $( "#num-colorband" ).append(
           $("<input id='num-colorbands' type='text' class='numbersOnly form-control' value=" + num_colorbands + ">")
         );
@@ -243,6 +262,16 @@ ckan.module('wms_view', function ($) {
 
         });
 
+        $('#select-logscale').on('change', function() {
+          wmslogscale = this.value;
+          // Update Preview
+          cccaHeightTimeLayer.setParams({logscale:wmslogscale});
+          cccaLegend.removeFrom(map);
+          cccaLegend.addTo(map);
+      });
+
+
+
         $('#export-png').on('click', function() {
             var mapPane = $(".leaflet-map-pane")[0];
             //var mapTransform = mapPane.style.transform.split(",");
@@ -296,18 +325,20 @@ ckan.module('wms_view', function ($) {
             var mapHeight = parseFloat($("#map").css("height").replace("px", ""));
 
             var linesLayer = $("svg.leaflet-zoom-animated")[0];
-            var oldLinesWidth = linesLayer.getAttribute("width");
-            var oldLinesHeight = linesLayer.getAttribute("height");
-            var oldViewbox = linesLayer.getAttribute("viewBox");
-            linesLayer.setAttribute("width", mapWidth);
-            linesLayer.setAttribute("height", mapHeight);
-            linesLayer.setAttribute("viewBox", "0 0 " + mapWidth + " " + mapHeight);
-            var linesTransform = linesLayer.style.transform.split(",");
-            var linesX = parseFloat(linesTransform[0].split("(")[1].replace("px", ""));
-            var linesY = parseFloat(linesTransform[1].replace("px", ""));
-            linesLayer.style.transform = "";
-            linesLayer.style.left = "";
-            linesLayer.style.top = "";
+            if (linesLayer) {
+                var oldLinesWidth = linesLayer.getAttribute("width");
+                var oldLinesHeight = linesLayer.getAttribute("height");
+                var oldViewbox = linesLayer.getAttribute("viewBox");
+                linesLayer.setAttribute("width", mapWidth);
+                linesLayer.setAttribute("height", mapHeight);
+                linesLayer.setAttribute("viewBox", "0 0 " + mapWidth + " " + mapHeight);
+                var linesTransform = linesLayer.style.transform.split(",");
+                var linesX = parseFloat(linesTransform[0].split("(")[1].replace("px", ""));
+                var linesY = parseFloat(linesTransform[1].replace("px", ""));
+                linesLayer.style.transform = "";
+                linesLayer.style.left = "";
+                linesLayer.style.top = "";
+            }
             $(".leaflet-top").hide();
             $(".leaflet-bar").hide();
             $(".leaflet-control-attribution").hide();
@@ -353,10 +384,12 @@ ckan.module('wms_view', function ($) {
                 myDivicons[i].style.left = "0px";
                 myDivicons[i].style.top = "0px";
             }
-            linesLayer.style.transform = "translate(" + (linesX) + "px," + (linesY) + "px)";
-            linesLayer.setAttribute("viewBox", oldViewbox);
-            linesLayer.setAttribute("width", oldLinesWidth);
-            linesLayer.setAttribute("height", oldLinesHeight);
+            if (linesLayer) {
+                linesLayer.style.transform = "translate(" + (linesX) + "px," + (linesY) + "px)";
+                linesLayer.setAttribute("viewBox", oldViewbox);
+                linesLayer.setAttribute("width", oldLinesWidth);
+                linesLayer.setAttribute("height", oldLinesHeight);
+            }
             mapPane.style.transform = "translate(" + (mapX) + "px," + (mapY) + "px)";
             mapPane.style.left = "";
             mapPane.style.top = "";
@@ -369,6 +402,7 @@ ckan.module('wms_view', function ($) {
             layers: wmslayer_selected.id,
             format: 'image/png',
             transparent: true,
+            logscale:wmslogscale,
             colorscalerange: min_value + ',' + max_value,
             abovemaxcolor: "extend",
             belowmincolor: "extend",
@@ -456,7 +490,7 @@ ckan.module('wms_view', function ($) {
 
         cccaLegend.onAdd = function(map) {
 
-          var src = cccaWMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&LAYER=" + wmslayer_selected.id + "&colorscalerange="+ min_value + ',' + max_value + "&PALETTE="+ palette_selection +"&numcolorbands="+num_colorbands+"&transparent=TRUE";
+          var src = cccaWMS + "?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&LAYER=" + wmslayer_selected.id + "&colorscalerange="+ min_value + ',' + max_value + "&PALETTE="+ palette_selection +"&numcolorbands="+num_colorbands+"&transparent=TRUE"+"&LOGSCALE="+wmslogscale;
 
           var div = L.DomUtil.create('div', 'info legend');
           div.innerHTML +=
@@ -674,12 +708,15 @@ ckan.module('wms_view', function ($) {
 
       }, //_onHandleError
 
-      _getDropDownList: function(name, id, optionList) {
+      _getDropDownList: function(name, id, optionList,selectedItem) {
           var combo = $("<select></select>").attr("id", id).attr("name", name).attr("class","form-control");
 
           $.each(optionList, function (i, el) {
               combo.append("<option>" + el + "</option>");
           });
+
+          if (selectedItem)
+            combo.val(selectedItem);
 
           return combo;
       } // _getDropDownList

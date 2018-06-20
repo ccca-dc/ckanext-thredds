@@ -747,12 +747,21 @@ def get_ncss_subset_params(res_id, params, user, only_location, orig_metadata):
 
             # add time to new resource
             time_span = tree.find('TimeSpan')
-            corrected_params['temporal_start'] = h.date_str_to_datetime(time_span.find('begin').text[:-1])
+            if time_span != None and time_span != '':
+                corrected_params['temporal_start'] = h.date_str_to_datetime(time_span.find('begin').text[:-1])
 
-            if time_span.find('begin').text != time_span.find('end').text:
-                corrected_params['temporal_end'] = h.date_str_to_datetime(time_span.find('end').text[:-1])
+                if time_span.find('begin').text != time_span.find('end').text:
+                    corrected_params['temporal_end'] = h.date_str_to_datetime(time_span.find('end').text[:-1])
+                else:
+                    corrected_params['temporal_end'] = None
             else:
-                corrected_params['temporal_end'] = None
+                # Anja 15.6.2018
+                # Attention: We might have time information in the package but NOT in the resource!
+                # Delete it! TODO: Better would be to check in wms_view.js wether the resource really has time information
+                # Especially important for climate change signals
+                corrected_params['temporal_end'] = ''
+                corrected_params['temporal_start'] = ''
+
 
             # add variables to new resource
             # variables must be changed to dict
@@ -859,11 +868,12 @@ def _parse_ncss_metadata_info(ncss_tree, md_dict):
 
     # get time
     time_span = ncss_tree.find('TimeSpan')
-    md_dict['temporal_start'] = time_span.find('begin').text
-    if md_dict['temporal_start'] != time_span.find('end').text:
-        md_dict['temporal_end'] = time_span.find('end').text
-    else:
-        md_dict['temporal_end'] = None
+    if time_span:
+        md_dict['temporal_start'] = time_span.find('begin').text
+        if md_dict['temporal_start'] != time_span.find('end').text:
+            md_dict['temporal_end'] = time_span.find('end').text
+        else:
+            md_dict['temporal_end'] = None
 
     # get dimensions
     md_dict['dimensions'] = []
@@ -890,6 +900,7 @@ def _parse_ncss_metadata_info(ncss_tree, md_dict):
     md_dict['variables'] = []
     grids = ncss_tree.findall(".//grid")
     for grid in grids:
+         # if axis_type in grid this is not a variable!
         axis_type = grid.find(".attribute/[@name='_CoordinateAxisType']")
         if axis_type is None:
             g = dict()

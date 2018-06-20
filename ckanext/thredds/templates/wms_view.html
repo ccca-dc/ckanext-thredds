@@ -13,52 +13,49 @@
     <div id="wms-view" class="container">
 
       <div class="well">
-        <a data-toggle="collapse" href="#collapse_preferences" aria-expanded="true" aria-controls="collapse_preferences">
-              Map Preferences
+        <a data-toggle="collapse" href="#collapse_parameter" aria-expanded="true" aria-controls="collapse_parameter">
+              Map Parameter
               <i class="icon-angle-down pull-right"></i>
           </a>
 {#}
-          <h3 style="margin:0px 0px 10px">Map Preferences</h3>
+          <h3 style="margin:0px 0px 10px">Map Parameter</h3>
 {#}
-        <div id ="collapse_preferences" class="collapse">
+        <div id ="collapse_parameter" class="collapse">
            <ul class="nav nav-pills" style="margin:0px 0px 10px">
-             <li class="active"><a data-toggle="pill" href="#style-pane">Style</a></li>
-             <li><a data-toggle="pill" href="#data-pane">Data</a></li>
+             <li class="active"><a data-toggle="pill" href="#data-pane">Data</a></li>
+             <li ><a data-toggle="pill" href="#style-pane">Style</a></li>
              <li><a data-toggle="pill" href="#opacity-pane">Opacity</a></li>
              <li><a data-toggle="pill" href="#export-pane">Export</a></li>
            </ul>
 
            <div class="tab-content" style="display:inline">
-             <div id="style-pane" class="tab-pane active">
+             <div id="data-pane" class="tab-pane active">
+               <div id="layer" class="input-group">
+                 <span class="input-group-addon">Layer</span>
+               </div>
+                <div id="min-field" class="input-group">
+                 <span class="input-group-addon">Minimum Value</span>
+               </div>
+               <div id="max-field" class="input-group">
+                 <span class="input-group-addon">Maximum Value</span>
+               </div>
+               <div  id="logscale-field" class="input-group">
+                 <span class="input-group-addon">Logscale</span>
+               </div>
+             </div>
+             <div id="style-pane" class="tab-pane ">
                <div id="palette" class="input-group">
                  <span class="input-group-addon">Color Palette</span>
                </div>
                <div id="style" class="input-group">
                  <span class="input-group-addon">Plot Style</span>
                </div>
-               <div id="min-field" class="input-group">
-                 <span class="input-group-addon">Minimum Value</span>
-               </div>
-               <div id="max-field" class="input-group">
-                 <span class="input-group-addon">Maximum Value</span>
-               </div>
                <div id="num-colorband" class="input-group">
                  <span class="input-group-addon">Number of Colorbands</span>
                </div>
              </div>
 
-             <div id="data-pane" class="tab-pane">
-               <div id="layer" class="input-group">
-                 <span class="input-group-addon">Layer</span>
-               </div>
-               <div class="input-group">
-                 <span class="input-group-addon">Logscale</span>
-                 <select name="logscale" id="logscale" class="form-control">
-                   <option value="false" selected>false</option>
-                   <option value="true">true</option>
-                 </select>
-               </div>
-             </div>
+
 
              <div id="opacity-pane" class="tab-pane"></div>
              <div id="export-pane" class="tab-pane"></div>

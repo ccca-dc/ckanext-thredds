@@ -137,6 +137,7 @@
               </div>
             </div>
 
+            {% if data.metadata.temporal_start %}
             <div class="division">
                 <h3>Choose Time Range</h3>
                 {% set start = h.date_str_to_datetime(data.metadata.temporal_start[:-1]) %}
@@ -149,6 +150,7 @@
                 </div>
                 <p class="info-text">If no time range is chosen, the nearest point in time is taken.</p>
             </div>
+            {% endif %}
 
             {% if data.create_pkg == True %}
               <div class="division">
