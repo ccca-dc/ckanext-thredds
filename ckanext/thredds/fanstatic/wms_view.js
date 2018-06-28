@@ -103,8 +103,6 @@ ckan.module('wms_view', function ($) {
 
           // Attention: Necessary Format!
           //subset_times = "2018-04-12T12:00:00Z" +"/" + "2018-04-13T12:00:00Z";
-
-
         }
 
         if (subset_times != ''){
@@ -146,6 +144,22 @@ ckan.module('wms_view', function ($) {
               center: [47.3, 13.9]
           }); //map
         }
+
+
+      // check whether to adapt view extend
+      var spatial_params = self.options.spatial_params;
+      var spatial_bounds ='';
+      if ((spatial_params != '') && (spatial_params != "") && (subset_bounds == '')){
+        if (spatial_params['type']){ // for some reasons or others spatial_params ahs value 'true' if empty
+            var multipolygon = L.geoJson(spatial_params);
+            spatial_bounds = multipolygon.getBounds();
+            var center = spatial_bounds.getCenter();
+            //multipolygon.addTo(map); // Anja, 28.6.18 This will add a blue rectangle marking the spatial extend - might be nice too :-)
+            map.fitBounds(spatial_bounds);
+            map.panTo(center);
+            //map.fitWorld();
+        }
+      }
 
         // ------------------------------------------------
         // Create control elements for wms_view (wms_form is separate!)
@@ -269,8 +283,6 @@ ckan.module('wms_view', function ($) {
           cccaLegend.removeFrom(map);
           cccaLegend.addTo(map);
       });
-
-
 
         $('#export-png').on('click', function() {
             var mapPane = $(".leaflet-map-pane")[0];
@@ -441,7 +453,7 @@ ckan.module('wms_view', function ($) {
             position: [48.209, 16.37]
         }];
 
-        // Check whether the markers are inside a potential subset
+        // Check whether the markers are inside a potential subset or spatial extend
         var add_markers = [];
 
         if (subset_bounds != '') {
@@ -465,6 +477,28 @@ ckan.module('wms_view', function ($) {
 
               add_markers.push(element);
            }
+         }
+        else if (spatial_bounds != '') {
+
+              //check if default marker within
+              for (i=0; i <markers.length;i++) {
+                 if ((spatial_bounds.contains(markers[i].position))){
+                   add_markers.push(markers[i]);
+                  }
+              }
+
+              // add center marker
+              if (add_markers.length == 0){
+
+                  var center = spatial_bounds.getCenter();
+                  var element = {
+                    name: "Center",
+                    position: [center.lat, center.lng]
+
+                  };
+
+                add_markers.push(element);
+             }
 
         }else{
           add_markers = markers;
