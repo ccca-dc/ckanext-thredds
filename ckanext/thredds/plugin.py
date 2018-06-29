@@ -73,7 +73,13 @@ class ThreddsPlugin(plugins.SingletonPlugin):
 
         #For subset
         subset_params =''
-        spatial_params =''
+
+        #Anja 27.6.18 : Adapt_view to spatial extend
+
+        if data_dict['package']['spatial']:
+            spatial_params = data_dict['package']['spatial']
+        else:
+            spatial_params = ''
 
         # Check subset
         if '/subset/' in resource['url']:

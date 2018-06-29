@@ -868,7 +868,7 @@ def _parse_ncss_metadata_info(ncss_tree, md_dict):
 
     # get time
     time_span = ncss_tree.find('TimeSpan')
-    if time_span:
+    if time_span != None and time_span != '': # Anja 28.6.2018 - ckan advised not to use: "if time_span:"
         md_dict['temporal_start'] = time_span.find('begin').text
         if md_dict['temporal_start'] != time_span.find('end').text:
             md_dict['temporal_end'] = time_span.find('end').text
