@@ -105,11 +105,25 @@ ckan.module('wms_view', function ($) {
           //subset_times = "2018-04-12T12:00:00Z" +"/" + "2018-04-13T12:00:00Z";
         }
 
+        // Check if time in resource
+        // Anja 29.6.18: Thre maybe a better method;
+        // but so far nearestTimeIso seems to indicate that the time is there bzw here ;-)
+        var time_included = true;
+
+        if ('nearestTimeIso' in self.options.layers_details){
+              time_included = true;
+
+        }
+        else {
+            time_included = false;
+        }
+
+
         if (subset_times != ''){
           var map = L.map('map', {
               zoom: 7,
               fullscreenControl: true,
-              timeDimensionControl: true,
+              timeDimensionControl: time_included,
               timeDimensionControlOptions: {
                   position: 'bottomleft',
                   playerOptions: {
@@ -118,7 +132,7 @@ ckan.module('wms_view', function ($) {
                   minSpeed: 0.1,
                   maxSpeed: 2.0
               },
-              timeDimension: true,
+              timeDimension: time_included,
               timeDimensionOptions: {
                   timeInterval:subset_times,
                   //period: "P1DT1H" // Defines (the Format of) the time period
@@ -131,7 +145,7 @@ ckan.module('wms_view', function ($) {
           var map = L.map('map', {
               zoom: 7,
               fullscreenControl: true,
-              timeDimensionControl: true,
+              timeDimensionControl: time_included,
               timeDimensionControlOptions: {
                   position: 'bottomleft',
                   playerOptions: {
@@ -140,7 +154,7 @@ ckan.module('wms_view', function ($) {
                   minSpeed: 0.1,
                   maxSpeed: 2.0
               },
-              timeDimension: true,
+              timeDimension: time_included,
               center: [47.3, 13.9]
           }); //map
         }
@@ -515,8 +529,11 @@ ckan.module('wms_view', function ($) {
             enableNewMarkers: true
         };
 
+        if (time_included)
+          var cccaHeightTimeLayer = L.timeDimension.layer.wms.timeseries(cccaHeightLayer, time_options);
+        else
+         var cccaHeightTimeLayer = cccaHeightLayer;
 
-        var cccaHeightTimeLayer = L.timeDimension.layer.wms.timeseries(cccaHeightLayer, time_options);
 
         var cccaLegend = L.control({
             position: 'bottomright'
