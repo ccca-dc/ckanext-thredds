@@ -221,8 +221,12 @@ def subset_create(context, data_dict):
     :param west: western degree if bbox (optional)
     :param time_start: start of time (optional)
     :param time_end: end of time (optional)
+    _param vertical_level: Vertical level - currently only Pressure supported
     :rtype: dictionary
     '''
+
+    print "**************** subset_create (action.py)"
+    print data_dict
 
     errors = {}
 
@@ -446,6 +450,11 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
             data_dict['time_start'], data_dict['time_end'] = data_dict['time_end'], data_dict['time_start']
         params['time_start'] = time_start
         params['time_end'] = time_end
+
+    # check vertical level: Anja, 2.7.2018
+    if data_dict.get('vertical_level', "") != "":
+        params['vertCoord'] = float(data_dict['vertical_level'])
+        params['accept'] = 'netcdf4' # Needed for vertical levels ...
 
     # adding coordinates
     if data_dict.get('north', "") != "" and data_dict.get('east', "") != "":
@@ -883,7 +892,7 @@ def _parse_ncss_metadata_info(ncss_tree, md_dict):
         d['name'] = dimension.attrib["name"]
         d['units'] = dimension.find(".attribute/[@name='units']").attrib["value"]
         d['description'] = dimension.find(".attribute/[@name='long_name']").attrib["value"]
-        d['shape'] = dimension.attrib["shape"]
+        d['shape'] = dimension.attrib["shape"] #'shape' meand number of values
         # not all dimensions contain start and increment attributes
         try:
             d['start'] = dimension.find("values").attrib["start"]
@@ -893,6 +902,15 @@ def _parse_ncss_metadata_info(ncss_tree, md_dict):
             d['increment'] = dimension.find("values").attrib["increment"]
         except:
             d['increment'] = ''
+
+        # Check for Pressure, Anja, 2.7.18 - so far not general and abstract possible
+        # because sometimes 'start' and 'increment' are empty and all definitions are in 'units'
+
+        if d['name'].lower() == 'pressure':
+            str_values =[]
+            str_values = dimension.find("values").text.split(" ")
+            values = [float(x) for x in str_values]
+            d['values'] = values
 
         md_dict['dimensions'].append(d)
 

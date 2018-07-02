@@ -32,6 +32,18 @@
                 <p><input type="checkbox" name="layers" value="{{ variable['name'] }}" {{ "checked " if variable['name'] in data.layers }}> {{ variable['description'] }}</p>
               {% endfor %}
 
+
+              {% if data.vertical %}
+              <div class="division">
+
+                  <h3>Choose Vertical Level: {{data.vertical|string}}  ({{data.vertical_units|string}})</h3>
+
+                 {{ form.select('vertical_level', id='field-vertical_level', label=_('-- Select Vertical Level --'), options=data.vertical_values, error=errors.vertical_level) }}
+
+              </div>
+              {% endif %}
+
+
               {% set user_queries, all_queries = h.get_queries_from_user(c.userobj.id) %}
 
               {% if user_queries|length > 0 or all_queries|length > 0 %}
@@ -137,11 +149,16 @@
               </div>
             </div>
 
+
             {% if data.metadata.temporal_start %}
             <div class="division">
                 <h3>Choose Time Range</h3>
                 {% set start = h.date_str_to_datetime(data.metadata.temporal_start[:-1]) %}
-                {% set end = h.date_str_to_datetime(data.metadata.temporal_end[:-1]) %}
+                {% if data.metadata.temporal_end %}
+                    {% set end = h.date_str_to_datetime(data.metadata.temporal_end[:-1]) %}
+                {% else %}
+                  {% set end = '' %}
+                {% endif %}
                 <div class="left">
                     {{ input('time_start', title='min: ' + start|string, id='time_start', label=_('From'), value=data.time_start, error=errors.time_start, attrs={'data-module': 'subset_datepicker','data-module-year_start': start.year, 'data-module-year_end': end.year, 'data-placement': 'right'}) }}
                 </div>

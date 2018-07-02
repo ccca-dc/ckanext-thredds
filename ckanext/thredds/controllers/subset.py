@@ -23,6 +23,8 @@ import ckanext.thredds.helpers as helpers
 from ckanext.thredds.logic.action import get_ncss_subset_params
 from ckanext.thredds.logic.action import send_email
 
+import json
+
 get_action = logic.get_action
 parse_params = logic.parse_params
 tuplize_dict = logic.tuplize_dict
@@ -77,13 +79,30 @@ class SubsetController(base.BaseController):
         package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
 
         # Submit the data
+        # We return here from subset_create.html after press submit button
         if 'save' in request.params:
             # values are just returned in case of error(s)
             data, errors, error_summary = self._submit(context, resource, package)
         else:
             # get metadata from nclm and ncss
             data['metadata'] = toolkit.get_action('thredds_get_metadata_info')(context, {'id': resource_id})
+            print "****************** subset_create"
+            print json.dumps(data['metadata'],indent=3)
 
+        # check if vertical level - currently (July 2018) only pressure
+        if ('dimensions' in data['metadata']) and (len(data['metadata']['dimensions'])) > 3:
+            for dim in data['metadata']['dimensions']:
+                if dim['name'].lower()==  "pressure":
+                    data['vertical'] = dim['name']
+                    # Create Select list
+                    select_list= []
+                    for v in dim['values']:
+                        item={}
+                        item['name'] = v
+                        item['value'] = v
+                        select_list.append(item)
+                    data['vertical_values'] = select_list
+                    data['vertical_units'] = dim['units']
         # check if user is allowed to create package
         data['create_pkg'] = True
         try:
