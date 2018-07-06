@@ -5,6 +5,9 @@ ckan.module('wms_view', function ($) {
           resource_id:'',
           subset_params:'',
           spatial_params:'',
+          vertical_data:'',
+          vertical_level:'',
+          default_level:'',
           site_url:'',
           minimum:'',
           maximum:'',
@@ -38,6 +41,7 @@ ckan.module('wms_view', function ($) {
         var wmslayers = $.map(self.options.layers, function( value, key ) { return value.children});
         var wmslayers_id = $.map(wmslayers, function( value, key ) { return value.id});
         var wmsabstracts = $.map(self.options.layers, function( value, key ) { return value.label } );
+
         if (self.options.logscale){
           if (self.options.logscale=="True")
             var wmslogscale = true;
@@ -57,7 +61,20 @@ ckan.module('wms_view', function ($) {
         } else {
           var wmslayer_selected = wmslayers[0];
           var wmsabstract_selected = wmsabstracts[0];
-
+        }
+        var vertical_level_selected = 0;
+        if (self.options.vertical_data){
+              var vertical_levels = self.options.vertical_data['values'];
+              var vertical_level_values = $.map(vertical_levels, function( value, key ) { return value.value});
+              var vertical_level_names = $.map(vertical_levels, function( value, key ) { return (value.name).toString()});
+        }
+        if (self.options.default_level) {
+            if ($.isNumeric(self.options.default_level))
+              vertical_level_selected = self.options.default_level;
+            else
+              vertical_level_selected = parseInt(self.options.default_level);
+        } else {
+          vertical_level_selected = 0;
         }
 
         if ($.type(self.options.default_colormap) == "string") {
@@ -178,10 +195,20 @@ ckan.module('wms_view', function ($) {
         // ------------------------------------------------
         // Create control elements for wms_view (wms_form is separate!)
         // Layer
+
+
         $( "#layer" ).append(
             this._getDropDownList(
                 'layers','select-layers',wmslayers_id, wmslayer_selected.id)
         );
+
+        if (self.options.vertical_data){
+              $( "#vertical_level" ).append(
+                this._getDropDownList(
+                    'vertical_levels','select-level',vertical_level_values, vertical_level_values[vertical_level_selected])
+            );
+        }
+
         $( "#logscale-field" ).append(
             this._getDropDownList(
                 'select-logscale','select-logscale',{"true":true, "false":false}, wmslogscale.toString())
@@ -281,6 +308,12 @@ ckan.module('wms_view', function ($) {
             cccaHeightTimeLayer.setParams({layers:wmslayer_selected.id});
             cccaLegend.removeFrom(map);
             cccaLegend.addTo(map);
+        });
+
+        $('#select-level').on('change', function() {
+            index = this.selectedIndex;
+            vertical_level_selected = index;
+           cccaHeightTimeLayer.setParams({elevation:vertical_level_values[index]});
         });
 
         $('#opacity-value').on('change', function() {
@@ -725,6 +758,10 @@ ckan.module('wms_view', function ($) {
       } //if subset
 
       cccaHeightTimeLayer.addTo(map);
+      // Check Vertical
+      if (self.options.vertical_data)
+          cccaHeightTimeLayer.setParams({elevation:vertical_level_values[vertical_level_selected]});
+
 
       }, //initializePreview
 

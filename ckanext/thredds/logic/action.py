@@ -224,10 +224,6 @@ def subset_create(context, data_dict):
     _param vertical_level: Vertical level - currently only Pressure supported
     :rtype: dictionary
     '''
-
-    print "**************** subset_create (action.py)"
-    print data_dict
-
     errors = {}
 
     id = _get_or_bust(data_dict, 'id')
@@ -452,7 +448,9 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
         params['time_end'] = time_end
 
     # check vertical level: Anja, 2.7.2018
-    if data_dict.get('vertical_level', "") != "":
+    if data_dict.get('vertical_level', "") != "all":
+        #print "LEVEL******************++"
+        #print data_dict.get('vertical_level', "")
         params['vertCoord'] = float(data_dict['vertical_level'])
         params['accept'] = 'netcdf4' # Needed for vertical levels ...
 
@@ -720,7 +718,13 @@ def get_ncss_subset_params(res_id, params, user, only_location, orig_metadata):
 
     if r.status_code == 200:
 
-
+        #Check netcdf3, Anja 4.7.2018
+        if 'illegal dataType' in r.content and 'netcdf-3' in r.content:
+            #try again with netcdf4
+            params['accept']='netcdf4'
+            r = requests.get('/'.join([ckan_url, thredds_location, 'ncss', 'ckan', res_id[0:3], res_id[3:6], res_id[6:]]), params=params, headers=headers)
+            if r.status_code != 200:
+                return corrected_params, resource_params
         # TODO not working for point
         tree = ElementTree.fromstring(r.content)
 

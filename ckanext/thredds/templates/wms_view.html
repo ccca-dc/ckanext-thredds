@@ -33,6 +33,11 @@
                <div id="layer" class="input-group">
                  <span class="input-group-addon">Layer</span>
                </div>
+                 {% if vertical_data['values'] %}
+               <div id="vertical_level" class="input-group">
+                 <span class="input-group-addon">Vertical Level - {{vertical_data['name']}} ({{vertical_data['units']}})</span>
+               </div>
+               {% endif %}
                 <div id="min-field" class="input-group">
                  <span class="input-group-addon">Minimum Value</span>
                </div>
@@ -73,6 +78,9 @@
         <div id="map" class="map" data-module="wms_view"
              data-module-resource_id="{{ resource_id }}"
              data-module-subset_params="{{h.dump_json(subset_params)}}"
+             data-module-vertical_data="{{h.dump_json(vertical_data)}}"
+             data-module-vertical_level ="{{ vertical_level }}"
+             data-module-default_level ="{{ default_level }}"
              data-module-spatial_params="{{spatial_params}}"
              data-module-site_url="{{ h.dump_json(h.url('/', locale='default', qualified=true)) }}"
              data-module-minimum ="{{ minimum }}"

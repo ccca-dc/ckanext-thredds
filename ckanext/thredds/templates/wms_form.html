@@ -1,3 +1,5 @@
+{% import 'macros/form.html' as form %}
+
 <div id="masterdiv">
     <div class="row">
         <div class="col-xs-6">
@@ -32,13 +34,39 @@
         </div>
     </div>
     <div class="row">
+      {% if layers %}
+      <div class="col-xs-6">
+          <div class="input-group">
+              <span class="input-group-addon">Layer</span>
+
+              <select name="default_layer" id="default_layer" type="text" class="form-control">
+                {% for l in layers %}
+                      <option value="{{layers.index(l)}}" {% if layers.index(l)|string == default_layer|string %} selected{% endif %}>{{l['label']}}</option>
+                 {% endfor %}
+              </select>
+          </div>
+      </div>
+      {% else %}
+      <div class="col-xs-6">
+          <div class="input-group">
+              <span class="input-group-addon">Layer</span>
+              <!-- TODO: dropdown -->
+              <input name="default_layer" id="default_layer" type="text" class="form-control" value="{{ default_layer }}">
+            </div>
+      </div>
+      {% endif %}
+        {% if vertical_data['values'] %}
         <div class="col-xs-6">
             <div class="input-group">
-                <span class="input-group-addon">Layer</span>
-                <!-- TODO: dropdown -->
-                <input name="default_layer" id="default_layer" type="text" class="form-control" value="{{ default_layer }}">
+                <span class="input-group-addon">Vertical Level - {{vertical_data['name']}} ({{vertical_data['units']}})</span>
+                <select name="default_level" id="default_level" type="text" class="form-control">
+                  {% for val in vertical_data['values']%}
+                  <option value="{{vertical_data['values'].index(val)}}" {% if vertical_data['values'].index(val)|string == default_level|string %} selected{% endif %}>{{val['name']}}</option>
+                  {% endfor %}
+                </select>
             </div>
         </div>
+        {% endif %}
         <div class="col-xs-6">
             <div class="input-group">
                 <span class="input-group-addon">Colormap</span>

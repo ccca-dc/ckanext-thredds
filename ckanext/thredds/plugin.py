@@ -44,6 +44,7 @@ class ThreddsPlugin(plugins.SingletonPlugin):
                     'num_colorbands': [toolkit.get_validator('ignore_empty'), val.is_positive_integer],
                     'logscale': [toolkit.get_validator('ignore_empty'), val.boolean_validator],
                     'default_layer': [toolkit.get_validator('ignore_empty')],
+                    'default_level': [toolkit.get_validator('ignore_empty')],
                     'default_colormap': [toolkit.get_validator('ignore_empty')]
                 }
                 }
@@ -69,17 +70,43 @@ class ThreddsPlugin(plugins.SingletonPlugin):
         resource_id = data_dict['resource']['id']
         resource = data_dict['resource']
 
-        #print json.dumps(data_dict,indent=4)
-
         #For subset
         subset_params =''
 
         #Anja 27.6.18 : Adapt_view to spatial extend
-
         if data_dict['package']['spatial']:
             spatial_params = data_dict['package']['spatial']
         else:
             spatial_params = ''
+
+
+        #Anja, 5.7.2018 - check Vertical level; currently (July 2018) only pressure
+        meta_data = toolkit.get_action('thredds_get_metadata_info')(context, {'id': resource_id})
+        #print json.dumps(data_dict,indent=4)
+
+        #Anja, 5.7 - drop down for layers
+        layers = []
+        layers = toolkit.get_action('thredds_get_layers')(context, {'id': resource_id})
+        #print json.dumps(layers,indent=4)
+
+
+        vertical_data ={}
+        vertical_data['name'] =''
+        vertical_data['values']=''
+        vertical_data['units']=''
+        if ('dimensions' in meta_data) and (len(meta_data['dimensions'])) > 3:
+            for dim in meta_data['dimensions']:
+                if dim['name'].lower()==  "pressure":
+                    vertical_data['name'] = dim['name']
+                    # Create Select list
+                    select_list= []
+                    for v in dim['values']:
+                        item={}
+                        item['name'] = v
+                        item['value'] = v
+                        select_list.append(item)
+                    vertical_data['values'] = select_list
+                    vertical_data['units'] = dim['units']
 
         # Check subset
         if '/subset/' in resource['url']:
@@ -126,10 +153,14 @@ class ThreddsPlugin(plugins.SingletonPlugin):
             'resource_id': resource_id,
             'subset_params' : subset_params,
             'spatial_params' : spatial_params,
+            'vertical_data': vertical_data,
+            'vertical_level': data_dict['resource_view'].get('vertical_level', ''),
+            'default_level': data_dict['resource_view'].get('default_level', ''),
             'minimum': data_dict['resource_view'].get('minimum', ''),
             'maximum': data_dict['resource_view'].get('maximum', ''),
             'num_colorbands': data_dict['resource_view'].get('num_colorbands', ''),
             'logscale': data_dict['resource_view'].get('logscale', ''),
+            'layers': layers[0]['children'],
             'default_layer': data_dict['resource_view'].get('default_layer', ''),
             'default_colormap': data_dict['resource_view'].get('default_colormap', '')
         }

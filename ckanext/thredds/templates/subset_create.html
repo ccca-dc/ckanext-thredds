@@ -36,9 +36,11 @@
               {% if data.vertical %}
               <div class="division">
 
-                  <h3>Choose Vertical Level: {{data.vertical|string}}  ({{data.vertical_units|string}})</h3>
+                  <h3>Choose Vertical Level:</h3>
 
-                 {{ form.select('vertical_level', id='field-vertical_level', label=_('-- Select Vertical Level --'), options=data.vertical_values, error=errors.vertical_level) }}
+                  {% set vert_label =  data.vertical|string + ' (' + data.vertical_units|string +')'%}
+
+                 {{ form.select('vertical_level', id='field-vertical_level', label=vert_label, options=data.vertical_values, error=errors.vertical_level) }}
 
               </div>
               {% endif %}

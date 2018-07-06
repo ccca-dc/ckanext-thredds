@@ -86,8 +86,6 @@ class SubsetController(base.BaseController):
         else:
             # get metadata from nclm and ncss
             data['metadata'] = toolkit.get_action('thredds_get_metadata_info')(context, {'id': resource_id})
-            print "****************** subset_create"
-            print json.dumps(data['metadata'],indent=3)
 
         # check if vertical level - currently (July 2018) only pressure
         if ('dimensions' in data['metadata']) and (len(data['metadata']['dimensions'])) > 3:
@@ -96,6 +94,10 @@ class SubsetController(base.BaseController):
                     data['vertical'] = dim['name']
                     # Create Select list
                     select_list= []
+                    item={}
+                    item['name'] = "All"
+                    item['value'] = "all"
+                    select_list.append(item)
                     for v in dim['values']:
                         item={}
                         item['name'] = v
@@ -146,9 +148,6 @@ class SubsetController(base.BaseController):
         context = {'model': model, 'session': model.Session,
                    'user': c.author}
 
-        #print c.author
-        #print toolkit.c
-        #print resource_id
         resource = toolkit.get_action('resource_show')(context, {'id': resource_id})
         package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
 
@@ -226,9 +225,6 @@ def subset_download_job(resource_id, variables, subset_user):
 
     # get netcdf resource id from parent
     netcdf_resource = [res['id'] for res in is_part_of_pkg['resources'] if 'netcdf' in res['format'].lower()]
-
-    #print "**************************+"
-    #print corrected_params
 
     corrected_params, subset_netcdf_hash = get_ncss_subset_params(netcdf_resource[0], params, user, True, None)
 
