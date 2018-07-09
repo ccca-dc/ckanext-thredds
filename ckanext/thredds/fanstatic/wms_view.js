@@ -85,17 +85,42 @@ ckan.module('wms_view', function ($) {
 
         var style_selection = self.options.layers_details.supportedStyles[0];
 
-        if ($.isNumeric(self.options.minimum)) {
+        console.log(self.options.layers_details);
+        if (($.isNumeric(self.options.minimum)) &&  ($.isNumeric(self.options.maximum)) ) {
           var min_value = self.options.minimum.toString();
-        } else {
-          var min_value = self.options.layers_details.scaleRange[0].toString();
-        }
-
-        if ($.isNumeric(self.options.maximum)) {
           var max_value = self.options.maximum.toString();
         } else {
-          var max_value = self.options.layers_details.scaleRange[1].toString();
+              var bbox = self.options.layers_details.bbox;
+              var min_value = '';
+              var max_value = '';
+              //GET MIN MAX
+              if (self.options.vertical_data){
+                self.sandbox.client.call('GET','thredds_get_minmax',
+                                    '?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:4326' + // Attention -copied from leaflet! Anja, 9.7
+                                    '&bbox='+ bbox +
+                                    '&width=50'+
+                                    '&height=50'+
+                                    '&id='+ self.options.resource_id +
+                                    '&layers=' + wmslayer_selected.id +
+                                    '&elevation=' + vertical_level_values[vertical_level_selected],
+                                     self._onHandleMinMax,
+                                     self._onHandleError
+                                    );
+                }
+              else{
+                self.sandbox.client.call('GET','thredds_get_minmax',
+                                     '?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:4326' + // Attention -copied from leaflet! Anja, 9.7
+                                     '&bbox='+ bbox +
+                                     '&width=50'+
+                                     '&height=50'+
+                                      '&id='+ self.options.resource_id +
+                                      '&layers=' + wmslayer_selected.id,
+                                       self._onHandleMinMax,
+                                       self._onHandleError
+                                      );
+            }
         }
+
 
         if ($.isNumeric(self.options.num_colorbands)) {
           var num_colorbands = self.options.num_colorbands;
@@ -103,6 +128,7 @@ ckan.module('wms_view', function ($) {
           var num_colorbands = 100;
         }
 
+        console.log(min_value);
         var opacity = 1;
 
         // check and store subset for subset_view
@@ -338,7 +364,7 @@ ckan.module('wms_view', function ($) {
                                      self._onHandleMinMax,
                                      self._onHandleError
                                     );
-                // Update View
+                // Update View Done in MinmAx
                 //cccaHeightTimeLayer.setParams({layers:wmslayer_selected.id});
                 //cccaLegend.removeFrom(map);
                 //cccaLegend.addTo(map);
