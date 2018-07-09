@@ -45,6 +45,90 @@ c = base.c
 
 
 @ckan.logic.side_effect_free
+def thredds_get_minmax(context, data_dict):
+    '''Return the min/max values of a layer or vertical level (elevation)
+      from Thredds WMS.
+
+    :param id: the id of the resource
+    :param: layer
+    :param: elevation (optional)
+    :returns: list
+    '''
+
+    # Resource ID
+    model = context['model']
+    user = context['auth_user_obj']
+
+    resource_id = tk.get_or_bust(data_dict,'id')
+    resource = tk.get_action('resource_show')(context, {'id': resource_id})
+
+    #check if the resource is a subset
+    if '/subset/' in resource['url']:
+
+        package = tk.get_action('package_show')(context, {'id': resource['package_id']})
+
+        # get params from metadata
+        try:
+            variables = str(','.join([var['name'] for var in package['variables']]))
+        except:
+            h.flash_error('Thredds View was not possible as the variables of the package are not defined correctly.')
+            redirect(h.url_for(controller='package', action='resource_read',
+                                     id=resource['package_id'], resource_id=resource['id']))
+        params = helpers.get_query_params(package)
+        params['var'] = variables
+        params['item']='minmax'
+        params['request']= 'GetMetadata'
+        payload = params
+        #print params
+        # Get Resource_id from parent
+        # get parent of subset
+        is_part_of_id = [d for d in package['relations'] if d['relation'] == 'is_part_of']
+        is_part_of_pkg = tk.get_action('package_show')(context, {'id': is_part_of_id[0]['id']})
+
+        # get netcdf resource id from parent
+        netcdf_resource = [res['id'] for res in is_part_of_pkg['resources'] if  'netcdf' in res['format'].lower()]
+        resource_id = netcdf_resource[0]
+    else:
+        payload={'item':'minmax',
+                'request':'GetMetadata'}
+
+    layers = tk.get_or_bust(data_dict,'layers')
+    elevation = tk.get_or_bust(data_dict,'elevation')
+
+    if layers:
+        payload['layers'] = layers
+    if elevation:
+        payload['elevation'] = elevation
+
+    #FIXME: Check subset and st the parameter right!!!
+    payload= data_dict
+    payload['item'] ='minmax'
+    payload['request'] ='GetMetadata'
+    payload.pop('id')
+    # Get URL for WMS Proxy
+    ckan_url = config.get('ckan.site_url', '')
+    wms_url = ckan_url + '/thredds/wms/ckan/' + "/".join([resource_id[0:3],resource_id[3:6],resource_id[6:]])
+
+
+    # Headers and payload for thredds request
+    try:
+        headers={'Authorization':user.apikey}
+    except:
+        raise NotAuthorized
+
+    # Thredds request
+    try:
+        r = requests.get(wms_url, params=payload, headers=headers)
+        minmax = json.loads(r.content)
+
+    except Exception as e:
+        print "***************** Errror"
+        raise NotFound("Thredds Server can not provide layer information for the resource")
+
+    return minmax
+
+
+@ckan.logic.side_effect_free
 def thredds_get_layers(context, data_dict):
     '''Return the layers of a resource from Thredds WMS.
     Exclude lat, lon, latitude, longitude, x, y

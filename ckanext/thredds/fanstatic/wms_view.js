@@ -304,16 +304,72 @@ ckan.module('wms_view', function ($) {
             index = this.selectedIndex;
             wmslayer_selected = wmslayers[index];
             wmsabstract_selected = wmsabstracts[index];
-            // Update Preview
-            cccaHeightTimeLayer.setParams({layers:wmslayer_selected.id});
-            cccaLegend.removeFrom(map);
-            cccaLegend.addTo(map);
+            // Get and adapt min max_value
+            //this.sandbox = ckan.sandbox();
+            var bbox = map.getBounds().getWest() + ','
+                    + map.getBounds().getSouth() + ','
+                    + map.getBounds().getEast() + ','
+                     + map.getBounds().getNorth()
+            if (self.options.vertical_data){
+              self.sandbox.client.call('GET','thredds_get_minmax',
+                                  '?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:4326' + // Attention -copied from leaflet! Anja, 9.7
+                                  '&bbox='+ bbox +
+                                  '&width=50'+
+                                  '&height=50'+
+                                  '&id='+ self.options.resource_id +
+                                  '&layers=' + wmslayer_selected.id +
+                                  '&elevation=' + vertical_level_values[vertical_level_selected],
+                                   self._onHandleMinMax,
+                                   self._onHandleError
+                                  );
+                // Update View - Done - in minmax
+                //cccaHeightTimeLayer.setParams({layers:wmslayer_selected.id, elevation:vertical_level_values[vertical_level_selected]});
+                //cccaLegend.removeFrom(map);
+                //cccaLegend.addTo(map);
+              }
+            else{
+              self.sandbox.client.call('GET','thredds_get_minmax',
+                                   '?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:4326' + // Attention -copied from leaflet! Anja, 9.7
+                                   '&bbox='+ bbox +
+                                   '&width=50'+
+                                   '&height=50'+
+                                    '&id='+ self.options.resource_id +
+                                    '&layers=' + wmslayer_selected.id,
+                                     self._onHandleMinMax,
+                                     self._onHandleError
+                                    );
+                // Update View
+                //cccaHeightTimeLayer.setParams({layers:wmslayer_selected.id});
+                //cccaLegend.removeFrom(map);
+                //cccaLegend.addTo(map);
+            }
+
         });
 
         $('#select-level').on('change', function() {
             index = this.selectedIndex;
             vertical_level_selected = index;
-           cccaHeightTimeLayer.setParams({elevation:vertical_level_values[index]});
+            // Get and adapt min max_value
+            //this.sandbox = ckan.sandbox();
+            var bbox = map.getBounds().getWest() + ','
+                    + map.getBounds().getSouth() + ','
+                    + map.getBounds().getEast() + ','
+                     + map.getBounds().getNorth();
+             self.sandbox.client.call('GET','thredds_get_minmax',
+                                 '?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:4326' + // Attention -copied from leaflet! Anja, 9.7
+                                 '&bbox='+ bbox +
+                                 '&width=50'+ // not sure what this does ...
+                                 '&height=50'+ // not sure what this does ...
+                                 '&id='+ self.options.resource_id +
+                                 '&layers=' + wmslayer_selected.id +
+                                 '&elevation=' + vertical_level_values[vertical_level_selected],
+                                  self._onHandleMinMax,
+                                  self._onHandleError
+                                 );
+               // Update View - Done in min/max
+              // cccaHeightTimeLayer.setParams({layers:wmslayer_selected.id, elevation:vertical_level_values[vertical_level_selected]});
+              // cccaLegend.removeFrom(map);
+              // cccaLegend.addTo(map);
         });
 
         $('#opacity-value').on('change', function() {
@@ -778,7 +834,6 @@ ckan.module('wms_view', function ($) {
           self = this;
           self.options.layers = json.result;
 
-
           var wmslayers = $.map(json.result, function( value, key ) { return value.children});
           self.sandbox.client.call('GET','thredds_get_layerdetails',
                                   '?id='+ self.options.resource_id + '&layer=' + wmslayers[0].id,
@@ -788,6 +843,19 @@ ckan.module('wms_view', function ($) {
         } //if
 
       }, // _onHandleData
+
+
+      _onHandleMinMax: function(json) {
+        if (json.success) {
+          var mv = document.getElementById("min-value").value = json.result.min ;
+          var mv = document.getElementById("max-value").value = json.result.max ;
+          min_value = json.result.min;
+          max_value = json.result.max;
+          $('#min-value').trigger('focusout');
+          $('#max-value').trigger('focusout');
+        } //if
+
+      }, // _onHandleMinMax
 
       _onHandleError: function(error) {
         document.getElementById("wms-view").innerHTML = "<h2>Please login to use this view</h2>";

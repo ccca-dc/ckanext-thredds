@@ -192,7 +192,8 @@ class ThreddsPlugin(plugins.SingletonPlugin):
         actions = {'thredds_get_layers': action.thredds_get_layers,
                    'thredds_get_layerdetails': action.thredds_get_layerdetails,
                    'subset_create': action.subset_create,
-                   'thredds_get_metadata_info': action.thredds_get_metadata_info}
+                   'thredds_get_metadata_info': action.thredds_get_metadata_info,
+                  'thredds_get_minmax': action.thredds_get_minmax}
         return actions
 
     # ITemplateHelpers
