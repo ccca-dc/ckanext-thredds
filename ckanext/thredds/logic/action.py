@@ -927,18 +927,20 @@ def thredds_get_metadata_info(context, data_dict):
     except Exception as e:
         raise NotFound("Thredds Server can not provide layer details")
 
-    ncml_tree = ElementTree.fromstring(r.content)
-    _parse_ncml_metadata_info(ncml_tree, metadata)
+    if r.status_code == 200:
+        ncml_tree = ElementTree.fromstring(r.content)
+        _parse_ncml_metadata_info(ncml_tree, metadata)
 
-    # Extract NCSS metadata
-    ncss_url = '/'.join([ckan_url, thredds_location, 'ncss', 'ckan', resource_id[0:3],resource_id[3:6],resource_id[6:], 'dataset.xml'])
-    try:
-        r = requests.get(ncss_url, headers=headers)
-    except Exception as e:
-        raise NotFound("Thredds Server can not provide layer details")
+        # Extract NCSS metadata
+        ncss_url = '/'.join([ckan_url, thredds_location, 'ncss', 'ckan', resource_id[0:3],resource_id[3:6],resource_id[6:], 'dataset.xml'])
+        try:
+            r = requests.get(ncss_url, headers=headers)
+        except Exception as e:
+            raise NotFound("Thredds Server can not provide layer details")
 
-    ncss_tree = ElementTree.fromstring(r.content)
-    _parse_ncss_metadata_info(ncss_tree, metadata)
+        if r.status_code == 200:
+            ncss_tree = ElementTree.fromstring(r.content)
+            _parse_ncss_metadata_info(ncss_tree, metadata)
 
     return metadata
 

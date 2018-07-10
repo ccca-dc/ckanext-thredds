@@ -80,34 +80,6 @@ class ThreddsPlugin(plugins.SingletonPlugin):
             spatial_params = ''
 
 
-        #Anja, 5.7.2018 - check Vertical level; currently (July 2018) only pressure
-        meta_data = toolkit.get_action('thredds_get_metadata_info')(context, {'id': resource_id})
-        #print json.dumps(data_dict,indent=4)
-
-        #Anja, 5.7 - drop down for layers
-        layers = []
-        layers = toolkit.get_action('thredds_get_layers')(context, {'id': resource_id})
-        #print json.dumps(layers,indent=4)
-
-
-        vertical_data ={}
-        vertical_data['name'] =''
-        vertical_data['values']=''
-        vertical_data['units']=''
-        if ('dimensions' in meta_data) and (len(meta_data['dimensions'])) > 3:
-            for dim in meta_data['dimensions']:
-                if dim['name'].lower()==  "pressure":
-                    vertical_data['name'] = dim['name']
-                    # Create Select list
-                    select_list= []
-                    for v in dim['values']:
-                        item={}
-                        item['name'] = v
-                        item['value'] = v
-                        select_list.append(item)
-                    vertical_data['values'] = select_list
-                    vertical_data['units'] = dim['units']
-
         # Check subset
         if '/subset/' in resource['url']:
 
@@ -149,6 +121,44 @@ class ThreddsPlugin(plugins.SingletonPlugin):
                         spatial_params = package['spatial']
 
 
+        '''
+        IMPORTANT: The following After subset check of course
+        '''
+        #Anja, 5.7.2018 - check Vertical level; currently (July 2018) only pressure
+        meta_data = {}
+        meta_data = toolkit.get_action('thredds_get_metadata_info')(context, {'id': resource_id})
+        #print json.dumps(data_dict,indent=4)
+
+        #Anja, 5.7 - drop down for layers
+        layers = []
+        layers = toolkit.get_action('thredds_get_layers')(context, {'id': resource_id})
+        #print json.dumps(layers,indent=4)
+
+        if len(layers)>0:
+            if 'children' in layers[0]:
+                templ_layers =  layers[0]['children']
+            else:
+                templ_layers = []
+        else:
+            templ_layers = []
+
+        vertical_data ={}
+        vertical_data['name'] =''
+        vertical_data['values']=''
+        vertical_data['units']=''
+        if ('dimensions' in meta_data) and (len(meta_data['dimensions'])) > 3:
+            for dim in meta_data['dimensions']:
+                if dim['name'].lower()==  "pressure":
+                    vertical_data['name'] = dim['name']
+                    # Create Select list
+                    select_list= []
+                    for v in dim['values']:
+                        item={}
+                        item['name'] = v
+                        item['value'] = v
+                        select_list.append(item)
+                    vertical_data['values'] = select_list
+                    vertical_data['units'] = dim['units']
         tpl_variables = {
             'resource_id': resource_id,
             'subset_params' : subset_params,
@@ -160,7 +170,7 @@ class ThreddsPlugin(plugins.SingletonPlugin):
             'maximum': data_dict['resource_view'].get('maximum', ''),
             'num_colorbands': data_dict['resource_view'].get('num_colorbands', ''),
             'logscale': data_dict['resource_view'].get('logscale', ''),
-            'layers': layers[0]['children'],
+            'layers':templ_layers,
             'default_layer': data_dict['resource_view'].get('default_layer', ''),
             'default_colormap': data_dict['resource_view'].get('default_colormap', '')
         }

@@ -85,7 +85,7 @@ ckan.module('wms_view', function ($) {
 
         var style_selection = self.options.layers_details.supportedStyles[0];
 
-        console.log(self.options.layers_details);
+        //console.log(self.options.layers_details);
         if (($.isNumeric(self.options.minimum)) &&  ($.isNumeric(self.options.maximum)) ) {
           var min_value = self.options.minimum.toString();
           var max_value = self.options.maximum.toString();
@@ -128,7 +128,7 @@ ckan.module('wms_view', function ($) {
           var num_colorbands = 100;
         }
 
-        console.log(min_value);
+      
         var opacity = 1;
 
         // check and store subset for subset_view
