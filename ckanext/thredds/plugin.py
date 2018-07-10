@@ -126,12 +126,18 @@ class ThreddsPlugin(plugins.SingletonPlugin):
         '''
         #Anja, 5.7.2018 - check Vertical level; currently (July 2018) only pressure
         meta_data = {}
-        meta_data = toolkit.get_action('thredds_get_metadata_info')(context, {'id': resource_id})
+        try:
+            meta_data = toolkit.get_action('thredds_get_metadata_info')(context, {'id': resource_id})
+        except:
+            pass
         #print json.dumps(data_dict,indent=4)
 
         #Anja, 5.7 - drop down for layers
         layers = []
-        layers = toolkit.get_action('thredds_get_layers')(context, {'id': resource_id})
+        try:
+            layers = toolkit.get_action('thredds_get_layers')(context, {'id': resource_id})
+        except:
+            pass
         #print json.dumps(layers,indent=4)
 
         if len(layers)>0:
