@@ -532,7 +532,7 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
         params['time_end'] = time_end
 
     # check vertical level: Anja, 2.7.2018
-    if data_dict.get('vertical_level', "") != "all":
+    if 'vertical_level' in data_dict and data_dict.get('vertical_level', "") != "" and data_dict.get('vertical_level', "") != "all":
         #print "LEVEL******************++"
         #print data_dict.get('vertical_level', "")
         params['vertCoord'] = float(data_dict['vertical_level'])
