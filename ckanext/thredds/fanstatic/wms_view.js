@@ -85,14 +85,49 @@ ckan.module('wms_view', function ($) {
 
         var style_selection = self.options.layers_details.supportedStyles[0];
 
-        //console.log(self.options.layers_details);
+
+        if ($.isNumeric(self.options.num_colorbands)) {
+          var num_colorbands = self.options.num_colorbands;
+        } else {
+          var num_colorbands = 100;
+        }
+
+
+        var opacity = 1;
+
+        // check and store subset for subset_view
+        var subset_json = self.options.spatial_params;
+        var subset_parameter = self.options.subset_params;
+        var subset_bounds ='';
+        var subset_times = '';
+
+        if (subset_parameter != ''){
+          southWest = L.latLng(self.options.subset_params['south'],  self.options.subset_params['west']);
+          northEast = L.latLng(self.options.subset_params['north'], self.options.subset_params['east']);
+
+          subset_bounds = L.latLngBounds(southWest, northEast);
+          subset_times = subset_parameter['time_start'] +"/" + subset_parameter['time_end'];
+
+          // Attention: Necessary Format!
+          //subset_times = "2018-04-12T12:00:00Z" +"/" + "2018-04-13T12:00:00Z";
+        }
+
+        // Set min/max; if empty according to map/subset
         if (($.isNumeric(self.options.minimum)) &&  ($.isNumeric(self.options.maximum)) ) {
           var min_value = self.options.minimum.toString();
           var max_value = self.options.maximum.toString();
         } else {
-              var bbox = self.options.layers_details.bbox;
               var min_value = '';
               var max_value = '';
+              if (subset_bounds){
+                  var bbox = subset_bounds.getWest() + ','
+                          + subset_bounds.getSouth() + ','
+                          + subset_bounds.getEast() + ','
+                           +subset_bounds.getNorth()
+                  }
+               else
+                  var bbox = self.options.layers_details.bbox;
+
               //GET MIN MAX
               if (self.options.vertical_data){
                 self.sandbox.client.call('GET','thredds_get_minmax',
@@ -119,33 +154,6 @@ ckan.module('wms_view', function ($) {
                                        self._onHandleError
                                       );
             }
-        }
-
-
-        if ($.isNumeric(self.options.num_colorbands)) {
-          var num_colorbands = self.options.num_colorbands;
-        } else {
-          var num_colorbands = 100;
-        }
-
-      
-        var opacity = 1;
-
-        // check and store subset for subset_view
-        var subset_json = self.options.spatial_params;
-        var subset_parameter = self.options.subset_params;
-        var subset_bounds ='';
-        var subset_times = '';
-
-        if (subset_parameter != ''){
-          southWest = L.latLng(self.options.subset_params['south'],  self.options.subset_params['west']);
-          northEast = L.latLng(self.options.subset_params['north'], self.options.subset_params['east']);
-
-          subset_bounds = L.latLngBounds(southWest, northEast);
-          subset_times = subset_parameter['time_start'] +"/" + subset_parameter['time_end'];
-
-          // Attention: Necessary Format!
-          //subset_times = "2018-04-12T12:00:00Z" +"/" + "2018-04-13T12:00:00Z";
         }
 
         // Check if time in resource
@@ -834,7 +842,7 @@ ckan.module('wms_view', function ($) {
               if (extent.type == 'Point'){
                 map.setView(L.latLng(extent.coordinates[1],extent.coordinates[0]), 9);
               } else {
-              //  map.fitBounds(extentLayer.getBounds());
+                map.fitBounds(extentLayer.getBounds());
             }//else
 
       } //if subset
