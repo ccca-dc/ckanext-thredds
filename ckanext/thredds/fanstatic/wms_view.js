@@ -112,50 +112,6 @@ ckan.module('wms_view', function ($) {
           //subset_times = "2018-04-12T12:00:00Z" +"/" + "2018-04-13T12:00:00Z";
         }
 
-        // Set min/max; if empty according to map/subset
-        if (($.isNumeric(self.options.minimum)) &&  ($.isNumeric(self.options.maximum)) ) {
-          var min_value = self.options.minimum.toString();
-          var max_value = self.options.maximum.toString();
-        } else {
-              var min_value = '';
-              var max_value = '';
-              if (subset_bounds){
-                  var bbox = subset_bounds.getWest() + ','
-                          + subset_bounds.getSouth() + ','
-                          + subset_bounds.getEast() + ','
-                           +subset_bounds.getNorth()
-                  }
-               else
-                  var bbox = self.options.layers_details.bbox;
-
-              //GET MIN MAX
-              if (self.options.vertical_data){
-                self.sandbox.client.call('GET','thredds_get_minmax',
-                                    '?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:4326' + // Attention -copied from leaflet! Anja, 9.7
-                                    '&bbox='+ bbox +
-                                    '&width=50'+
-                                    '&height=50'+
-                                    '&id='+ self.options.resource_id +
-                                    '&layers=' + wmslayer_selected.id +
-                                    '&elevation=' + vertical_level_values[vertical_level_selected],
-                                     self._onHandleMinMax,
-                                     self._onHandleError
-                                    );
-                }
-              else{
-                self.sandbox.client.call('GET','thredds_get_minmax',
-                                     '?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:4326' + // Attention -copied from leaflet! Anja, 9.7
-                                     '&bbox='+ bbox +
-                                     '&width=50'+
-                                     '&height=50'+
-                                      '&id='+ self.options.resource_id +
-                                      '&layers=' + wmslayer_selected.id,
-                                       self._onHandleMinMax,
-                                       self._onHandleError
-                                      );
-            }
-        }
-
         // Check if time in resource
         // Anja 29.6.18: Thre maybe a better method;
         // but so far nearestTimeIso seems to indicate that the time is there bzw here ;-)
@@ -225,6 +181,50 @@ ckan.module('wms_view', function ($) {
             //map.fitWorld();
         }
       }
+
+              // Set min/max; if empty according to map/subset
+              if (($.isNumeric(self.options.minimum)) &&  ($.isNumeric(self.options.maximum)) ) {
+                var min_value = self.options.minimum.toString();
+                var max_value = self.options.maximum.toString();
+              } else {
+                    var min_value = '';
+                    var max_value = '';
+                    if (subset_bounds){
+                        var bbox = subset_bounds.getWest() + ','
+                                + subset_bounds.getSouth() + ','
+                                + subset_bounds.getEast() + ','
+                                 +subset_bounds.getNorth()
+                        }
+                     else
+                        var bbox = self.options.layers_details.bbox;
+
+                    //GET MIN MAX
+                    if (self.options.vertical_data){
+                      self.sandbox.client.call('GET','thredds_get_minmax',
+                                          '?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:4326' + // Attention -copied from leaflet! Anja, 9.7
+                                          '&bbox='+ bbox +
+                                          '&width=50'+
+                                          '&height=50'+
+                                          '&id='+ self.options.resource_id +
+                                          '&layers=' + wmslayer_selected.id +
+                                          '&elevation=' + vertical_level_values[vertical_level_selected],
+                                           self._onHandleMinMax,
+                                           self._onHandleError
+                                          );
+                      }
+                    else{
+                      self.sandbox.client.call('GET','thredds_get_minmax',
+                                           '?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:4326' + // Attention -copied from leaflet! Anja, 9.7
+                                           '&bbox='+ bbox +
+                                           '&width=50'+
+                                           '&height=50'+
+                                            '&id='+ self.options.resource_id +
+                                            '&layers=' + wmslayer_selected.id,
+                                             self._onHandleMinMax,
+                                             self._onHandleError
+                                            );
+                  }
+              }
 
         // ------------------------------------------------
         // Create control elements for wms_view (wms_form is separate!)
@@ -543,6 +543,7 @@ ckan.module('wms_view', function ($) {
             mapPane.style.left = "";
             mapPane.style.top = "";
         }); // export-png
+        //------------------------- END Control Elements --------------------
 
 
         var cccaWMS = self.options.site_url + "thredds/wms/ckan/" + [self.options.resource_id.slice(0,3), self.options.resource_id.slice(3,6), self.options.resource_id.slice(6)].join("/");

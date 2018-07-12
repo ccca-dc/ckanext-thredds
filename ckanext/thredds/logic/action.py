@@ -649,7 +649,15 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
                     #Anja, 11.7.18, create view of Netcdf
                     if 'netcdf' in subset_format.lower():
                         try:
-                            res = tk.get_action('resource_view_create')(context, {'resource_id':new_resource['id'], 'view_type': 'thredds_wms_view', 'title':'View'})
+                            res = tk.get_action('resource_view_create')(context,
+                                    {'resource_id':new_resource['id'],
+                                     'view_type': 'thredds_wms_view',
+                                     'title':'View',
+                                     'description':'',
+                                     'default_layer':'0',
+                                      'default_level':'0',
+                                      'logscale': False}
+                                      )
                         except:
                             print "Subset Create - Error Creating View"
                             continue
