@@ -531,13 +531,6 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
         params['time_start'] = time_start
         params['time_end'] = time_end
 
-    # check vertical level: Anja, 2.7.2018
-    if 'vertical_level' in data_dict and data_dict.get('vertical_level', "") != "" and data_dict.get('vertical_level', "") != "all":
-        #print "LEVEL******************++"
-        #print data_dict.get('vertical_level', "")
-        params['vertCoord'] = float(data_dict['vertical_level'])
-        params['accept'] = 'netcdf4' # Needed for vertical levels ...
-
     # adding coordinates
     if data_dict.get('north', "") != "" and data_dict.get('east', "") != "":
         if data_dict['point'] is True:
@@ -548,6 +541,13 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
             params['south'] = round(float(data_dict['south']), 4)
             params['east'] = round(float(data_dict['east']), 4)
             params['west'] = round(float(data_dict['west']), 4)
+
+    # check vertical level: Anja, 2.7.2018
+    if 'vertical_level' in data_dict and data_dict.get('vertical_level', "") != "" and data_dict.get('vertical_level', "").lower() != "all":
+        #print "LEVEL******************++"
+        #print data_dict.get('vertical_level', "")
+        params['vertCoord'] = float(data_dict['vertical_level'])
+        params['accept'] = 'netcdf4' # Needed for vertical levels ...
 
     only_location = False
     if data_dict.get('type', 'download').lower() == "download":
@@ -659,7 +659,7 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
                                       'logscale': False}
                                       )
                         except:
-                            print "Subset Create - Error Creating View"
+                            print "-----ERROR: Subset Create - Error Creating View"
                             continue
 
                 return_dict['new_package'] = new_package
@@ -824,7 +824,17 @@ def get_ncss_subset_params(res_id, params, user, only_location, orig_metadata):
             params['accept']='netcdf4'
             r = requests.get('/'.join([ckan_url, thredds_location, 'ncss', 'ckan', res_id[0:3], res_id[3:6], res_id[6:]]), params=params, headers=headers)
             if r.status_code != 200:
+                print "-------ERROR: Create subset: something did not work:"
+                print r.content
+                corrected_params['error'] = r.content
                 return corrected_params, resource_params
+
+            if 'HDF error' in r.content:
+                print "-------ERROR: Create subset: something did not work:"
+                print r.content
+                corrected_params['error'] = r.content
+                return corrected_params, resource_params
+
         # TODO not working for point
         tree = ElementTree.fromstring(r.content)
 
