@@ -170,8 +170,8 @@ ckan.module('wms_view', function ($) {
       // check whether to adapt view extend
       var spatial_params = self.options.spatial_params;
       var spatial_bounds ='';
-      if ((spatial_params != '') && (spatial_params != "") && (subset_bounds == '')){
-        if (spatial_params['type']){ // for some reasons or others spatial_params ahs value 'true' if empty
+      if ((spatial_params != '') && (spatial_params != "")){
+        if (spatial_params['type']){ // for some reasons or others spatial_params have value 'true' if empty
             var multipolygon = L.geoJson(spatial_params);
             spatial_bounds = multipolygon.getBounds();
             var center = spatial_bounds.getCenter();
@@ -793,6 +793,7 @@ ckan.module('wms_view', function ($) {
 
               // outer border of extent
               var bounds = map.getBounds();
+              console.log(bounds);
 
               var inversePolygon = createPolygonFromBounds(bounds);
 
