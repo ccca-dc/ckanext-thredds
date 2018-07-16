@@ -167,64 +167,64 @@ ckan.module('wms_view', function ($) {
         }
 
 
-      // check whether to adapt view extend
-      var spatial_params = self.options.spatial_params;
-      var spatial_bounds ='';
-      if ((spatial_params != '') && (spatial_params != "")){
-        if (spatial_params['type']){ // for some reasons or others spatial_params have value 'true' if empty
-            var multipolygon = L.geoJson(spatial_params);
-            spatial_bounds = multipolygon.getBounds();
-            var center = spatial_bounds.getCenter();
-            //multipolygon.addTo(map); // Anja, 28.6.18 This will add a blue rectangle marking the spatial extend - might be nice too :-)
-            map.fitBounds(spatial_bounds);
-            map.panTo(center);
-            //map.fitWorld();
+        // check whether to adapt view extend
+        var spatial_params = self.options.spatial_params;
+        var spatial_bounds ='';
+        if ((spatial_params != '') && (spatial_params != "")){
+          if (spatial_params['type']){ // for some reasons or others spatial_params have value 'true' if empty
+              var multipolygon = L.geoJson(spatial_params);
+              spatial_bounds = multipolygon.getBounds();
+              var center = spatial_bounds.getCenter();
+              //multipolygon.addTo(map); // Anja, 28.6.18 This will add a blue rectangle marking the spatial extend - might be nice too :-)
+              map.fitBounds(spatial_bounds);
+              map.panTo(center);
+              //map.fitWorld();
+          }
         }
-      }
 
-              // Set min/max; if empty according to map/subset
-              if (($.isNumeric(self.options.minimum)) &&  ($.isNumeric(self.options.maximum)) ) {
-                var min_value = self.options.minimum.toString();
-                var max_value = self.options.maximum.toString();
-              } else {
-                    var min_value = '';
-                    var max_value = '';
-                    if (subset_bounds){
-                        var bbox = subset_bounds.getWest() + ','
-                                + subset_bounds.getSouth() + ','
-                                + subset_bounds.getEast() + ','
-                                 +subset_bounds.getNorth()
-                        }
-                     else
-                        var bbox = self.options.layers_details.bbox;
+          // Set min/max; if empty according to map/subset
+          if (($.isNumeric(self.options.minimum)) &&  ($.isNumeric(self.options.maximum)) ) {
+            var min_value = self.options.minimum.toString();
+            var max_value = self.options.maximum.toString();
+          } else {
+                var min_value = '';
+                var max_value = '';
+                if (subset_bounds){
+                    var bbox = subset_bounds.getWest() + ','
+                            + subset_bounds.getSouth() + ','
+                            + subset_bounds.getEast() + ','
+                             +subset_bounds.getNorth()
+                    }
+                 else
+                    var bbox = self.options.layers_details.bbox;
 
-                    //GET MIN MAX
-                    if (self.options.vertical_data){
-                      self.sandbox.client.call('GET','thredds_get_minmax',
-                                          '?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:4326' + // Attention -copied from leaflet! Anja, 9.7
-                                          '&bbox='+ bbox +
-                                          '&width=50'+
-                                          '&height=50'+
-                                          '&id='+ self.options.resource_id +
-                                          '&layers=' + wmslayer_selected.id +
-                                          '&elevation=' + vertical_level_values[vertical_level_selected],
-                                           self._onHandleMinMax,
-                                           self._onHandleError
-                                          );
-                      }
-                    else{
-                      self.sandbox.client.call('GET','thredds_get_minmax',
-                                           '?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:4326' + // Attention -copied from leaflet! Anja, 9.7
-                                           '&bbox='+ bbox +
-                                           '&width=50'+
-                                           '&height=50'+
-                                            '&id='+ self.options.resource_id +
-                                            '&layers=' + wmslayer_selected.id,
-                                             self._onHandleMinMax,
-                                             self._onHandleError
-                                            );
+                //GET MIN MAX
+                if (self.options.vertical_data){
+                  self.sandbox.client.call('GET','thredds_get_minmax',
+                                      '?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:4326' + // Attention -copied from leaflet! Anja, 9.7
+                                      '&bbox='+ bbox +
+                                      '&width=50'+
+                                      '&height=50'+
+                                      '&id='+ self.options.resource_id +
+                                      '&layers=' + wmslayer_selected.id +
+                                      '&elevation=' + vertical_level_values[vertical_level_selected],
+                                       self._onHandleMinMax,
+                                       self._onHandleError
+                                      );
                   }
+                else{
+                  self.sandbox.client.call('GET','thredds_get_minmax',
+                                       '?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:4326' + // Attention -copied from leaflet! Anja, 9.7
+                                       '&bbox='+ bbox +
+                                       '&width=50'+
+                                       '&height=50'+
+                                        '&id='+ self.options.resource_id +
+                                        '&layers=' + wmslayer_selected.id,
+                                         self._onHandleMinMax,
+                                         self._onHandleError
+                                        );
               }
+          }
 
         // ------------------------------------------------
         // Create control elements for wms_view (wms_form is separate!)
@@ -791,9 +791,10 @@ ckan.module('wms_view', function ($) {
               // set extent to subset bounds - will become hole
               var extent = subset_json;
 
-              // outer border of extent
+              // milky rest of the map: TODO set to spatial extend of orginal resource
+              map.fitWorld();
               var bounds = map.getBounds();
-              console.log(bounds);
+              map.fitBounds(subset_bounds);
 
               var inversePolygon = createPolygonFromBounds(bounds);
 
