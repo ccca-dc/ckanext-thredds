@@ -110,7 +110,15 @@ ckan.module('wms_view', function ($) {
 
           // Attention: Necessary Format!
           //subset_times = "2018-04-12T12:00:00Z" +"/" + "2018-04-13T12:00:00Z";
-        }
+
+          // Check for Vertical Levels:
+          if (subset_parameter['vertCoord']){
+                vertical_level_selected = 0;
+                vertical_level_values= [parseFloat(subset_parameter['vertCoord'])];
+                vertical_level_names= [subset_parameter['vertCoord']];
+           } // if vertical
+
+         } // if subset_parameter
 
         // Check if time in resource
         // Anja 29.6.18: Thre maybe a better method;
@@ -343,7 +351,13 @@ ckan.module('wms_view', function ($) {
             var bbox = map.getBounds().getWest() + ','
                     + map.getBounds().getSouth() + ','
                     + map.getBounds().getEast() + ','
-                     + map.getBounds().getNorth()
+                     + map.getBounds().getNorth();
+           if (subset_bounds != ''){
+               bbox = subset_bounds.getWest() + ','
+                       + subset_bounds.getSouth() + ','
+                       + subset_bounds.getEast() + ','
+                        + subset_bounds.getNorth();
+              }
             if (self.options.vertical_data){
               self.sandbox.client.call('GET','thredds_get_minmax',
                                   '?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:4326' + // Attention -copied from leaflet! Anja, 9.7
@@ -389,6 +403,12 @@ ckan.module('wms_view', function ($) {
                     + map.getBounds().getSouth() + ','
                     + map.getBounds().getEast() + ','
                      + map.getBounds().getNorth();
+            if (subset_bounds != ''){
+                bbox = subset_bounds.getWest() + ','
+                        + subset_bounds.getSouth() + ','
+                        + subset_bounds.getEast() + ','
+                         + subset_bounds.getNorth();
+            }
              self.sandbox.client.call('GET','thredds_get_minmax',
                                  '?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:4326' + // Attention -copied from leaflet! Anja, 9.7
                                  '&bbox='+ bbox +

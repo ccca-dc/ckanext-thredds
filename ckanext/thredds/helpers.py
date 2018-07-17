@@ -104,6 +104,13 @@ def get_query_params(package):
     if query['time_end'] == '':
         query['time_end'] = str(query['time_start'])
 
+    #Anja, 17.7.18: Check vertical level
+    if len(package['dimensions']) > 3:
+        for dim in package['dimensions']:
+            if dim['name'].lower()==  "pressure":
+                if dim['shape'] == 1: # We have only one vertical level selected
+                    query['vertCoord'] = dim['start']
+
     return query
 
 

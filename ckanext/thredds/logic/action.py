@@ -511,6 +511,9 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
 
     user = tk.get_action('user_show')(context, {'id': user})
 
+    #Anja, 17.7.18: Do we have a vertcical_level?
+    vertical_included = False
+
     # start building URL params with var (required)
     if type(data_dict['layers']) is list:
         params = {'var': ','.join(data_dict['layers'])}
@@ -548,6 +551,7 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
         #print data_dict.get('vertical_level', "")
         params['vertCoord'] = float(data_dict['vertical_level'])
         params['accept'] = 'netcdf4' # Needed for vertical levels ...
+        vertical_included = True
 
     only_location = False
     if data_dict.get('type', 'download').lower() == "download":
@@ -607,6 +611,16 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
                 if 'contact_points' not in new_package:
                     new_package['contact_points'] = []
                 new_package['contact_points'].append(subset_creator)
+
+                #Anja, 17.7.18: Check vertical level
+                if vertical_included:
+                    #store in dimension 'pressure'
+                    if len(new_package['dimensions']) >3:
+                            for dim in new_package['dimensions']:
+                                if dim['name'].lower()==  "pressure":
+                                    dim['values'] =[data_dict['vertical_level']]
+                                    dim['start'] = data_dict['vertical_level']
+                                    dim['shape'] = 1 # Through this we store and identify the vertical level
 
                 # need to pop package otherwise it overwrites the current pkg
                 context.pop('package')
@@ -829,11 +843,11 @@ def get_ncss_subset_params(res_id, params, user, only_location, orig_metadata):
                 corrected_params['error'] = r.content
                 return corrected_params, resource_params
 
-            if 'HDF error' in r.content:
-                print "-------ERROR: Create subset: something did not work:"
-                print r.content
-                corrected_params['error'] = r.content
-                return corrected_params, resource_params
+        if 'HDF error' in r.content:
+            print "-------ERROR: Create subset: something did not work:"
+            print r.content
+            corrected_params['error'] = r.content
+            return corrected_params, resource_params
 
         # TODO not working for point
         tree = ElementTree.fromstring(r.content)
@@ -1008,7 +1022,7 @@ def _parse_ncss_metadata_info(ncss_tree, md_dict):
         d['name'] = dimension.attrib["name"]
         d['units'] = dimension.find(".attribute/[@name='units']").attrib["value"]
         d['description'] = dimension.find(".attribute/[@name='long_name']").attrib["value"]
-        d['shape'] = dimension.attrib["shape"] #'shape' meand number of values
+        d['shape'] = dimension.attrib["shape"] #'shape' means number of values
         # not all dimensions contain start and increment attributes
         try:
             d['start'] = dimension.find("values").attrib["start"]
@@ -1027,6 +1041,7 @@ def _parse_ncss_metadata_info(ncss_tree, md_dict):
             str_values = dimension.find("values").text.split(" ")
             values = [float(x) for x in str_values]
             d['values'] = values
+            d['start'] = values[0]
 
         md_dict['dimensions'].append(d)
 
