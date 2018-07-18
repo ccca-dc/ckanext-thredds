@@ -161,6 +161,10 @@ def thredds_get_layers(context, data_dict):
         params = helpers.get_query_params(package)
         params['var'] = variables
         params['accept'] = resource['format']
+        #Anja, 18.7.18: because netcdf3 does not support type long we
+        #always ask for netcdf4
+        if 'netcdf' in params['accept']:
+            params['accept'] = 'netcdf4'
         params['item']='menu'
         params['request']= 'GetMetadata'
         payload = params
@@ -240,6 +244,10 @@ def thredds_get_layerdetails(context, data_dict):
         params = helpers.get_query_params(package)
         params['var'] = variables
         params['accept'] = resource['format']
+        #Anja, 18.7.18: because netcdf3 does not support type long we
+        #always ask for netcdf4
+        if 'netcdf' in params['accept']:
+            params['accept'] = 'netcdf4'
         params['item']='layerDetails'
         params['layerName']=layer_name
         params['request']= 'GetMetadata'
@@ -305,7 +313,7 @@ def subset_create(context, data_dict):
     :param west: western degree if bbox (optional)
     :param time_start: start of time (optional)
     :param time_end: end of time (optional)
-    _param vertical_level: Vertical level - currently only Pressure supported
+    _param vertical_level: Vertical level - currently only *Pressure* supported
     :rtype: dictionary
     '''
     errors = {}
@@ -315,6 +323,9 @@ def subset_create(context, data_dict):
     package = tk.get_action('package_show')(context, {'id': resource['package_id']})
 
     metadata = tk.get_action('thredds_get_metadata_info')(context, {'id': id})
+
+    print "****************** subset_create"
+    print metadata
 
     # error section
     # error coordinate section, checking if values are entered and floats
@@ -523,6 +534,8 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
     # adding format
     if data_dict.get('format', ''):
         params['accept'] = data_dict['format'].lower()
+        if 'netcdf' in params['accept']:
+            params['accept'] = 'netcdf4'
 
     # adding time
     if times_exist is True:
@@ -550,7 +563,6 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
         #print "LEVEL******************++"
         #print data_dict.get('vertical_level', "")
         params['vertCoord'] = float(data_dict['vertical_level'])
-        params['accept'] = 'netcdf4' # Needed for vertical levels ...
         vertical_included = True
 
     only_location = False
@@ -639,6 +651,9 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
                             new_resource['hash'] = resource_params.get('hash', None)
                         if resource_params is not None:
                             new_resource['size'] = resource_params.get('size', None)
+                        #Anja, 18.7.18: because netcdf3 does not support type long we
+                        #always ask for netcdf4
+                        params['accept'] = 'netcdf4'
                     else:
                         params['accept'] = subset_format
                         corrected_params_new_res, resource_params_new_res = get_ncss_subset_params(resource['id'], params, user, True, metadata)
@@ -844,7 +859,7 @@ def get_ncss_subset_params(res_id, params, user, only_location, orig_metadata):
                 return corrected_params, resource_params
 
         if 'HDF error' in r.content:
-            print "-------ERROR: Create subset: something did not work:"
+            print "-------ERROR: Create subset: something else did not work:"
             print r.content
             corrected_params['error'] = r.content
             return corrected_params, resource_params
@@ -1042,6 +1057,7 @@ def _parse_ncss_metadata_info(ncss_tree, md_dict):
             values = [float(x) for x in str_values]
             d['values'] = values
             d['start'] = values[0]
+            d['increment'] = 'discrete values' #Anja, 18.7.2018
 
         md_dict['dimensions'].append(d)
 
@@ -1060,5 +1076,4 @@ def _parse_ncss_metadata_info(ncss_tree, md_dict):
             if grid.find(".attribute/[@name='units']") is not None:
                 g['units'] = grid.find(".attribute/[@name='units']").attrib["value"]
             g['shape'] = grid.attrib['shape'].split(" ")
-
             md_dict['variables'].append(g)
