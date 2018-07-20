@@ -161,10 +161,6 @@ def thredds_get_layers(context, data_dict):
         params = helpers.get_query_params(package)
         params['var'] = variables
         params['accept'] = resource['format']
-        #Anja, 18.7.18: because netcdf3 does not support type long we
-        #always ask for netcdf4
-        if 'netcdf' in params['accept']:
-            params['accept'] = 'netcdf4'
         params['item']='menu'
         params['request']= 'GetMetadata'
         payload = params
@@ -244,10 +240,6 @@ def thredds_get_layerdetails(context, data_dict):
         params = helpers.get_query_params(package)
         params['var'] = variables
         params['accept'] = resource['format']
-        #Anja, 18.7.18: because netcdf3 does not support type long we
-        #always ask for netcdf4
-        if 'netcdf' in params['accept']:
-            params['accept'] = 'netcdf4'
         params['item']='layerDetails'
         params['layerName']=layer_name
         params['request']= 'GetMetadata'
@@ -323,9 +315,6 @@ def subset_create(context, data_dict):
     package = tk.get_action('package_show')(context, {'id': resource['package_id']})
 
     metadata = tk.get_action('thredds_get_metadata_info')(context, {'id': id})
-
-    print "****************** subset_create"
-    print metadata
 
     # error section
     # error coordinate section, checking if values are entered and floats
@@ -437,14 +426,28 @@ def subset_create(context, data_dict):
         else:
             tk.get_action('organization_show')(context, {'id': data_dict['organization']})
     else:
-        # error format section
+        # error format section ??? TODO Kathi -- why just for download???
         if data_dict.get('format', "") != "":
-            if data_dict['point'] is True and data_dict['format'].lower() not in {'netcdf', 'csv', 'xml'}:
+            if data_dict['point'] is True and data_dict['format'].lower() not in {'netcdf', 'csv', 'xml','netcdf4'}:
                 errors['format'] = [u'Wrong format']
-            elif data_dict['point'] is False and data_dict['format'].lower() != 'netcdf':
+            elif data_dict['point'] is False and data_dict['format'].lower() not in {'netcdf', 'netcdf4'}:
                 errors['format'] = [u'Wrong format']
         else:
             errors['format'] = [u'Missing value']
+
+    # Anja, 20.7.18 - check netcdf 3 or 4 (no long / long)
+    vars = metadata['variables']
+    dims = metadata['dimensions']
+
+    for d in dims:
+        if d['type'] in ['long', 'int64']:
+            data_dict['format'] ='netcdf4'
+            break
+    if data_dict['format'] != 'netcdf4':
+        for v in vars:
+            if v['type'] in ['long', 'int64']:
+                data_dict['format'] ='netcdf4'
+                break
 
     # error time section
     times_exist = False
@@ -522,7 +525,7 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
 
     user = tk.get_action('user_show')(context, {'id': user})
 
-    #Anja, 17.7.18: Do we have a vertcical_level?
+    #Anja, 17.7.18: Do we have a vertical_level?
     vertical_included = False
 
     # start building URL params with var (required)
@@ -531,11 +534,9 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
     else:
         params = {'var': data_dict['layers']}
 
-    # adding format
+    # adding format # Anja, check for netcdf3/4
     if data_dict.get('format', ''):
         params['accept'] = data_dict['format'].lower()
-        if 'netcdf' in params['accept']:
-            params['accept'] = 'netcdf4'
 
     # adding time
     if times_exist is True:
@@ -651,9 +652,9 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
                             new_resource['hash'] = resource_params.get('hash', None)
                         if resource_params is not None:
                             new_resource['size'] = resource_params.get('size', None)
-                        #Anja, 18.7.18: because netcdf3 does not support type long we
-                        #always ask for netcdf4
-                        params['accept'] = 'netcdf4'
+                        #Anja, 20.7.18: check for netcdf4
+                        if data_dict['format'] == 'netcdf4':
+                            params['accept'] = 'netcdf4'
                     else:
                         params['accept'] = subset_format
                         corrected_params_new_res, resource_params_new_res = get_ncss_subset_params(resource['id'], params, user, True, metadata)
@@ -853,13 +854,13 @@ def get_ncss_subset_params(res_id, params, user, only_location, orig_metadata):
             params['accept']='netcdf4'
             r = requests.get('/'.join([ckan_url, thredds_location, 'ncss', 'ckan', res_id[0:3], res_id[3:6], res_id[6:]]), params=params, headers=headers)
             if r.status_code != 200:
-                print "-------ERROR: Create subset: something did not work:"
+                print "****************** ERROR: Create subset: something did not work:"
                 print r.content
                 corrected_params['error'] = r.content
                 return corrected_params, resource_params
 
         if 'HDF error' in r.content:
-            print "-------ERROR: Create subset: something else did not work:"
+            print "***************** ERROR: Create subset: something else did not work:"
             print r.content
             corrected_params['error'] = r.content
             return corrected_params, resource_params
@@ -1038,6 +1039,13 @@ def _parse_ncss_metadata_info(ncss_tree, md_dict):
         d['units'] = dimension.find(".attribute/[@name='units']").attrib["value"]
         d['description'] = dimension.find(".attribute/[@name='long_name']").attrib["value"]
         d['shape'] = dimension.attrib["shape"] #'shape' means number of values
+
+        #check for type - netcdf 3 or 4 (if long included)
+        try:
+            d['type'] = dimension.attrib["type"]
+        except:
+            d['type'] = ''
+
         # not all dimensions contain start and increment attributes
         try:
             d['start'] = dimension.find("values").attrib["start"]
@@ -1076,4 +1084,9 @@ def _parse_ncss_metadata_info(ncss_tree, md_dict):
             if grid.find(".attribute/[@name='units']") is not None:
                 g['units'] = grid.find(".attribute/[@name='units']").attrib["value"]
             g['shape'] = grid.attrib['shape'].split(" ")
+            #check for type - netcdf 3 or 4 (if long included)
+            try:
+                g['type'] = grid.attrib["type"]
+            except:
+                g['type'] = ''
             md_dict['variables'].append(g)

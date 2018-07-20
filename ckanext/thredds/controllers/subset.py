@@ -219,11 +219,6 @@ def subset_download_job(resource_id, variables, subset_user):
     params['var'] = variables
     params['accept'] = resource['format']
 
-    #Anja, 18.7.18: because netcdf3 does not support type long we
-    #always ask for netcdf4
-    if 'netcdf' in params['accept']:
-        params['accept'] = 'netcdf4'
-
     # get parent of subset
     is_part_of_id = [d for d in package['relations'] if d['relation'] == 'is_part_of']
     is_part_of_pkg = toolkit.get_action('package_show')(context, {'id': is_part_of_id[0]['id']})
