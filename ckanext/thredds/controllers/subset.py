@@ -219,6 +219,10 @@ def subset_download_job(resource_id, variables, subset_user):
     params['var'] = variables
     params['accept'] = resource['format']
 
+    #Anja: check netcdf4
+    if resource['format'].lower() == 'netcdf'  and 'format_version' in resource['format_version'] and resource['format_version'] == '4':
+        params['accept'] = 'netcdf4'
+        
     # get parent of subset
     is_part_of_id = [d for d in package['relations'] if d['relation'] == 'is_part_of']
     is_part_of_pkg = toolkit.get_action('package_show')(context, {'id': is_part_of_id[0]['id']})

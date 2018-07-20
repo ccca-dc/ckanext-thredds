@@ -655,6 +655,7 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
                         #Anja, 20.7.18: check for netcdf4
                         if data_dict['format'] == 'netcdf4':
                             params['accept'] = 'netcdf4'
+                            new_resource['format_version'] = '4'
                     else:
                         params['accept'] = subset_format
                         corrected_params_new_res, resource_params_new_res = get_ncss_subset_params(resource['id'], params, user, True, metadata)
