@@ -220,7 +220,7 @@ def subset_download_job(resource_id, variables, subset_user):
     params['accept'] = resource['format']
 
     #Anja: check netcdf4
-    if resource['format'].lower() == 'netcdf'  and 'format_version' in resource['format_version'] and resource['format_version'] == '4':
+    if resource['format'].lower() == 'netcdf'  and 'format_version' in resource and resource['format_version'] == '4':
         params['accept'] = 'netcdf4'
         
     # get parent of subset
