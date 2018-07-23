@@ -436,18 +436,22 @@ def subset_create(context, data_dict):
             errors['format'] = [u'Missing value']
 
     # Anja, 20.7.18 - check netcdf 3 or 4 (no long / long)
+    # 23.7.28 AND remove 'type' field again
+    # Would lead to change in subsets fields and
+    # prevent update - subset_read_only_field
+
     vars = metadata['variables']
     dims = metadata['dimensions']
 
     for d in dims:
         if d['type'] in ['long', 'int64']:
             data_dict['format'] ='netcdf4'
-            break
-    if data_dict['format'] != 'netcdf4':
-        for v in vars:
-            if v['type'] in ['long', 'int64']:
-                data_dict['format'] ='netcdf4'
-                break
+        d.pop('type')
+
+    for v in vars:
+        if v['type'] in ['long', 'int64']:
+            data_dict['format'] ='netcdf4'
+        v.pop('type')    
 
     # error time section
     times_exist = False
