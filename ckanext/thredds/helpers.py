@@ -108,7 +108,7 @@ def get_query_params(package):
     if len(package['dimensions']) > 3:
         for dim in package['dimensions']:
             if dim['name'].lower()==  "pressure":
-                if dim['shape'] == 1: # We have only one vertical level selected
+                if dim['shape'] == '1': # We have only one vertical level selected
                     query['vertCoord'] = dim['start']
 
     return query

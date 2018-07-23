@@ -631,9 +631,12 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
                     if len(new_package['dimensions']) >3:
                             for dim in new_package['dimensions']:
                                 if dim['name'].lower()==  "pressure":
-                                    dim['values'] =[data_dict['vertical_level']]
+                                    #Anja, 23.7.18
+                                    # Do not save values because we dont have a corresponding field in Editor
+                                    #dim['values'] =[data_dict['vertical_level']]
+                                    dim.pop('values')
                                     dim['start'] = data_dict['vertical_level']
-                                    dim['shape'] = 1 # Through this we store and identify the vertical level
+                                    dim['shape'] = '1' # Through this we store and identify the vertical level
 
                 # need to pop package otherwise it overwrites the current pkg
                 context.pop('package')
