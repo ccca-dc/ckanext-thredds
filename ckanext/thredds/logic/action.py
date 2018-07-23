@@ -451,7 +451,7 @@ def subset_create(context, data_dict):
     for v in vars:
         if v['type'] in ['long', 'int64']:
             data_dict['format'] ='netcdf4'
-        v.pop('type')    
+        v.pop('type')
 
     # error time section
     times_exist = False
@@ -687,15 +687,23 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
                     #Anja, 11.7.18, create view of Netcdf
                     if 'netcdf' in subset_format.lower():
                         try:
-                            res = tk.get_action('resource_view_create')(context,
-                                    {'resource_id':new_resource['id'],
-                                     'view_type': 'thredds_wms_view',
-                                     'title':'View',
-                                     'description':'',
-                                     'default_layer':'0',
-                                      'default_level':'0',
-                                      'logscale': False}
-                                      )
+                            view_found = False
+                            rvl = tk.get_action('resource_view_list') (context, {'id':res['id']})
+                            if rvl:
+                                for x in rvl:
+                                    if x['view_type'] == 'thredds_wms_view':
+                                        view_found = True
+
+                            if not view_found:
+                                res = tk.get_action('resource_view_create')(context,
+                                        {'resource_id':new_resource['id'],
+                                         'view_type': 'thredds_wms_view',
+                                         'title':'View',
+                                         'description':'',
+                                         'default_layer':'0',
+                                          'default_level':'0',
+                                          'logscale': False}
+                                          )
                         except:
                             print "-----ERROR: Subset Create - Error Creating View"
                             continue
