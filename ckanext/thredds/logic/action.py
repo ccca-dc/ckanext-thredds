@@ -125,6 +125,9 @@ def thredds_get_minmax(context, data_dict):
         print "***************** Errror"
         raise NotFound("Thredds Server can not provide layer information for the resource")
 
+    minmax['min'] = round(minmax['min'], 2)
+    minmax['max'] = round(minmax['max'], 2)
+
     return minmax
 
 
@@ -875,11 +878,32 @@ def get_ncss_subset_params(res_id, params, user, only_location, orig_metadata):
                 corrected_params['error'] = r.content
                 return corrected_params, resource_params
 
+        #Check time dimension
+        if 'Illegal base time' in r.content and 'Value 31' in r.content:
+            #try again with 30
+            zeit = params['time_start']
+
+            if zeit.find('31'):
+                params['time_start'] = zeit.replace('31','30')
+
+            zeit = params['time_end']
+
+            if zeit.find('31'):
+                params['time_end'] = zeit.replace('31','30')
+
+            r = requests.get('/'.join([ckan_url, thredds_location, 'ncss', 'ckan', res_id[0:3], res_id[3:6], res_id[6:]]), params=params, headers=headers)
+            if r.status_code != 200:
+                print "****************** ERROR: Create subset: something regarding the time did not work:"
+                print r.content
+                corrected_params['error'] = r.content
+                return corrected_params, resource_params
+
         if 'HDF error' in r.content:
-            print "***************** ERROR: Create subset: something else did not work:"
+            print "***************** ERROR: Create subset: something else did not work (HDF Error):"
             print r.content
             corrected_params['error'] = r.content
             return corrected_params, resource_params
+
 
         # TODO not working for point
         tree = ElementTree.fromstring(r.content)

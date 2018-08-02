@@ -207,12 +207,27 @@ ckan.module('wms_view', function ($) {
                     var bbox = self.options.layers_details.bbox;
 
                 //GET MIN MAX
+                  var size = map.getSize();
+                  if (size){
+                    var w = size.x;
+                    var h = size.y;
+                  }
+                  else{
+                    var w = 50;
+                    var h = 50;
+                  }
+
+                if (time_included)
+                    var start_time =  self.options.layers_details['nearestTimeIso'];
+                else
+                  var start_time = '';
                 if (self.options.vertical_data){
-                  self.sandbox.client.call('GET','thredds_get_minmax',
+                    self.sandbox.client.call('GET','thredds_get_minmax',
                                       '?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:4326' + // Attention -copied from leaflet! Anja, 9.7
                                       '&bbox='+ bbox +
-                                      '&width=50'+
-                                      '&height=50'+
+                                      '&width='+ w +
+                                      '&height='+ h +
+                                      '&time=' + start_time +
                                       '&id='+ self.options.resource_id +
                                       '&layers=' + wmslayer_selected.id +
                                       '&elevation=' + vertical_level_values[vertical_level_selected],
@@ -224,8 +239,9 @@ ckan.module('wms_view', function ($) {
                   self.sandbox.client.call('GET','thredds_get_minmax',
                                        '?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:4326' + // Attention -copied from leaflet! Anja, 9.7
                                        '&bbox='+ bbox +
-                                       '&width=50'+
-                                       '&height=50'+
+                                       '&width='+ w +
+                                       '&height='+ h +
+                                       '&time=' + start_time +
                                         '&id='+ self.options.resource_id +
                                         '&layers=' + wmslayer_selected.id,
                                          self._onHandleMinMax,
@@ -358,20 +374,35 @@ ckan.module('wms_view', function ($) {
                        + subset_bounds.getEast() + ','
                         + subset_bounds.getNorth();
               }
+            var size = map.getSize();
+            if (size){
+              var w = size.x;
+              var h = size.y;
+            }
+            else{
+              var w = 50;
+              var h = 50;
+            }
+            if (time_included)
+              var current_time = map.getTime();
+            else {
+              var current_time ='';
+            }
             if (self.options.vertical_data){
               self.sandbox.client.call('GET','thredds_get_minmax',
                                   '?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:4326' + // Attention -copied from leaflet! Anja, 9.7
                                   '&bbox='+ bbox +
-                                  '&width=50'+
-                                  '&height=50'+
+                                  '&width='+ w +
+                                  '&height='+ h +
+                                  '&time=' + current_time +
                                   '&id='+ self.options.resource_id +
                                   '&layers=' + wmslayer_selected.id +
                                   '&elevation=' + vertical_level_values[vertical_level_selected],
                                    self._onHandleMinMax,
                                    self._onHandleError
                                   );
-                // Update View - Done - in minmax
-                //cccaHeightTimeLayer.setParams({layers:wmslayer_selected.id, elevation:vertical_level_values[vertical_level_selected]});
+                // Update View - Rest done by MinmAx
+                cccaHeightTimeLayer.setParams({layers:wmslayer_selected.id, elevation:vertical_level_values[vertical_level_selected]});
                 //cccaLegend.removeFrom(map);
                 //cccaLegend.addTo(map);
               }
@@ -379,15 +410,16 @@ ckan.module('wms_view', function ($) {
               self.sandbox.client.call('GET','thredds_get_minmax',
                                    '?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:4326' + // Attention -copied from leaflet! Anja, 9.7
                                    '&bbox='+ bbox +
-                                   '&width=50'+
-                                   '&height=50'+
+                                   '&width='+ w +
+                                   '&height='+ h +
+                                   '&time=' + current_time +
                                     '&id='+ self.options.resource_id +
                                     '&layers=' + wmslayer_selected.id,
                                      self._onHandleMinMax,
                                      self._onHandleError
                                     );
-                // Update View Done in MinmAx
-                //cccaHeightTimeLayer.setParams({layers:wmslayer_selected.id});
+                // Update View - Rest done by MinmAx
+                cccaHeightTimeLayer.setParams({layers:wmslayer_selected.id});
                 //cccaLegend.removeFrom(map);
                 //cccaLegend.addTo(map);
             }
@@ -409,19 +441,36 @@ ckan.module('wms_view', function ($) {
                         + subset_bounds.getEast() + ','
                          + subset_bounds.getNorth();
             }
+            var size = map.getSize();
+            if (size){
+              var w = size.x;
+              var h = size.y;
+            }
+            else{
+              var w = 50;
+              var h = 50;
+            }
+
+            if (time_included)
+              var current_time = map.getTime();
+            else {
+              var current_time ='';
+            }
+
              self.sandbox.client.call('GET','thredds_get_minmax',
                                  '?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:4326' + // Attention -copied from leaflet! Anja, 9.7
                                  '&bbox='+ bbox +
-                                 '&width=50'+ // not sure what this does ...
-                                 '&height=50'+ // not sure what this does ...
+                                 '&width='+ w +
+                                 '&height='+ h +
+                                 '&time=' + current_time +
                                  '&id='+ self.options.resource_id +
                                  '&layers=' + wmslayer_selected.id +
                                  '&elevation=' + vertical_level_values[vertical_level_selected],
                                   self._onHandleMinMax,
                                   self._onHandleError
                                  );
-               // Update View - Done in min/max
-              // cccaHeightTimeLayer.setParams({layers:wmslayer_selected.id, elevation:vertical_level_values[vertical_level_selected]});
+               // Update View - Rest done  in min/max
+               cccaHeightTimeLayer.setParams({elevation:vertical_level_values[vertical_level_selected]});
               // cccaLegend.removeFrom(map);
               // cccaLegend.addTo(map);
         });
@@ -511,8 +560,10 @@ ckan.module('wms_view', function ($) {
             $(".leaflet-top").hide();
             $(".leaflet-bar").hide();
             $(".leaflet-control-attribution").hide();
+            if (time_included) {
             var currentTime = new Date(cccaHeightTimeLayer._timeDimension.getCurrentTime());
             $(".leaflet-bottom.leaflet-left").append("<div id='export-info'><p>" + currentTime.toUTCString() + "</p><p>" + wmsabstracts + "</p></div>");
+            }
             //$(".leaflet-bottom.leaflet-left").;
 
 
