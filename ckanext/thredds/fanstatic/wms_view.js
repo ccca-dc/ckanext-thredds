@@ -68,11 +68,8 @@ ckan.module('wms_view', function ($) {
               var vertical_level_values = $.map(vertical_levels, function( value, key ) { return value.value});
               var vertical_level_names = $.map(vertical_levels, function( value, key ) { return (value.name).toString()});
         }
-        if (self.options.default_level) {
-            if ($.isNumeric(self.options.default_level))
-              vertical_level_selected = self.options.default_level;
-            else
-              vertical_level_selected = parseInt(self.options.default_level);
+        if ($.isNumeric(self.options.default_level)) {
+            vertical_level_selected = self.options.default_level;
         } else {
           vertical_level_selected = 0;
         }
@@ -111,7 +108,7 @@ ckan.module('wms_view', function ($) {
           // Attention: Necessary Format!
           //subset_times = "2018-04-12T12:00:00Z" +"/" + "2018-04-13T12:00:00Z";
 
-          // Check for Vertical Levels:
+          // Check for Vertical Level:
           if (subset_parameter['vertCoord']){
                 vertical_level_selected = 0;
                 vertical_level_values= [parseFloat(subset_parameter['vertCoord'])];
@@ -930,10 +927,15 @@ ckan.module('wms_view', function ($) {
 
       } //if subset
 
-      cccaHeightTimeLayer.addTo(map);
       // Check Vertical
+
+      if (!vertical_level_selected) // just to make sure
+          vertical_level_selected = 0;
       if (self.options.vertical_data)
           cccaHeightTimeLayer.setParams({elevation:vertical_level_values[vertical_level_selected]});
+
+      cccaHeightTimeLayer.addTo(map);
+
 
       }, //initializePreview
 
