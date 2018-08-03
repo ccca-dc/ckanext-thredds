@@ -137,6 +137,8 @@ ckan.module('wms_view', function ($) {
         if (subset_times != ''){
           var map = L.map('map', {
               zoom: 7,
+              minZoom: 0,
+              maxZoom: 7,
               fullscreenControl: true,
               timeDimensionControl: time_included,
               timeDimensionControlOptions: {
@@ -159,6 +161,8 @@ ckan.module('wms_view', function ($) {
         else {
           var map = L.map('map', {
               zoom: 7,
+              minZoom: 0,
+              maxZoom: 7,
               fullscreenControl: true,
               timeDimensionControl: time_included,
               timeDimensionControlOptions: {
@@ -184,8 +188,10 @@ ckan.module('wms_view', function ($) {
               spatial_bounds = multipolygon.getBounds();
               var center = spatial_bounds.getCenter();
               //multipolygon.addTo(map); // Anja, 28.6.18 This will add a blue rectangle marking the spatial extend - might be nice too :-)
-              map.fitBounds(spatial_bounds);
+              map.fitBounds(spatial_bounds, 7);
               map.panTo(center);
+              //map.setView([0, 0], 0);
+
               //map.fitWorld();
           }
         }
@@ -217,8 +223,11 @@ ckan.module('wms_view', function ($) {
                     var h = 50;
                   }
 
-                if (time_included)
+                if (time_included){
                     var start_time =  self.options.layers_details['nearestTimeIso'];
+                    if (subset_times != '')
+                      start_time = subset_parameter['time_start'];
+                  }
                 else
                   var start_time = '';
                 if (self.options.vertical_data){
@@ -384,7 +393,7 @@ ckan.module('wms_view', function ($) {
               var h = 50;
             }
             if (time_included)
-              var current_time = map.getTime();
+            var current_time =  new Date(cccaHeightTimeLayer._timeDimension.getCurrentTime()).toISOString();
             else {
               var current_time ='';
             }
@@ -451,9 +460,9 @@ ckan.module('wms_view', function ($) {
               var h = 50;
             }
 
-            if (time_included)
-              var current_time = map.getTime();
-            else {
+            if (time_included){
+              var current_time = new Date(cccaHeightTimeLayer._timeDimension.getCurrentTime()).toISOString();
+            }else {
               var current_time ='';
             }
 
@@ -925,7 +934,6 @@ ckan.module('wms_view', function ($) {
       // Check Vertical
       if (self.options.vertical_data)
           cccaHeightTimeLayer.setParams({elevation:vertical_level_values[vertical_level_selected]});
-
 
       }, //initializePreview
 
