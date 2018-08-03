@@ -137,8 +137,8 @@ ckan.module('wms_view', function ($) {
         if (subset_times != ''){
           var map = L.map('map', {
               zoom: 7,
-              minZoom: 0,
-              maxZoom: 7,
+              minZoom: 1,
+              maxZoom: 15,
               fullscreenControl: true,
               timeDimensionControl: time_included,
               timeDimensionControlOptions: {
@@ -161,8 +161,8 @@ ckan.module('wms_view', function ($) {
         else {
           var map = L.map('map', {
               zoom: 7,
-              minZoom: 0,
-              maxZoom: 7,
+              minZoom: 1,
+              maxZoom: 15,
               fullscreenControl: true,
               timeDimensionControl: time_included,
               timeDimensionControlOptions: {
@@ -188,7 +188,7 @@ ckan.module('wms_view', function ($) {
               spatial_bounds = multipolygon.getBounds();
               var center = spatial_bounds.getCenter();
               //multipolygon.addTo(map); // Anja, 28.6.18 This will add a blue rectangle marking the spatial extend - might be nice too :-)
-              map.fitBounds(spatial_bounds, 7);
+              map.fitBounds(spatial_bounds, 3);
               map.panTo(center);
               //map.setView([0, 0], 0);
 

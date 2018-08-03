@@ -126,9 +126,11 @@ def thredds_get_minmax(context, data_dict):
         raise NotFound("Thredds Server can not provide layer information for the resource")
 
     if 'min' in minmax:
-        minmax['min'] = round(minmax['min'], 2)
+        if float(minmax['min']) > 1:
+            minmax['min'] = round(minmax['min'], 2)
     if 'max' in minmax:
-        minmax['max'] = round(minmax['max'], 2)
+        if float(minmax['max']) > 1:
+         minmax['max'] = round(minmax['max'], 2)
 
     return minmax
 
