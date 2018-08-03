@@ -869,7 +869,28 @@ def get_ncss_subset_params(res_id, params, user, only_location, orig_metadata):
     corrected_params = dict()
     resource_params = None
 
-    if r.status_code == 200:
+    if r.status_code == 500:  # Oks 31 Problem may be with status code 500 or 200 (see below)
+        #Check time dimension
+        if 'Illegal base time' in r.content and 'Value 31' in r.content:
+            #try again with 30
+            zeit = params['time_start']
+
+            if zeit.find('31'):
+                params['time_start'] = zeit.replace('31','30')
+
+            zeit = params['time_end']
+
+            if zeit.find('31'):
+                params['time_end'] = zeit.replace('31','30')
+
+            r = requests.get('/'.join([ckan_url, thredds_location, 'ncss', 'ckan', res_id[0:3], res_id[3:6], res_id[6:]]), params=params, headers=headers)
+            if r.status_code != 200:
+                print "****************** ERROR 31: Create subset: something regarding the time did not work (31):"
+                print r.content
+                corrected_params['error'] = r.content
+                return corrected_params, resource_params
+
+    elif r.status_code == 200:
 
         #Check netcdf3, Anja 4.7.2018
         if 'illegal dataType' in r.content and 'netcdf-3' in r.content:
