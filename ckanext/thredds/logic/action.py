@@ -890,7 +890,7 @@ def get_ncss_subset_params(res_id, params, user, only_location, orig_metadata):
                 corrected_params['error'] = r.content
                 return corrected_params, resource_params
 
-    elif r.status_code == 200:
+    if r.status_code == 200:
 
         #Check netcdf3, Anja 4.7.2018
         if 'illegal dataType' in r.content and 'netcdf-3' in r.content:
