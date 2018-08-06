@@ -637,18 +637,17 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
                 new_package['contact_points'].append(subset_creator)
 
                 #Anja, 17.7.18: Check vertical level
-                if vertical_included:
-                    #store in dimension 'pressure'
-                    if len(new_package['dimensions']) >3:
-                            for i, dim in enumerate(new_package['dimensions']):
-                                if dim['name'].lower()==  "pressure":
-                                    #Anja, 23.7.18
-                                    # Do not save values because we dont have a corresponding field in Editor
-                                    #dim['values'] =[data_dict['vertical_level']]
-                                    if 'values' in dim:
-                                        new_package['dimensions'][i].pop('values')
-                                    dim['start'] = data_dict['vertical_level']
-                                    dim['shape'] = '1' # Through this we store and identify the vertical level
+                if len(new_package['dimensions']) >3:
+                    for i, dim in enumerate(new_package['dimensions']):
+                        if dim['name'].lower()==  "pressure":
+                            #Anja, 23.7.18
+                            # Do not save values because we dont have a corresponding field in Editor
+                            #dim['values'] =[data_dict['vertical_level']]
+                            if 'values' in dim:
+                                new_package['dimensions'][i].pop('values')
+                            if vertical_included:
+                                dim['start'] = data_dict['vertical_level']
+                                dim['shape'] = '1' # Through this we store and identify the vertical level
 
                 # need to pop package otherwise it overwrites the current pkg
                 context.pop('package')
