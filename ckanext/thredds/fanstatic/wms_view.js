@@ -223,12 +223,10 @@ ckan.module('wms_view', function ($) {
                 if (time_included){
                     var start_time =  self.options.layers_details['nearestTimeIso'];
                     if (subset_times != ''){
-                      //get nearestTIME iso to the subset_times
-                      if (start_time < subset_parameter['time_start'])
-                          start_time = subset_parameter['time_start'];
-                      else if (start_time > subset_parameter['time_end']) {
+                       start_time = subset_parameter['time_start'];
+                       if (start_time > subset_parameter['time_end']) {
                           start_time = subset_parameter['time_end'];
-                      }
+                      }                    
                     }
                   }
                 else
