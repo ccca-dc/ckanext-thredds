@@ -45,6 +45,97 @@ c = base.c
 
 
 @ckan.logic.side_effect_free
+def thredds_get_minmax(context, data_dict):
+    '''Return the min/max values of a layer or vertical level (elevation)
+      from Thredds WMS.
+
+    :param id: the id of the resource
+    :param: layer
+    :param: elevation (optional)
+    :returns: list
+    '''
+
+    # Resource ID
+    model = context['model']
+    user = context['auth_user_obj']
+
+    resource_id = tk.get_or_bust(data_dict,'id')
+    resource = tk.get_action('resource_show')(context, {'id': resource_id})
+
+    #check if the resource is a subset
+    if '/subset/' in resource['url']:
+
+        package = tk.get_action('package_show')(context, {'id': resource['package_id']})
+
+        # get params from metadata
+        try:
+            variables = str(','.join([var['name'] for var in package['variables']]))
+        except:
+            h.flash_error('Thredds View was not possible as the variables of the package are not defined correctly.')
+            redirect(h.url_for(controller='package', action='resource_read',
+                                     id=resource['package_id'], resource_id=resource['id']))
+        params = helpers.get_query_params(package)
+        params['var'] = variables
+        params['item']='minmax'
+        params['request']= 'GetMetadata'
+        payload = params
+        #print params
+        # Get Resource_id from parent
+        # get parent of subset
+        is_part_of_id = [d for d in package['relations'] if d['relation'] == 'is_part_of']
+        is_part_of_pkg = tk.get_action('package_show')(context, {'id': is_part_of_id[0]['id']})
+
+        # get netcdf resource id from parent
+        netcdf_resource = [res['id'] for res in is_part_of_pkg['resources'] if  'netcdf' in res['format'].lower()]
+        resource_id = netcdf_resource[0]
+    else:
+        payload={'item':'minmax',
+                'request':'GetMetadata'}
+
+    layers = tk.get_or_bust(data_dict,'layers')
+    elevation = tk.get_or_bust(data_dict,'elevation')
+
+    if layers:
+        payload['layers'] = layers
+    if elevation:
+        payload['elevation'] = elevation
+
+    #FIXME: Check subset and st the parameter right!!!
+    payload= data_dict
+    payload['item'] ='minmax'
+    payload['request'] ='GetMetadata'
+    payload.pop('id')
+    # Get URL for WMS Proxy
+    ckan_url = config.get('ckan.site_url', '')
+    wms_url = ckan_url + '/thredds/wms/ckan/' + "/".join([resource_id[0:3],resource_id[3:6],resource_id[6:]])
+
+
+    # Headers and payload for thredds request
+    try:
+        headers={'Authorization':user.apikey}
+    except:
+        raise NotAuthorized
+
+    # Thredds request
+    try:
+        r = requests.get(wms_url, params=payload, headers=headers)
+        minmax = json.loads(r.content)
+
+    except Exception as e:
+        print "***************** Errror"
+        raise NotFound("Thredds Server can not provide layer information for the resource")
+
+    if 'min' in minmax:
+        if float(minmax['min']) > 1:
+            minmax['min'] = round(minmax['min'], 2)
+    if 'max' in minmax:
+        if float(minmax['max']) > 1:
+         minmax['max'] = round(minmax['max'], 2)
+
+    return minmax
+
+
+@ckan.logic.side_effect_free
 def thredds_get_layers(context, data_dict):
     '''Return the layers of a resource from Thredds WMS.
     Exclude lat, lon, latitude, longitude, x, y
@@ -221,9 +312,9 @@ def subset_create(context, data_dict):
     :param west: western degree if bbox (optional)
     :param time_start: start of time (optional)
     :param time_end: end of time (optional)
+    _param vertical_level: Vertical level - currently only *Pressure* supported
     :rtype: dictionary
     '''
-
     errors = {}
 
     id = _get_or_bust(data_dict, 'id')
@@ -342,14 +433,32 @@ def subset_create(context, data_dict):
         else:
             tk.get_action('organization_show')(context, {'id': data_dict['organization']})
     else:
-        # error format section
+        # error format section ??? TODO Kathi -- why just for download???
         if data_dict.get('format', "") != "":
-            if data_dict['point'] is True and data_dict['format'].lower() not in {'netcdf', 'csv', 'xml'}:
+            if data_dict['point'] is True and data_dict['format'].lower() not in {'netcdf', 'csv', 'xml','netcdf4'}:
                 errors['format'] = [u'Wrong format']
-            elif data_dict['point'] is False and data_dict['format'].lower() != 'netcdf':
+            elif data_dict['point'] is False and data_dict['format'].lower() not in {'netcdf', 'netcdf4'}:
                 errors['format'] = [u'Wrong format']
         else:
             errors['format'] = [u'Missing value']
+
+    # Anja, 20.7.18 - check netcdf 3 or 4 (no long / long)
+    # 23.7.28 AND remove 'type' field again
+    # Would lead to change in subsets fields and
+    # prevent update - subset_read_only_field
+
+    vars = metadata['variables']
+    dims = metadata['dimensions']
+
+    for d in dims:
+        if d['type'] in ['long', 'int64']:
+            data_dict['format'] ='netcdf4'
+        d.pop('type')
+
+    for v in vars:
+        if v['type'] in ['long', 'int64']:
+            data_dict['format'] ='netcdf4'
+        v.pop('type')
 
     # error time section
     times_exist = False
@@ -427,13 +536,16 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
 
     user = tk.get_action('user_show')(context, {'id': user})
 
+    #Anja, 17.7.18: Do we have a vertical_level?
+    vertical_included = False
+
     # start building URL params with var (required)
     if type(data_dict['layers']) is list:
         params = {'var': ','.join(data_dict['layers'])}
     else:
         params = {'var': data_dict['layers']}
 
-    # adding format
+    # adding format # Anja, check for netcdf3/4
     if data_dict.get('format', ''):
         params['accept'] = data_dict['format'].lower()
 
@@ -457,6 +569,13 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
             params['south'] = round(float(data_dict['south']), 4)
             params['east'] = round(float(data_dict['east']), 4)
             params['west'] = round(float(data_dict['west']), 4)
+
+    # check vertical level: Anja, 2.7.2018
+    if 'vertical_level' in data_dict and data_dict.get('vertical_level', "") != "" and data_dict.get('vertical_level', "").lower() != "all":
+        #print "LEVEL******************++"
+        #print data_dict.get('vertical_level', "")
+        params['vertCoord'] = float(data_dict['vertical_level'])
+        vertical_included = True
 
     only_location = False
     if data_dict.get('type', 'download').lower() == "download":
@@ -517,6 +636,19 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
                     new_package['contact_points'] = []
                 new_package['contact_points'].append(subset_creator)
 
+                #Anja, 17.7.18: Check vertical level
+                if len(new_package['dimensions']) >3:
+                    for i, dim in enumerate(new_package['dimensions']):
+                        if dim['name'].lower()==  "pressure":
+                            #Anja, 23.7.18
+                            # Do not save values because we dont have a corresponding field in Editor
+                            #dim['values'] =[data_dict['vertical_level']]
+                            if 'values' in dim:
+                                new_package['dimensions'][i].pop('values')
+                            if vertical_included:
+                                dim['start'] = data_dict['vertical_level']
+                                dim['shape'] = '1' # Through this we store and identify the vertical level
+
                 # need to pop package otherwise it overwrites the current pkg
                 context.pop('package')
 
@@ -534,6 +666,10 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
                             new_resource['hash'] = resource_params.get('hash', None)
                         if resource_params is not None:
                             new_resource['size'] = resource_params.get('size', None)
+                        #Anja, 20.7.18: check for netcdf4
+                        if data_dict['format'] == 'netcdf4':
+                            params['accept'] = 'netcdf4'
+                            new_resource['format_version'] = '4'
                     else:
                         params['accept'] = subset_format
                         corrected_params_new_res, resource_params_new_res = get_ncss_subset_params(resource['id'], params, user, True, metadata)
@@ -554,6 +690,30 @@ def subset_create_job(user, resource, data_dict, times_exist, metadata):
                     new_resource['url'] = ('%s/subset/%s/download' % (ckan_url, new_resource['id']))
                     context['create_version'] = False
                     new_resource = tk.get_action('resource_update')(context, new_resource)
+
+                    #Anja, 11.7.18, create view of Netcdf
+                    if 'netcdf' in subset_format.lower():
+                        try:
+                            view_found = False
+                            rvl = tk.get_action('resource_view_list') (context, {'id':res['id']})
+                            if rvl:
+                                for x in rvl:
+                                    if x['view_type'] == 'thredds_wms_view':
+                                        view_found = True
+
+                            if not view_found:
+                                res = tk.get_action('resource_view_create')(context,
+                                        {'resource_id':new_resource['id'],
+                                         'view_type': 'thredds_wms_view',
+                                         'title':'View',
+                                         'description':'',
+                                         'default_layer':'0',
+                                          'default_level':'0',
+                                          'logscale': False}
+                                          )
+                        except:
+                            print "-----ERROR: Subset Create - Error Creating View"
+                            continue
 
                 return_dict['new_package'] = new_package
 
@@ -709,7 +869,65 @@ def get_ncss_subset_params(res_id, params, user, only_location, orig_metadata):
     corrected_params = dict()
     resource_params = None
 
+    if r.status_code == 500:  # Oks 31 Problem may be with status code 500 or 200 (see below)
+        #Check time dimension
+        if 'Illegal base time' in r.content and 'Value 31' in r.content:
+            #try again with 30
+            zeit = params['time_start']
+
+            if zeit.find('31'):
+                params['time_start'] = zeit.replace('31','30')
+
+            zeit = params['time_end']
+
+            if zeit.find('31'):
+                params['time_end'] = zeit.replace('31','30')
+
+            r = requests.get('/'.join([ckan_url, thredds_location, 'ncss', 'ckan', res_id[0:3], res_id[3:6], res_id[6:]]), params=params, headers=headers)
+            if r.status_code != 200:
+                print "****************** ERROR 31: Create subset: something regarding the time did not work (31):"
+                print r.content
+                corrected_params['error'] = r.content
+                return corrected_params, resource_params
+
     if r.status_code == 200:
+
+        #Check netcdf3, Anja 4.7.2018
+        if 'illegal dataType' in r.content and 'netcdf-3' in r.content:
+            #try again with netcdf4
+            params['accept']='netcdf4'
+            r = requests.get('/'.join([ckan_url, thredds_location, 'ncss', 'ckan', res_id[0:3], res_id[3:6], res_id[6:]]), params=params, headers=headers)
+            if r.status_code != 200:
+                print "****************** ERROR: Create subset: something did not work:"
+                print r.content
+                corrected_params['error'] = r.content
+                return corrected_params, resource_params
+
+        #Check time dimension
+        if 'Illegal base time' in r.content and 'Value 31' in r.content:
+            #try again with 30
+            zeit = params['time_start']
+
+            if zeit.find('31'):
+                params['time_start'] = zeit.replace('31','30')
+
+            zeit = params['time_end']
+
+            if zeit.find('31'):
+                params['time_end'] = zeit.replace('31','30')
+
+            r = requests.get('/'.join([ckan_url, thredds_location, 'ncss', 'ckan', res_id[0:3], res_id[3:6], res_id[6:]]), params=params, headers=headers)
+            if r.status_code != 200:
+                print "****************** ERROR: Create subset: something regarding the time did not work:"
+                print r.content
+                corrected_params['error'] = r.content
+                return corrected_params, resource_params
+
+        if 'HDF error' in r.content:
+            print "***************** ERROR: Create subset: something else did not work (HDF Error):"
+            print r.content
+            corrected_params['error'] = r.content
+            return corrected_params, resource_params
 
 
         # TODO not working for point
@@ -830,18 +1048,20 @@ def thredds_get_metadata_info(context, data_dict):
     except Exception as e:
         raise NotFound("Thredds Server can not provide layer details")
 
-    ncml_tree = ElementTree.fromstring(r.content)
-    _parse_ncml_metadata_info(ncml_tree, metadata)
+    if r.status_code == 200:
+        ncml_tree = ElementTree.fromstring(r.content)
+        _parse_ncml_metadata_info(ncml_tree, metadata)
 
-    # Extract NCSS metadata
-    ncss_url = '/'.join([ckan_url, thredds_location, 'ncss', 'ckan', resource_id[0:3],resource_id[3:6],resource_id[6:], 'dataset.xml'])
-    try:
-        r = requests.get(ncss_url, headers=headers)
-    except Exception as e:
-        raise NotFound("Thredds Server can not provide layer details")
+        # Extract NCSS metadata
+        ncss_url = '/'.join([ckan_url, thredds_location, 'ncss', 'ckan', resource_id[0:3],resource_id[3:6],resource_id[6:], 'dataset.xml'])
+        try:
+            r = requests.get(ncss_url, headers=headers)
+        except Exception as e:
+            raise NotFound("Thredds Server can not provide layer details")
 
-    ncss_tree = ElementTree.fromstring(r.content)
-    _parse_ncss_metadata_info(ncss_tree, metadata)
+        if r.status_code == 200:
+            ncss_tree = ElementTree.fromstring(r.content)
+            _parse_ncss_metadata_info(ncss_tree, metadata)
 
     return metadata
 
@@ -883,7 +1103,14 @@ def _parse_ncss_metadata_info(ncss_tree, md_dict):
         d['name'] = dimension.attrib["name"]
         d['units'] = dimension.find(".attribute/[@name='units']").attrib["value"]
         d['description'] = dimension.find(".attribute/[@name='long_name']").attrib["value"]
-        d['shape'] = dimension.attrib["shape"]
+        d['shape'] = dimension.attrib["shape"] #'shape' means number of values
+
+        #check for type - netcdf 3 or 4 (if long included)
+        try:
+            d['type'] = dimension.attrib["type"]
+        except:
+            d['type'] = ''
+
         # not all dimensions contain start and increment attributes
         try:
             d['start'] = dimension.find("values").attrib["start"]
@@ -893,6 +1120,17 @@ def _parse_ncss_metadata_info(ncss_tree, md_dict):
             d['increment'] = dimension.find("values").attrib["increment"]
         except:
             d['increment'] = ''
+
+        # Check for Pressure, Anja, 2.7.18 - so far not general and abstract possible
+        # because sometimes 'start' and 'increment' are empty and all definitions are in 'units'
+
+        if d['name'].lower() == 'pressure':
+            str_values =[]
+            str_values = dimension.find("values").text.split(" ")
+            values = [float(x) for x in str_values]
+            d['values'] = values
+            d['start'] = values[0]
+            d['increment'] = 'discrete values' #Anja, 18.7.2018
 
         md_dict['dimensions'].append(d)
 
@@ -911,5 +1149,9 @@ def _parse_ncss_metadata_info(ncss_tree, md_dict):
             if grid.find(".attribute/[@name='units']") is not None:
                 g['units'] = grid.find(".attribute/[@name='units']").attrib["value"]
             g['shape'] = grid.attrib['shape'].split(" ")
-
+            #check for type - netcdf 3 or 4 (if long included)
+            try:
+                g['type'] = grid.attrib["type"]
+            except:
+                g['type'] = ''
             md_dict['variables'].append(g)

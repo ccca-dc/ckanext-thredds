@@ -5,6 +5,9 @@ ckan.module('wms_view', function ($) {
           resource_id:'',
           subset_params:'',
           spatial_params:'',
+          vertical_data:'',
+          vertical_level:'',
+          default_level:'',
           site_url:'',
           minimum:'',
           maximum:'',
@@ -38,6 +41,7 @@ ckan.module('wms_view', function ($) {
         var wmslayers = $.map(self.options.layers, function( value, key ) { return value.children});
         var wmslayers_id = $.map(wmslayers, function( value, key ) { return value.id});
         var wmsabstracts = $.map(self.options.layers, function( value, key ) { return value.label } );
+
         if (self.options.logscale){
           if (self.options.logscale=="True")
             var wmslogscale = true;
@@ -57,7 +61,17 @@ ckan.module('wms_view', function ($) {
         } else {
           var wmslayer_selected = wmslayers[0];
           var wmsabstract_selected = wmsabstracts[0];
-
+        }
+        var vertical_level_selected = 0;
+        if (self.options.vertical_data){
+              var vertical_levels = self.options.vertical_data['values'];
+              var vertical_level_values = $.map(vertical_levels, function( value, key ) { return value.value});
+              var vertical_level_names = $.map(vertical_levels, function( value, key ) { return (value.name).toString()});
+        }
+        if ($.isNumeric(self.options.default_level)) {
+            vertical_level_selected = self.options.default_level;
+        } else {
+          vertical_level_selected = 0;
         }
 
         if ($.type(self.options.default_colormap) == "string") {
@@ -68,23 +82,13 @@ ckan.module('wms_view', function ($) {
 
         var style_selection = self.options.layers_details.supportedStyles[0];
 
-        if ($.isNumeric(self.options.minimum)) {
-          var min_value = self.options.minimum.toString();
-        } else {
-          var min_value = self.options.layers_details.scaleRange[0].toString();
-        }
-
-        if ($.isNumeric(self.options.maximum)) {
-          var max_value = self.options.maximum.toString();
-        } else {
-          var max_value = self.options.layers_details.scaleRange[1].toString();
-        }
 
         if ($.isNumeric(self.options.num_colorbands)) {
           var num_colorbands = self.options.num_colorbands;
         } else {
           var num_colorbands = 100;
         }
+
 
         var opacity = 1;
 
@@ -103,7 +107,15 @@ ckan.module('wms_view', function ($) {
 
           // Attention: Necessary Format!
           //subset_times = "2018-04-12T12:00:00Z" +"/" + "2018-04-13T12:00:00Z";
-        }
+
+          // Check for Vertical Level:
+          if (subset_parameter['vertCoord']){
+                vertical_level_selected = 0;
+                vertical_level_values= [parseFloat(subset_parameter['vertCoord'])];
+                vertical_level_names= [subset_parameter['vertCoord']];
+           } // if vertical
+
+         } // if subset_parameter
 
         // Check if time in resource
         // Anja 29.6.18: Thre maybe a better method;
@@ -122,6 +134,8 @@ ckan.module('wms_view', function ($) {
         if (subset_times != ''){
           var map = L.map('map', {
               zoom: 7,
+              minZoom: 1,
+              maxZoom: 15,
               fullscreenControl: true,
               timeDimensionControl: time_included,
               timeDimensionControlOptions: {
@@ -144,6 +158,8 @@ ckan.module('wms_view', function ($) {
         else {
           var map = L.map('map', {
               zoom: 7,
+              minZoom: 1,
+              maxZoom: 15,
               fullscreenControl: true,
               timeDimensionControl: time_included,
               timeDimensionControlOptions: {
@@ -160,28 +176,109 @@ ckan.module('wms_view', function ($) {
         }
 
 
-      // check whether to adapt view extend
-      var spatial_params = self.options.spatial_params;
-      var spatial_bounds ='';
-      if ((spatial_params != '') && (spatial_params != "") && (subset_bounds == '')){
-        if (spatial_params['type']){ // for some reasons or others spatial_params ahs value 'true' if empty
-            var multipolygon = L.geoJson(spatial_params);
-            spatial_bounds = multipolygon.getBounds();
-            var center = spatial_bounds.getCenter();
-            //multipolygon.addTo(map); // Anja, 28.6.18 This will add a blue rectangle marking the spatial extend - might be nice too :-)
-            map.fitBounds(spatial_bounds);
-            map.panTo(center);
-            //map.fitWorld();
+        // check whether to adapt view extend
+        var spatial_params = self.options.spatial_params;
+        var spatial_bounds ='';
+        if ((spatial_params != '') && (spatial_params != "")){
+          if (spatial_params['type']){ // for some reasons or others spatial_params have value 'true' if empty
+              var multipolygon = L.geoJson(spatial_params);
+              spatial_bounds = multipolygon.getBounds();
+              var center = spatial_bounds.getCenter();
+              //multipolygon.addTo(map); // Anja, 28.6.18 This will add a blue rectangle marking the spatial extend - might be nice too :-)
+              map.fitBounds(spatial_bounds, 3);
+              map.panTo(center);
+              //map.setView([0, 0], 0);
+
+              //map.fitWorld();
+          }
         }
-      }
+
+          // Set min/max; if empty according to map/subset
+          if (($.isNumeric(self.options.minimum)) &&  ($.isNumeric(self.options.maximum)) ) {
+            var min_value = self.options.minimum.toString();
+            var max_value = self.options.maximum.toString();
+          } else {
+                var min_value = '';
+                var max_value = '';
+                if (subset_bounds){
+                    var bbox = subset_bounds.getWest() + ','
+                            + subset_bounds.getSouth() + ','
+                            + subset_bounds.getEast() + ','
+                             +subset_bounds.getNorth()
+                    }
+                 else
+                    var bbox = self.options.layers_details.bbox;
+
+                //GET MIN MAX
+                  var size = map.getSize();
+                  if (size){
+                    var w = size.x;
+                    var h = size.y;
+                  }
+                  else{
+                    var w = 50;
+                    var h = 50;
+                  }
+
+                if (time_included){
+                    var start_time =  self.options.layers_details['nearestTimeIso'];
+                    if (subset_times != ''){
+                      //get nearestTIME iso to the subset_times
+                      if (start_time < subset_parameter['time_start'])
+                          start_time = subset_parameter['time_start'];
+                      else if (start_time > subset_parameter['time_end']) {
+                          start_time = subset_parameter['time_end'];
+                      }
+                    }
+                  }
+                else
+                  var start_time = '';
+                if (self.options.vertical_data){
+                    self.sandbox.client.call('GET','thredds_get_minmax',
+                                      '?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:4326' + // Attention -copied from leaflet! Anja, 9.7
+                                      '&bbox='+ bbox +
+                                      '&width='+ w +
+                                      '&height='+ h +
+                                      '&time=' + start_time +
+                                      '&id='+ self.options.resource_id +
+                                      '&layers=' + wmslayer_selected.id +
+                                      '&elevation=' + vertical_level_values[vertical_level_selected],
+                                       self._onHandleMinMax,
+                                       self._onHandleError
+                                      );
+                  }
+                else{
+                  self.sandbox.client.call('GET','thredds_get_minmax',
+                                       '?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:4326' + // Attention -copied from leaflet! Anja, 9.7
+                                       '&bbox='+ bbox +
+                                       '&width='+ w +
+                                       '&height='+ h +
+                                       '&time=' + start_time +
+                                        '&id='+ self.options.resource_id +
+                                        '&layers=' + wmslayer_selected.id,
+                                         self._onHandleMinMax,
+                                         self._onHandleError
+                                        );
+              }
+          }
 
         // ------------------------------------------------
         // Create control elements for wms_view (wms_form is separate!)
         // Layer
+
+
         $( "#layer" ).append(
             this._getDropDownList(
                 'layers','select-layers',wmslayers_id, wmslayer_selected.id)
         );
+
+        if (self.options.vertical_data){
+              $( "#vertical_level" ).append(
+                this._getDropDownList(
+                    'vertical_levels','select-level',vertical_level_values, vertical_level_values[vertical_level_selected])
+            );
+        }
+
         $( "#logscale-field" ).append(
             this._getDropDownList(
                 'select-logscale','select-logscale',{"true":true, "false":false}, wmslogscale.toString())
@@ -277,10 +374,117 @@ ckan.module('wms_view', function ($) {
             index = this.selectedIndex;
             wmslayer_selected = wmslayers[index];
             wmsabstract_selected = wmsabstracts[index];
-            // Update Preview
-            cccaHeightTimeLayer.setParams({layers:wmslayer_selected.id});
-            cccaLegend.removeFrom(map);
-            cccaLegend.addTo(map);
+            // Get and adapt min max_value
+            //this.sandbox = ckan.sandbox();
+            var bbox = map.getBounds().getWest() + ','
+                    + map.getBounds().getSouth() + ','
+                    + map.getBounds().getEast() + ','
+                     + map.getBounds().getNorth();
+           if (subset_bounds != ''){
+               bbox = subset_bounds.getWest() + ','
+                       + subset_bounds.getSouth() + ','
+                       + subset_bounds.getEast() + ','
+                        + subset_bounds.getNorth();
+              }
+            var size = map.getSize();
+            if (size){
+              var w = size.x;
+              var h = size.y;
+            }
+            else{
+              var w = 50;
+              var h = 50;
+            }
+            if (time_included)
+            var current_time =  new Date(cccaHeightTimeLayer._timeDimension.getCurrentTime()).toISOString();
+            else {
+              var current_time ='';
+            }
+            if (self.options.vertical_data){
+              self.sandbox.client.call('GET','thredds_get_minmax',
+                                  '?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:4326' + // Attention -copied from leaflet! Anja, 9.7
+                                  '&bbox='+ bbox +
+                                  '&width='+ w +
+                                  '&height='+ h +
+                                  '&time=' + current_time +
+                                  '&id='+ self.options.resource_id +
+                                  '&layers=' + wmslayer_selected.id +
+                                  '&elevation=' + vertical_level_values[vertical_level_selected],
+                                   self._onHandleMinMax,
+                                   self._onHandleError
+                                  );
+                // Update View - Rest done by MinmAx
+                cccaHeightTimeLayer.setParams({layers:wmslayer_selected.id, elevation:vertical_level_values[vertical_level_selected]});
+                //cccaLegend.removeFrom(map);
+                //cccaLegend.addTo(map);
+              }
+            else{
+              self.sandbox.client.call('GET','thredds_get_minmax',
+                                   '?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:4326' + // Attention -copied from leaflet! Anja, 9.7
+                                   '&bbox='+ bbox +
+                                   '&width='+ w +
+                                   '&height='+ h +
+                                   '&time=' + current_time +
+                                    '&id='+ self.options.resource_id +
+                                    '&layers=' + wmslayer_selected.id,
+                                     self._onHandleMinMax,
+                                     self._onHandleError
+                                    );
+                // Update View - Rest done by MinmAx
+                cccaHeightTimeLayer.setParams({layers:wmslayer_selected.id});
+                //cccaLegend.removeFrom(map);
+                //cccaLegend.addTo(map);
+            }
+
+        });
+
+        $('#select-level').on('change', function() {
+            index = this.selectedIndex;
+            vertical_level_selected = index;
+            // Get and adapt min max_value
+            //this.sandbox = ckan.sandbox();
+            var bbox = map.getBounds().getWest() + ','
+                    + map.getBounds().getSouth() + ','
+                    + map.getBounds().getEast() + ','
+                     + map.getBounds().getNorth();
+            if (subset_bounds != ''){
+                bbox = subset_bounds.getWest() + ','
+                        + subset_bounds.getSouth() + ','
+                        + subset_bounds.getEast() + ','
+                         + subset_bounds.getNorth();
+            }
+            var size = map.getSize();
+            if (size){
+              var w = size.x;
+              var h = size.y;
+            }
+            else{
+              var w = 50;
+              var h = 50;
+            }
+
+            if (time_included){
+              var current_time = new Date(cccaHeightTimeLayer._timeDimension.getCurrentTime()).toISOString();
+            }else {
+              var current_time ='';
+            }
+
+             self.sandbox.client.call('GET','thredds_get_minmax',
+                                 '?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:4326' + // Attention -copied from leaflet! Anja, 9.7
+                                 '&bbox='+ bbox +
+                                 '&width='+ w +
+                                 '&height='+ h +
+                                 '&time=' + current_time +
+                                 '&id='+ self.options.resource_id +
+                                 '&layers=' + wmslayer_selected.id +
+                                 '&elevation=' + vertical_level_values[vertical_level_selected],
+                                  self._onHandleMinMax,
+                                  self._onHandleError
+                                 );
+               // Update View - Rest done  in min/max
+               cccaHeightTimeLayer.setParams({elevation:vertical_level_values[vertical_level_selected]});
+              // cccaLegend.removeFrom(map);
+              // cccaLegend.addTo(map);
         });
 
         $('#opacity-value').on('change', function() {
@@ -368,8 +572,10 @@ ckan.module('wms_view', function ($) {
             $(".leaflet-top").hide();
             $(".leaflet-bar").hide();
             $(".leaflet-control-attribution").hide();
+            if (time_included) {
             var currentTime = new Date(cccaHeightTimeLayer._timeDimension.getCurrentTime());
             $(".leaflet-bottom.leaflet-left").append("<div id='export-info'><p>" + currentTime.toUTCString() + "</p><p>" + wmsabstracts + "</p></div>");
+            }
             //$(".leaflet-bottom.leaflet-left").;
 
 
@@ -420,6 +626,7 @@ ckan.module('wms_view', function ($) {
             mapPane.style.left = "";
             mapPane.style.top = "";
         }); // export-png
+        //------------------------- END Control Elements --------------------
 
 
         var cccaWMS = self.options.site_url + "thredds/wms/ckan/" + [self.options.resource_id.slice(0,3), self.options.resource_id.slice(3,6), self.options.resource_id.slice(6)].join("/");
@@ -667,8 +874,10 @@ ckan.module('wms_view', function ($) {
               // set extent to subset bounds - will become hole
               var extent = subset_json;
 
-              // outer border of extent
+              // milky rest of the map: TODO set to spatial extend of orginal resource
+              map.fitWorld();
               var bounds = map.getBounds();
+              map.fitBounds(subset_bounds);
 
               var inversePolygon = createPolygonFromBounds(bounds);
 
@@ -719,12 +928,20 @@ ckan.module('wms_view', function ($) {
               if (extent.type == 'Point'){
                 map.setView(L.latLng(extent.coordinates[1],extent.coordinates[0]), 9);
               } else {
-              //  map.fitBounds(extentLayer.getBounds());
+                map.fitBounds(extentLayer.getBounds());
             }//else
 
       } //if subset
 
+      // Check Vertical
+
+      if (!vertical_level_selected) // just to make sure
+          vertical_level_selected = 0;
+      if (self.options.vertical_data)
+          cccaHeightTimeLayer.setParams({elevation:vertical_level_values[vertical_level_selected]});
+
       cccaHeightTimeLayer.addTo(map);
+
 
       }, //initializePreview
 
@@ -741,7 +958,6 @@ ckan.module('wms_view', function ($) {
           self = this;
           self.options.layers = json.result;
 
-
           var wmslayers = $.map(json.result, function( value, key ) { return value.children});
           self.sandbox.client.call('GET','thredds_get_layerdetails',
                                   '?id='+ self.options.resource_id + '&layer=' + wmslayers[0].id,
@@ -751,6 +967,19 @@ ckan.module('wms_view', function ($) {
         } //if
 
       }, // _onHandleData
+
+
+      _onHandleMinMax: function(json) {
+        if (json.success) {
+          var mv = document.getElementById("min-value").value = json.result.min ;
+          var mv = document.getElementById("max-value").value = json.result.max ;
+          min_value = json.result.min;
+          max_value = json.result.max;
+          $('#min-value').trigger('focusout');
+          $('#max-value').trigger('focusout');
+        } //if
+
+      }, // _onHandleMinMax
 
       _onHandleError: function(error) {
         document.getElementById("wms-view").innerHTML = "<h2>Please login to use this view</h2>";

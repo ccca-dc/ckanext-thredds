@@ -23,6 +23,8 @@ import ckanext.thredds.helpers as helpers
 from ckanext.thredds.logic.action import get_ncss_subset_params
 from ckanext.thredds.logic.action import send_email
 
+import json
+
 get_action = logic.get_action
 parse_params = logic.parse_params
 tuplize_dict = logic.tuplize_dict
@@ -77,6 +79,7 @@ class SubsetController(base.BaseController):
         package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
 
         # Submit the data
+        # We return here from subset_create.html after press submit button
         if 'save' in request.params:
             # values are just returned in case of error(s)
             data, errors, error_summary = self._submit(context, resource, package)
@@ -84,6 +87,24 @@ class SubsetController(base.BaseController):
             # get metadata from nclm and ncss
             data['metadata'] = toolkit.get_action('thredds_get_metadata_info')(context, {'id': resource_id})
 
+        # check if vertical level - currently (July 2018) only pressure
+        if ('dimensions' in data['metadata']) and (len(data['metadata']['dimensions'])) > 3:
+            for dim in data['metadata']['dimensions']:
+                if dim['name'].lower()==  "pressure":
+                    data['vertical'] = dim['name']
+                    # Create Select list
+                    select_list= []
+                    item={}
+                    item['name'] = "All"
+                    item['value'] = "all"
+                    select_list.append(item)
+                    for v in dim['values']:
+                        item={}
+                        item['name'] = v
+                        item['value'] = v
+                        select_list.append(item)
+                    data['vertical_values'] = select_list
+                    data['vertical_units'] = dim['units']
         # check if user is allowed to create package
         data['create_pkg'] = True
         try:
@@ -127,9 +148,6 @@ class SubsetController(base.BaseController):
         context = {'model': model, 'session': model.Session,
                    'user': c.author}
 
-        #print c.author
-        #print toolkit.c
-        #print resource_id
         resource = toolkit.get_action('resource_show')(context, {'id': resource_id})
         package = toolkit.get_action('package_show')(context, {'id': resource['package_id']})
 
@@ -201,15 +219,16 @@ def subset_download_job(resource_id, variables, subset_user):
     params['var'] = variables
     params['accept'] = resource['format']
 
+    #Anja: check netcdf4
+    if resource['format'].lower() == 'netcdf'  and 'format_version' in resource and resource['format_version'] == '4':
+        params['accept'] = 'netcdf4'
+        
     # get parent of subset
     is_part_of_id = [d for d in package['relations'] if d['relation'] == 'is_part_of']
     is_part_of_pkg = toolkit.get_action('package_show')(context, {'id': is_part_of_id[0]['id']})
 
     # get netcdf resource id from parent
     netcdf_resource = [res['id'] for res in is_part_of_pkg['resources'] if 'netcdf' in res['format'].lower()]
-
-    #print "**************************+"
-    #print corrected_params
 
     corrected_params, subset_netcdf_hash = get_ncss_subset_params(netcdf_resource[0], params, user, True, None)
 
