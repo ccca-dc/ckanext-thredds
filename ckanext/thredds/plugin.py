@@ -130,7 +130,7 @@ class ThreddsPlugin(plugins.SingletonPlugin):
             meta_data = toolkit.get_action('thredds_get_metadata_info')(context, {'id': resource_id})
         except:
             pass
-        #print json.dumps(data_dict,indent=4)
+        #print json.dumps(meta_data,indent=4)
 
         #Anja, 5.7 - drop down for layers
         layers = []
@@ -147,6 +147,11 @@ class ThreddsPlugin(plugins.SingletonPlugin):
                 templ_layers = []
         else:
             templ_layers = []
+
+        if ('temporal_end' in meta_data):
+            time_included = 'True'
+        else:
+            time_included = 'False'
 
         vertical_data ={}
         vertical_data['name'] =''
@@ -178,7 +183,8 @@ class ThreddsPlugin(plugins.SingletonPlugin):
             'logscale': data_dict['resource_view'].get('logscale', ''),
             'layers':templ_layers,
             'default_layer': data_dict['resource_view'].get('default_layer', ''),
-            'default_colormap': data_dict['resource_view'].get('default_colormap', '')
+            'default_colormap': data_dict['resource_view'].get('default_colormap', ''),
+            'time_included': time_included
         }
 
         return tpl_variables
