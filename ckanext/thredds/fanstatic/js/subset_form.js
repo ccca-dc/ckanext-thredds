@@ -117,8 +117,9 @@ this.ckan.module('subset-form', function (jQuery, _) {
         map = ckan.commonLeafletMap(
             this.map_id,
             this.options.map_config,
-            {attributionControl: false}
+            {attributionControl: false, maxZoom: 14, minZoom:2}
         );
+
         map.fitBounds(this.options.default_extent);
         map.setMaxBounds(this.options.default_extent);
         map.options.minZoom = map.getZoom();
