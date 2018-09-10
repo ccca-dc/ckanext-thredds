@@ -30,4 +30,9 @@
     {% if 'datastore' in g.plugins %}
         {% snippet 'package/snippets/data_api_button.html', resource=res, datastore_root_url=c.datastore_api %}
     {% endif %}
+
+    {% block resource_basket %}
+    {{ super() }}
+    {% endblock %}
+
 {% endblock %}
