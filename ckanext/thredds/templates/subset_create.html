@@ -106,7 +106,7 @@
               </div>
               <p class="info-text">Draw the subset extent as point or polygon on the map or select a pre-defined extent.</p>
 
-              {% set austria = h.scheming_get_json_objects('austria.geojson') %}
+              {% set countries = h.scheming_get_csv_objects('country_boundingboxes.csv') %}
               {% set states = h.scheming_get_json_objects('austria_states.geojson') %}
               {% set districts = h.scheming_get_json_objects('austria_districts.geojson') %}
               {% set municipalities = h.scheming_get_json_objects('austria_municipalities.geojson') %}
@@ -114,8 +114,9 @@
 
               <select id="select-extent">
                 <option value="">-- Select predefined extent --</option>
-                {% for area in austria %}
-                  <option value="{{ area['geometry'] | replace("u'","\"") | replace("'","\"") | empty_and_escape }}">{{ area['properties']['Area_Name'].title() }}</option>
+                <option disabled>Countries (Europe):</option>
+                {% for area in countries %}
+                     <option value="{{ area['polygon'] }}">{{ area['name'] }}</option>
                 {% endfor %}
                 <option disabled>States:</option>
                 {% for area in states %}
