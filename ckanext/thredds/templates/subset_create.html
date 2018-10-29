@@ -2,6 +2,7 @@
 {% resource 'thredds/jquery.datetimepicker.full.js' %}
 {% resource 'thredds/subset_datepicker.js' %}
 {% resource 'thredds/stored_queries.js' %}
+{% resource 'thredds/spatial-select2.js' %}
 
 {% import 'macros/form.html' as form %}
 
@@ -106,31 +107,33 @@
               </div>
               <p class="info-text">Draw the subset extent as point or polygon on the map or select a pre-defined extent.</p>
 
-              {% set austria = h.scheming_get_json_objects('austria.geojson') %}
+              {% set countries = h.scheming_get_csv_objects('country_boundingboxes.csv') %}
               {% set states = h.scheming_get_json_objects('austria_states.geojson') %}
               {% set districts = h.scheming_get_json_objects('austria_districts.geojson') %}
               {% set municipalities = h.scheming_get_json_objects('austria_municipalities.geojson') %}
               <br>
 
-              <select id="select-extent">
-                <option value="">-- Select predefined extent --</option>
-                {% for area in austria %}
-                  <option value="{{ area['geometry'] | replace("u'","\"") | replace("'","\"") | empty_and_escape }}">{{ area['properties']['Area_Name'].title() }}</option>
+              <div class="control-group">
+              <select class="spatial-select" id="select-extent">
+                <option value="">-- Select pre-defined extent --</option>
+                <optgroup label="Countries (Europe):">
+                {% for area in countries %}
+                     <option value="{{ area['polygon'] }}">{{ area['name'] }}</option>
                 {% endfor %}
-                <option disabled>States:</option>
+                <optgroup label="States (Austria):">
                 {% for area in states %}
                   <option value="{{ area['geometry'] | replace("u'","\"") | replace("'","\"") | empty_and_escape }}">{{ area['properties']['Area_Name'].title() }}</option>
                 {% endfor %}
-                <option disabled>Districts:</option>
+                <optgroup label="Districts (Austria):">
                 {% for area in districts %}
                   <option value="{{ area['geometry'] | replace("u'","\"") | replace("'","\"") | empty_and_escape }}">{{ area['properties']['Area_Name'].title() }}</option>
                 {% endfor %}
-                <option disabled>Municipalities:</option>
+                <optgroup label="Municipalities (Austria):">
                 {% for area in municipalities %}
                   <option value="{{ area['geometry'] | replace("u'","\"") | replace("'","\"") | empty_and_escape }}">{{ area['properties']['Area_Name'].capitalize() }}</option>
                 {% endfor %}
               </select>
-
+              </div>
 
                <input name="spatial_name" id="spatial_name" type="hidden" value="{{ data.spatial_name if data.spatial_name is defined }}">
 

@@ -119,7 +119,7 @@ def coordinates_to_spatial(north, east, south, west):
     e = float(east)
     s = float(south)
     w = float(west)
-    coordinates = [[w, s], [e, s], [e, n], [w, n], [w, s]]
+    coordinates = [[w, s], [w, n], [e, n], [e, s], [w, s]]
     return ('{"type": "MultiPolygon", "coordinates": [[' + str(coordinates) + ']]}')
 
 
