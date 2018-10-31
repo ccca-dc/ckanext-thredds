@@ -3,6 +3,8 @@
 {% resource 'thredds/subset_datepicker.js' %}
 {% resource 'thredds/stored_queries.js' %}
 {% resource 'thredds/spatial-select2.js' %}
+{% resource 'ccca/introjs' %}
+{% resource 'ccca/introjs_addition.css' %}
 
 {% import 'macros/form.html' as form %}
 
@@ -22,16 +24,22 @@
 {% block primary %}
     {% block form %}
       <div class="module-content">
+          <a class="btn btn-sm pull-right" href="javascript:void(0);" onclick="javascript:introJs().setOption('tooltipClass', 'customDefault').setOption('showProgress', true).start();" title="Explain me this page">
+              <i class="icon-question-sign icon-2x"></i>
+          </a>
+
           <h1>Create Subset</h1>
           <form id="subset-form" method="post" enctype="multipart/form-data">
               {{ form.errors(error_summary) }}
 
               <input name="metadata" type="hidden" value="{{ data.metadata }}">
 
+              <div data-step="1" data-intro="Hi! Cool, you want to create a subset! Let me explain you how this works. So first, you have to decide which layers you want to include in your subset. {% if data.metadata.variables|length == 1 %} In this case the dataset has only one layer so you will obviously include this one layer. {% endif %}">
               <h3>Select Layers/Parameters</h3>
               {% for variable in data.metadata.variables %}
-                <p><input type="checkbox" name="layers" value="{{ variable['name'] }}" {{ "checked " if variable['name'] in data.layers }}> {{ variable['description'] }}</p>
+                <p><input type="checkbox" name="layers" value="{{ variable['name'] }}" {{ "checked " if variable['name'] in data.layers }}> {{ variable['description'] }} </p>
               {% endfor %}
+              </div>
 
 
               {% if data.vertical %}
@@ -51,7 +59,7 @@
 
               {% if user_queries|length > 0 or all_queries|length > 0 %}
 
-                  <div class="division">
+                  <div class="division" data-step="2" data-intro="Before you fill out all the arguments below you can also decide to just reuse a query that has already been used on our site. Check out the dropdown menu to see if there is something that is of interest to you.">
                    <h3>Reuse Query</h3>
                    <div name="querydiv" id="querydiv" class="btn-group">
                      <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">Select Query Template
@@ -102,7 +110,8 @@
                 data-module="subset-form"
                 data-module-site_url="{{ h.dump_json(h.url('/', locale='default', qualified=true)) }}"
                 data-module-map_config="{{ h.dump_json(map_config) }}"
-                data-module-default_extent="{{ default_extent }}">
+                data-module-default_extent="{{ default_extent }}"
+                data-step="3" data-intro="If you want to create a subset that should not cover the whole area of the original dataset you can define here which area it should cover. Click on the rectangle button on the left to select a bounding box or click on the marker to select only a point. Go ahead and try it out!">
                 <div id="dataset-map-container"></div>
               </div>
               <p class="info-text">Draw the subset extent as point or polygon on the map or select a pre-defined extent.</p>
@@ -113,7 +122,7 @@
               {% set municipalities = h.scheming_get_json_objects('austria_municipalities.geojson') %}
               <br>
 
-              <div class="control-group">
+              <div class="control-group" data-step="4" data-intro="If you instead want to select a pre-defined area like 'Austria' you can select this area in this box.">
               <select class="spatial-select" id="select-extent">
                 <option value="">-- Select pre-defined extent --</option>
                 <optgroup label="Countries (Europe):">
@@ -138,6 +147,7 @@
                <input name="spatial_name" id="spatial_name" type="hidden" value="{{ data.spatial_name if data.spatial_name is defined }}">
 
               <br>
+              <div data-step="5" data-intro="After selecting an area of interest the coordinates will be filled out in this section. Alternatively, you can also simply enter the coordinates of your choice.">
               <div class="left">
                   {{ input('north', id='north', label=_('North'), value=data.north|float|round(4) if data.north != "" and data.north is defined, error=errors.north, title='min: ' + data.metadata.coordinates.south + ' max: ' + data.metadata.coordinates.north, attrs={'data-placement': 'right'}) }}
               </div>
@@ -151,12 +161,13 @@
                   <div class="right">
                       {{ input('west', id='west', label=_('West'), value=data.west|float|round(4) if data.west != "" and data.west is defined, error=errors.west, title='min: ' + data.metadata.coordinates.west + ' max: ' + data.metadata.coordinates.east, attrs={'data-placement': 'right'}) }}
                   </div>
-              </div>
+             </div>
+             </div>
             </div>
 
 
             {% if data.metadata.temporal_start %}
-            <div class="division">
+            <div class="division" data-step="6" data-intro="Additionally, you can select a time range for your subset. When clicking on the fields you see the minimum and maximum values for this dataset. If you do not define a time range the system takes the time slice closest to the current date!">
                 <h3>Choose Time Range</h3>
                 {% set start = h.date_str_to_datetime(data.metadata.temporal_start[:-1]) %}
                 {% if data.metadata.temporal_end %}
@@ -176,29 +187,32 @@
 
             {% if data.create_pkg == True %}
               <div class="division">
-                  <h3>Would you like to create a new resource within the CCCA data portal?</h3>
-                  <input type="radio" name="type" value="download" {{ "checked " if data.type == "download" or data.type is not defined }} id="download"> <b>No</b>, just download the subset <br><br>
+                  <h3 data-step="7" data-intro="Now you need to decide whether you want to just download your subset or if you want to create a new dataset on this site.">Would you like to create a new resource within the CCCA data portal?</h3>
+                  <div data-step="8" data-intro="If you just want to download the file you need to decide in which format you want to have it. Bounding boxes are only available in NetCDF, points are available in all 3 formats.">
+                      <input type="radio" name="type" value="download" {{ "checked " if data.type == "download" or data.type is not defined }} id="download"> <b>No</b>, just download the subset <br><br>
 
-                  <div class="well" id="download_well" style="display:none">
-                      <label class="control-label">Format</label>
-                      <p>
-                      <input type="radio" name="format" id="radio_netcdf" value="netCDF" {{ "checked " if data.format|lower == "netcdf" or data.format is not defined }}> netCDF &emsp;
-                      <input type="radio" name="format" id="radio_csv" value="CSV" {{ "checked " if data.format|lower == "csv" }} {{ "disabled" if data.point == False or data.point is not defined }}> CSV &emsp;
-                      <input type="radio" name="format" id="radio_xml" value="XML" {{ "checked " if data.format|lower == "xml" }} {{ "disabled" if data.point == False or data.point is not defined }}> XML
-                      </p>
-                      <p class="info-text">XML and CSV can only be chosen if the subset coordinates were drawn as a point.</p>
-                  </div>
+                      <div class="well" id="download_well" style="display:none">
+                          <label class="control-label">Format</label>
+                          <p>
+                          <input type="radio" name="format" id="radio_netcdf" value="netCDF" {{ "checked " if data.format|lower == "netcdf" or data.format is not defined }}> netCDF &emsp;
+                          <input type="radio" name="format" id="radio_csv" value="CSV" {{ "checked " if data.format|lower == "csv" }} {{ "disabled" if data.point == False or data.point is not defined }}> CSV &emsp;
+                          <input type="radio" name="format" id="radio_xml" value="XML" {{ "checked " if data.format|lower == "xml" }} {{ "disabled" if data.point == False or data.point is not defined }}> XML
+                          </p>
+                          <p class="info-text">XML and CSV can only be chosen if the subset coordinates were drawn as a point.</p>
+                      </div>
+                 </div>
 
+                  <div data-step="9" data-intro="If you want to add a new dataset on this site click this button. Here you need to define a dataset title, resource title and an organization. You can still rename your dataset and resource afterwards. Furthermore, you must define if you want your dataset to be public or private. Keep in mind that once you set the dataset public you cannot set it private again nor delete it. So if you are not sure simply select private. You can still set the dataset public afterwards. Don't be shy, the dataset will not yet be created, so please press the button after this tour!">
                   <input type="radio" name="type" value="create_resource" {{ "checked " if data.type == "create_resource" }} id="create_resource"> <b>Yes</b> <br><br>
 
                   <div class="well" id="create_resource_well" style="display:none;overflow: hidden;">
                       <div class="left-well">
-                          {{ form.input('package_title', id='field-title', label=_('Datapackage Title'), value=data.package_title, error=errors.package_title, placeholder=_('eg. A descriptive title'), attrs={'data-module': 'slug-preview-target'}) }}
+                          {{ form.input('package_title', id='field-title', label=_('Dataset Title'), value=data.package_title, error=errors.package_title, placeholder=_('eg. A descriptive title'), attrs={'data-module': 'slug-preview-target'}) }}
 
                           {% set prefix = h.url_for(controller='package', action='read', id='') %}
                           {% set domain = h.url_for(controller='package', action='read', id='', qualified=true) %}
                           {% set domain = domain|replace("http://", "")|replace("https://", "") %}
-                          {% set attrs = {'data-module': 'slug-preview-slug', 'data-module-prefix': domain, 'data-module-placeholder': '<datapackage>'} %}
+                          {% set attrs = {'data-module': 'slug-preview-slug', 'data-module-prefix': domain, 'data-module-placeholder': '<name>'} %}
 
                           {{ form.prepend('package_name', id='field-name', label=_('URL'), value=data.package_name, error=errors.package_name, prepend=prefix, placeholder=_('eg. my-datapackage'), attrs=attrs, is_required=true) }}
 
@@ -207,11 +221,12 @@
                       <div class="right">
                           {{ form.input('resource_name', id='field-res-name-1', label=_('Resource Name'), value=data.resource_name if data.resource_name is defined else 'subset_' + data.res_name, error=errors.resource_name) }}
 
-                      <h4> Should the resource be quotable? (datapackage becomes public and cannot be set private again) </h4>
+                      <h4> Should the resource be quotable? (dataset becomes public and cannot be set private again) </h4>
                       <input type="radio" name="private" value="False" {{ "checked " if data.private == "False" }}> Yes &emsp;
                       <input type="radio" name="private" value="True" {{ "checked " if data.private == "True" or data.private is not defined }}> No, maybe at a later point
                       </div>
                   </div>
+              </div>
               </div>
             {% endif %}
 

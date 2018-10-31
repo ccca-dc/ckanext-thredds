@@ -1,4 +1,6 @@
 {% extends "dataviewer/base.html" %}
+{% resource 'ccca/introjs' %}
+{% resource 'ccca/introjs_addition.css' %}
 
 {% block page %}
   {% resource 'thredds/wms' %}
@@ -11,8 +13,11 @@
 
 
     <div id="wms-view" class="container">
+        <a class="btn btn-sm pull-right" href="javascript:void(0);" onclick="javascript:introJs().setOption('tooltipClass', 'customDefault').setOption('showProgress', true).start();" title="Explain me this view">
+            <i class="icon-question-sign icon-2x"></i>
+        </a>
 
-      <div class="well">
+      <div class="well" data-step="1" data-intro="In this view the NetCDF data is visualised. In the 'Map Parameter' section you can customize the appearance of the visualised data below. Try it out and open the section below!">
         <a data-toggle="collapse" href="#collapse_parameter" aria-expanded="true" aria-controls="collapse_parameter">
               Map Parameter
               <i class="icon-angle-down pull-right"></i>
@@ -92,10 +97,11 @@
              data-module-logscale ="{{ logscale }}"
              data-module-default_layer ="{{ default_layer }}"
              data-module-default_colormap ="{{ default_colormap }}"
+             data-step="2" data-intro="Here you can see the visualised data. You can click the play button to see how the data changes over time. The points on the map represent stations. You can add further points by double-clicking on the map."
         >
         </div>
 
-        <div id="chart" class="chart-wrapper"></div>
+        <div id="chart" class="chart-wrapper" data-step="3" data-intro="In this chart you can find the stations from above. On the upper right you can define a starting and ending date between which you want to see how the data changes. Default settings show only one day, so change this time range to see more. Take a look at the stations and how their values change over time!"></div>
 
     </div>
 {% endblock %}
