@@ -46,6 +46,6 @@ h5[name=dropdown_heading] {
     width: 50%;
 }
 #southWest {
-    float:left;
+    /* float:left; removed because introjs had problems with it */
     width:100%;
 }
