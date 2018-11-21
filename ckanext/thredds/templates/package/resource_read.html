@@ -4,6 +4,7 @@
 
 {% block resource_actions_inner %}
     {% if res.url and h.is_url(res.url) %}
+    <span class="pull-right" data-intro-group="explain-resource" data-tooltipclass='introjs-ttip'  data-intro='Here you can download the resource or in case follow the resource-link' data-step="8">
         <a class="btn btn-primary pull-right resource-url-analytics resource-type-{{ res.resource_type }}" href="{{ res.url }}">
           {% if res.resource_type in ('listing', 'service') %}
             <i class="icon-eye-open"></i> {{ _('View') }}
@@ -17,14 +18,19 @@
             <i class="icon-download"></i> {{ _('Download') }}
           {% endif %}
         </a>
+      </span>
     {% endif %}
 
     {% if pkg.private == False and h.check_if_res_can_create_subset(res.id) %}
-        {% link_for _('Create Subset'), controller='ckanext.thredds.controllers.subset:SubsetController', action='subset_create', resource_id=res.id, class_='btn pull-right', icon='plus-sign-alt' %}
+    <span class="pull-right" data-intro-group="explain-resource" data-tooltipclass='introjs-ttip'  data-intro='By clicking this button you will be transferred to a form where you can specify paramter in order to create a subset of this resource' data-step="7">
+      {% link_for _('Create Subset'), controller='ckanext.thredds.controllers.subset:SubsetController', action='subset_create', resource_id=res.id, class_='btn pull-right', icon='plus-sign-alt' %}
+    </span>
     {% endif %}
 
     {% if h.check_access('package_update', {'id':pkg.id }) %}
+    <span  class="pull-right" data-intro-group="explain-resource" data-tooltipclass='introjs-ttip'  data-intro='By clicking this button you are able to change details about your resource. Also you are able to create a new version of your dataset by simply uploading a new file.  ' data-step="6">
         {% link_for _('Manage'), controller='package', action='resource_edit', id=pkg.name, resource_id=res.id, class_='btn pull-right', icon='wrench' %}
+    </span>
     {% endif %}
 
     {% if 'datastore' in g.plugins %}
@@ -34,5 +40,12 @@
     {% block resource_basket %}
     {{ super() }}
     {% endblock %}
+
+    {% block resource_introjs %}
+    <a class="btn btn-sm pull-right" href="javascript:void(0);" onclick="javascript:introJs().setOption('tooltipClass', 'customDefault').setOption('showProgress', false).setOption('showStepNumbers', false).start('explain-resource');" title="Explain me this page">
+                  <i class="icon-question-sign icon-2x" aria-hidden="true"></i>
+    </a>
+    {% endblock %}
+
 
 {% endblock %}
